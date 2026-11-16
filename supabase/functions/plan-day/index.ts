@@ -16,8 +16,10 @@ Reglas:
 - "dueInDays": días hasta la fecha límite (0 = hoy). null si no hay fecha.
 - "energy": "alta" si exige concentración o esfuerzo físico, si no "baja".
 - "kind": "trabajo" | "estudio" | "deporte" | "casa" | "otro".
+- "importance": 3 si es importante (fecha cercana, trabajo/estudios con consecuencias, algo que otra persona espera), 2 si es normal, 1 si puede esperar.
 - "sport": "fuerza" | "cardio" | null. Si dice "gym y cardio", son DOS tareas: una de fuerza y otra de cardio.
 - "tired": true si la persona dice que está cansada o sin energía.
+Si recibes una CAPTURA de mensajes o mails, extrae solo lo que la persona TIENE QUE HACER (peticiones, citas, fechas); ignora el resto. No inventes nada que no aparezca.
 Responde SOLO con JSON: {"tasks":[...],"tired":boolean}`;
 
 const cors = {
@@ -28,9 +30,10 @@ const cors = {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
-    const { text, today, weekday, lang } = await req.json();
-    if (typeof text !== 'string' || !text.trim()) {
-      return Response.json({ error: 'text is required' }, { status: 400, headers: cors });
+    const { text, today, weekday, lang, image, mediaType } = await req.json();
+    const hasImage = typeof image === 'string' && image.length > 0;
+    if (!hasImage && (typeof text !== 'string' || !text.trim())) {
+        return Response.json({ error: 'text or image is required' }, { status: 400, headers: cors });
     }
     const key = Deno.env.get('ANTHROPIC_API_KEY');
     if (!key) return Response.json({ error: 'ANTHROPIC_API_KEY not set' }, { status: 500, headers: cors });
@@ -43,7 +46,12 @@ Deno.serve(async (req) => {
         model: MODEL,
         max_tokens: 1200,
         system: SYSTEM,
-        messages: [{ role: 'user', content: `Hoy es ${dayName} ${today ?? ''}. Idioma del móvil: ${lang ?? 'es'}.\n\nLo que tengo en la cabeza:\n${text.slice(0, 4000)}` }],
+        messages: [{ role: 'user', content: hasImage
+          ? [
+              { type: 'image', source: { type: 'base64', media_type: mediaType ?? 'image/jpeg', data: image } },
+              { type: 'text', text: `Hoy es ${dayName} ${today ?? ''}. Idioma del móvil: ${lang ?? 'es'}. Esta es una captura de mis mensajes o mails: ¿qué tengo que hacer?` },
+            ]
+          : `Hoy es ${dayName} ${today ?? ''}. Idioma del móvil: ${lang ?? 'es'}.\n\nLo que tengo en la cabeza:\n${String(text).slice(0, 4000)}` }],
       }),
     });
     if (!res.ok) {

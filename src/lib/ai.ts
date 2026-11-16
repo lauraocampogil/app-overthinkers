@@ -16,7 +16,9 @@ function sanitize(raw: unknown): RawTask | null {
   const energy: Energy = r.energy === 'alta' ? 'alta' : 'baja';
   const kind: Kind = KINDS.includes(r.kind as Kind) ? (r.kind as Kind) : 'otro';
   const sport = r.sport === 'fuerza' || r.sport === 'cardio' ? r.sport : null;
-  return { title, minutes, dueInDays: Number.isNaN(due) ? null : due, energy, kind, sport };
+  const imp = Math.round(Number(r.importance));
+  const importance: 1 | 2 | 3 = imp >= 3 ? 3 : imp <= 1 ? 1 : 2;
+  return { title, minutes, dueInDays: Number.isNaN(due) ? null : due, energy, kind, sport, importance };
 }
 
 /** Brain dump -> tasks. Uses the plan-day Edge Function (Claude) and falls back to the local parser. */
@@ -36,6 +38,23 @@ export async function parseBrainDump(text: string): Promise<ParseResult & { sour
     }
   }
   return { ...parseLocal(text), source: 'local' };
+}
+
+/** Screenshot of messages/emails -> tasks, read by the AI (vision). null when unavailable. */
+export async function tasksFromImage(base64: string, mediaType = 'image/jpeg'): Promise<RawTask[] | null> {
+  if (!supabase) return null;
+  try {
+    await ensureSession();
+    const now = new Date();
+    const { data, error } = await supabase.functions.invoke('plan-day', {
+      body: { image: base64, mediaType, today: isoDay(now), weekday: now.getDay(), lang },
+    });
+    if (error) throw error;
+    return ((Array.isArray(data?.tasks) ? data.tasks : []).map(sanitize).filter(Boolean) as RawTask[]);
+  } catch (e) {
+    console.warn('[ai] image failed', e);
+    return null;
+  }
 }
 
 /** Voice note -> text via the transcribe Edge Function. Returns null if it is not available. */

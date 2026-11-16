@@ -25,6 +25,7 @@ export type StreakOutcome = { streak: Streak; usedFreezes: number; reset: boolea
 export function countToday(s: Streak, level: Level, today: string): StreakOutcome {
   if (s.lastCountedDate === today) return { streak: s, usedFreezes: 0, reset: false, paused: false };
   let { current, freezes } = s;
+  let best = s.best ?? 0;
   let usedFreezes = 0;
   let reset = false;
   let paused = false;
@@ -46,6 +47,7 @@ export function countToday(s: Streak, level: Level, today: string): StreakOutcom
   }
 
   current += 1;
+  best = Math.max(best, current);
   if (current % FREEZE_EVERY[level] === 0) freezes = Math.min(MAX_FREEZES, freezes + 1);
-  return { streak: { current, freezes, lastCountedDate: today }, usedFreezes, reset, paused };
+  return { streak: { current, best, freezes, lastCountedDate: today }, usedFreezes, reset, paused };
 }

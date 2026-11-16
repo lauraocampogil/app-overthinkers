@@ -10,6 +10,8 @@ export type RawTask = {
   dueInDays: number | null;
   energy: Energy;
   kind: Kind;
+  /** 3 = important, 2 = normal, 1 = can wait. */
+  importance: 1 | 2 | 3;
   /** Sport-specific hint so the planner can apply "strength before cardio". */
   sport?: 'fuerza' | 'cardio' | null;
 };
@@ -35,6 +37,7 @@ export type Settings = {
 
 export type Streak = {
   current: number;
+  best: number;
   freezes: number;
   /** ISO date (yyyy-mm-dd) of the last day that counted. */
   lastCountedDate: string | null;

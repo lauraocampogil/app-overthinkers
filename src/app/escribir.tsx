@@ -1,59 +1,167 @@
+import * as Clipboard from 'expo-clipboard';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableWithoutFeedback,
+  View,
+} from 'react-native';
+import Svg, { Path, Rect } from 'react-native-svg';
 
 import { CloseIcon, IconCircle, PrimaryButton, Screen } from '@/components/ui';
 import { t } from '@/i18n';
+import { tasksFromImage } from '@/lib/ai';
+import { supabase } from '@/lib/supabase';
 import { useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
+const PasteIcon = () => (
+  <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+    <Rect x={8} y={3} width={8} height={4} rx={1} stroke={colors.ink} strokeWidth={1.8} />
+    <Path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2" stroke={colors.ink} strokeWidth={1.8} />
+  </Svg>
+);
+const ImageIcon = () => (
+  <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+    <Rect x={3} y={3} width={18} height={18} rx={3} stroke={colors.ink} strokeWidth={1.8} />
+    <Path d="M3 16l5-5 4 4 3-3 6 6" stroke={colors.ink} strokeWidth={1.8} strokeLinejoin="round" />
+  </Svg>
+);
+
+const join = (current: string, extra: string) => (current.trim() ? `${current.trim()}, ${extra}` : extra);
+
 export default function Escribir() {
-  const draft = useDay((s) => s.draft);
   const setDraft = useDay((s) => s.setDraft);
-  const [text, setText] = useState(draft);
+  // Always start empty: the previous dump was already turned into tasks.
+  const [text, setText] = useState('');
+  const [keyboard, setKeyboard] = useState(false);
+  const [reading, setReading] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboard(true));
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboard(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   const go = () => {
+    Keyboard.dismiss();
     setDraft(text.trim());
     router.replace('/ordenando');
   };
 
+  const paste = async () => {
+    setNotice(null);
+    const copied = (await Clipboard.getStringAsync()).trim();
+    if (!copied) {
+      setNotice(t('write.nothingToPaste'));
+      return;
+    }
+    setText((cur) => join(cur, copied));
+  };
+
+  const fromScreenshot = async () => {
+    setNotice(null);
+    Keyboard.dismiss();
+    if (!supabase) {
+      setNotice(t('write.needServer'));
+      return;
+    }
+    const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 0.6 });
+    const asset = picked.canceled ? null : picked.assets[0];
+    if (!asset?.base64) return;
+    setReading(true);
+    const tasks = await tasksFromImage(asset.base64, asset.mimeType ?? 'image/jpeg');
+    setReading(false);
+    if (!tasks || !tasks.length) {
+      setNotice(t('write.importFailed'));
+      return;
+    }
+    setText((cur) => join(cur, tasks.map((x) => x.title).join(', ')));
+  };
+
   return (
     <Screen>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.header}>
-          <IconCircle label={t('common.close')} onPress={() => router.back()}>
-            <CloseIcon />
-          </IconCircle>
-        </View>
-        <View style={styles.body}>
-          <Text style={type.title} accessibilityRole="header">{t('write.title')}</Text>
-          <Text style={type.muted}>{t('write.hint')}</Text>
-          <TextInput
-            accessibilityLabel={t('write.inputLabel')}
-            value={text}
-            onChangeText={setText}
-            autoFocus
-            multiline
-            placeholder={t('write.placeholder')}
-            placeholderTextColor={colors.faint}
-            style={styles.input}
-            textAlignVertical="top"
-          />
-        </View>
-        <View style={styles.footer}>
-          <PrimaryButton label={t('write.cta')} onPress={go} disabled={text.trim().length < 3} />
-        </View>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={{ flex: 1 }}>
+            <View style={styles.header}>
+              <IconCircle label={t('common.close')} onPress={() => router.back()}>
+                <CloseIcon />
+              </IconCircle>
+              {keyboard && (
+                <Pressable accessibilityRole="button" onPress={Keyboard.dismiss} style={styles.doneBtn} hitSlop={8}>
+                  <Text style={styles.doneText}>{t('write.done')}</Text>
+                </Pressable>
+              )}
+            </View>
+
+            <View style={styles.body}>
+              {!keyboard && (
+                <>
+                  <Text style={type.title} accessibilityRole="header">{t('write.title')}</Text>
+                  <Text style={type.muted}>{t('write.hint')}</Text>
+                </>
+              )}
+
+              <View style={styles.chips}>
+                <Pressable accessibilityRole="button" onPress={paste} style={styles.chip}>
+                  <PasteIcon />
+                  <Text style={styles.chipText}>{t('write.paste')}</Text>
+                </Pressable>
+                <Pressable accessibilityRole="button" onPress={fromScreenshot} style={styles.chip} disabled={reading}>
+                  {reading ? <ActivityIndicator size="small" color={colors.accent} /> : <ImageIcon />}
+                  <Text style={styles.chipText}>{t(reading ? 'write.reading' : 'write.screenshot')}</Text>
+                </Pressable>
+              </View>
+              {notice && <Text style={styles.notice}>{notice}</Text>}
+
+              <TextInput
+                accessibilityLabel={t('write.inputLabel')}
+                value={text}
+                onChangeText={setText}
+                autoFocus
+                multiline
+                placeholder={t('write.placeholder')}
+                placeholderTextColor={colors.faint}
+                style={styles.input}
+                textAlignVertical="top"
+              />
+            </View>
+
+            <View style={styles.footer}>
+              <PrimaryButton label={t('write.cta')} onPress={go} disabled={text.trim().length < 3 || reading} />
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { paddingHorizontal: 24, marginTop: 8 },
-  body: { flex: 1, paddingHorizontal: 24, marginTop: 28, gap: 12 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginTop: 8, height: 44 },
+  doneBtn: { height: 40, paddingHorizontal: 18, borderRadius: 20, backgroundColor: colors.white, justifyContent: 'center' },
+  doneText: { fontFamily: fonts.medium, fontSize: 15, color: colors.accentDark },
+  body: { flex: 1, paddingHorizontal: 24, marginTop: 20, gap: 12 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 40, paddingHorizontal: 14, borderRadius: 20, backgroundColor: colors.white },
+  chipText: { fontFamily: fonts.medium, fontSize: 14, color: colors.ink },
+  notice: { fontFamily: fonts.regular, fontSize: 14, color: colors.muted },
   input: {
     flex: 1,
-    marginTop: 8,
+    minHeight: 120,
     padding: 18,
     borderRadius: 24,
     backgroundColor: colors.white,
@@ -62,5 +170,5 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     color: colors.ink,
   },
-  footer: { padding: 24, paddingTop: 16 },
+  footer: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 12 },
 });

@@ -45,8 +45,20 @@ describe('planDay', () => {
     expect(planned[0].why).toContain('why.quick');
   });
 
+  it('orders from most to least important', () => {
+    const base: Omit<Task, 'id' | 'title' | 'importance'> = { minutes: 20, dueInDays: null, energy: 'baja', kind: 'otro', postponed: 0 };
+    const tasks: Task[] = [
+      { ...base, id: 'a', title: 'Puede esperar', importance: 1 },
+      { ...base, id: 'b', title: 'Importante', importance: 3 },
+      { ...base, id: 'c', title: 'Normal', importance: 2 },
+    ];
+    const { planned } = planDay(tasks, { level: 'duro', freeMinutes: 240, tired: false });
+    expect(planned.map((t) => t.title)).toEqual(['Importante', 'Normal', 'Puede esperar']);
+    expect(planned[0].why).toContain('why.important');
+  });
+
   it('respects capacity and the per-level maximum, but urgent always goes in', () => {
-    const base: Omit<Task, 'id' | 'title'> = { minutes: 30, dueInDays: null, energy: 'baja', kind: 'otro', postponed: 0 };
+    const base: Omit<Task, 'id' | 'title'> = { minutes: 30, dueInDays: null, energy: 'baja', kind: 'otro', importance: 1, postponed: 0 };
     const tasks: Task[] = Array.from({ length: 6 }, (_, i) => ({ ...base, id: `x${i}`, title: `Tarea ${i}` }));
     tasks.push({ ...base, id: 'urgent', title: 'Entregar hoy', dueInDays: 0, minutes: 40 });
     const { planned, later } = planDay(tasks, { level: 'suave', freeMinutes: 60, tired: false });
@@ -57,7 +69,7 @@ describe('planDay', () => {
 
   it('shortens heavy tasks when tired and splits anything over an hour', () => {
     const tasks: Task[] = [
-      { id: 'a', title: 'Informe', minutes: 120, dueInDays: null, energy: 'alta', kind: 'trabajo', postponed: 0 },
+      { id: 'a', title: 'Informe', minutes: 120, dueInDays: null, energy: 'alta', kind: 'trabajo', importance: 2, postponed: 0 },
     ];
     const { planned, later } = planDay(tasks, { level: 'duro', freeMinutes: 240, tired: true });
     expect(planned[0].title).toBe('Informe (parte 1)');
@@ -67,7 +79,7 @@ describe('planDay', () => {
 });
 
 describe('countToday', () => {
-  const s = { current: 5, freezes: 1, lastCountedDate: '2026-11-13' };
+  const s = { current: 5, best: 5, freezes: 1, lastCountedDate: '2026-11-13' };
   it('covers one missed day with a freeze', () => {
     const r = countToday({ ...s, lastCountedDate: '2026-11-14' }, 'equilibrado', '2026-11-16');
     expect(r.usedFreezes).toBe(1);

@@ -59,7 +59,14 @@ export function parseLocal(text: string, today: Date = new Date()): ParseResult 
     const minutes = MINUTES.find(([re]) => re.test(p))?.[1] ?? 20;
     const energy: Energy = minutes >= 30 || kind === 'estudio' ? 'alta' : 'baja';
     const sport = /\b(cardio|correr|bici)\b/i.test(p) ? 'cardio' : /\b(gym|gimnasio|fuerza|pesas)\b/i.test(p) ? 'fuerza' : null;
-    tasks.push({ title: cleanTitle(p), minutes, dueInDays: dueInDaysFrom(p, today), energy, kind, sport });
+    const dueInDays = dueInDaysFrom(p, today);
+    const importance: 1 | 2 | 3 =
+      (dueInDays !== null && dueInDays <= 2) || /\b(urgente|importante|ya mismo)\b/i.test(p)
+        ? 3
+        : kind === 'trabajo' || kind === 'estudio' || kind === 'deporte'
+          ? 2
+          : 1;
+    tasks.push({ title: cleanTitle(p), minutes, dueInDays, energy, kind, sport, importance });
   }
   return { tasks, tired };
 }

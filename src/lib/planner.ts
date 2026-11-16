@@ -15,13 +15,22 @@ const isUrgent = (t: Task) => t.dueInDays !== null && t.dueInDays <= 2;
 const isQuick = (t: Task) => t.minutes <= QUICK_MINUTES;
 
 function score(t: Task): number {
-  let s = 0;
+  let s = t.importance * 30;
   if (isUrgent(t)) s += 100 - (t.dueInDays ?? 0) * 10;
-  if (t.energy === 'alta') s += 5;
-  if (t.kind === 'casa') s -= 3;
+  if (t.energy === 'alta') s += 3;
   // Something pushed back again and again deserves to surface.
   s += Math.min(t.postponed, 3) * 4;
   return s;
+}
+
+/** Most important first; ties: earliest deadline, then the shortest (a quick win). */
+function byImportance(a: Task, b: Task): number {
+  return (
+    b.importance - a.importance ||
+    (a.dueInDays ?? 99) - (b.dueInDays ?? 99) ||
+    a.minutes - b.minutes ||
+    score(b) - score(a)
+  );
 }
 
 /** Turns a messy list into a short, ordered plan that fits the day. Pure and deterministic. */
@@ -60,19 +69,14 @@ export function planDay(input: Task[], opts: PlanOptions): PlanResult {
     }
   }
 
-  // 4. Order: a quick win first, then the hard things while there is energy, errands last.
-  const quick = chosen.filter(isQuick).sort((a, b) => score(b) - score(a))[0];
-  const rest = chosen.filter((t) => t !== quick);
-  const hard = rest.filter((t) => t.energy === 'alta' && t.kind !== 'casa').sort((a, b) => score(b) - score(a));
-  const easy = rest.filter((t) => t.energy !== 'alta' && t.kind !== 'casa').sort((a, b) => score(b) - score(a));
-  const errands = rest.filter((t) => t.kind === 'casa');
-  let ordered = [...(quick ? [quick] : []), ...hard, ...easy, ...errands];
-  ordered = applyDomainRules(ordered);
+  // 4. Order from most to least important; then common-sense rules (study before sport,
+  //    strength before cardio) adjust within that.
+  const ordered = applyDomainRules([...chosen].sort(byImportance));
 
   const planned = ordered.map((t, i): PlannedTask => ({
     ...t,
     status: 'pendiente',
-    why: explain(t, { first: i === 0 && t === quick, shrunk: shrunk.has(t.id), ordered }),
+    why: explain(t, { first: i === 0 && isQuick(t), shrunk: shrunk.has(t.id), ordered }),
   }));
   return { planned, later };
 }
@@ -101,6 +105,7 @@ export function applyDomainRules(list: Task[]): Task[] {
 
 function explain(t: Task, ctx: { first: boolean; shrunk: boolean; ordered: Task[] }): string[] {
   const keys: string[] = [];
+  if (t.importance === 3) keys.push('why.important');
   if (ctx.first) keys.push('why.quick');
   if (t.dueInDays === 0) keys.push('why.today');
   else if (t.dueInDays === 1) keys.push('why.tomorrow');

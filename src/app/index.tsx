@@ -23,12 +23,16 @@ export default function Inicio() {
     <Screen>
       <View style={styles.header}>
         <Text style={styles.date}>{todayLabel()}</Text>
-        {streak.current > 0 && (
-          <View style={styles.pill} accessibilityLabel={t('home.streak', { n: streak.current })}>
-            <FlameIcon />
-            <Text style={styles.pillText}>{t('home.streak', { n: streak.current })}</Text>
-          </View>
-        )}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${t('streak.open')}: ${t('home.streak', { n: streak.current })}`}
+          onPress={() => router.push('/racha')}
+          style={styles.pill}
+          hitSlop={6}
+        >
+          <FlameIcon />
+          <Text style={styles.pillText}>{t('home.streak', { n: streak.current })}</Text>
+        </Pressable>
       </View>
 
       <View style={styles.titleBlock}>

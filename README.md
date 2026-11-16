@@ -15,8 +15,8 @@ npx expo start
 La grabación de voz usa `expo-audio`. Si no funciona en Expo Go, crea un development build:
 `npx expo run:ios` / `npx expo run:android`, o `npx eas-cli@latest build --profile development`.
 
-### Modo local (sin backend)
-Sin las variables de `.env`, la app usa el **parser local** (`src/lib/parse-local.ts`, solo en español) y, al hablar, un **texto de ejemplo** en vez de la transcripción real. Así puedes probar todo el flujo sin configurar nada.
+### Sin backend
+Sin las variables de `.env` la app **no inventa nada**: escribir funciona con el parser local (`src/lib/parse-local.ts`, solo español), pero la **voz** y **leer capturas** muestran un aviso hasta que Supabase esté configurado.
 
 ## Supabase
 
@@ -37,12 +37,14 @@ Sin las variables de `.env`, la app usa el **parser local** (`src/lib/parse-loca
 | Inicio → hablar (+ escribir) | `src/app/index.tsx`, `escuchando.tsx`, `escribir.tsx` |
 | Texto → tareas (IA, con fallback local) | `src/lib/ai.ts`, `supabase/functions/plan-day` |
 | Orden del día (reglas fijas, sin IA) | `src/lib/planner.ts` |
-| Resumen editable "Tu día" | `src/app/resumen.tsx` |
+| Resumen editable "Tu día" (con importancia) | `src/app/resumen.tsx` |
+| Importar: pegar mensaje / leer captura | `src/app/escribir.tsx`, `plan-day` (visión) |
+| Racha, mejor racha, comodines y calendario | `src/app/racha.tsx` |
 | Una tarea a la vez / No puedo ahora | `src/app/ahora.tsx`, `no-puedo.tsx` |
 | Racha y comodines por nivel | `src/lib/streak.ts` |
 | Estado local + copia en Supabase | `src/store/day.ts`, `src/lib/sync.ts` |
 
-**La IA solo entiende el texto; el orden lo decide el código**, con estas reglas: lo que vence en ≤ 48 h entra seguro · se empieza por algo rápido (≤ 10 min) · lo difícil cuando hay energía (si estás cansado/a, se acorta) · estudio antes que deporte y fuerza antes que cardio · recados al final · como mucho el 80 % del tiempo libre · máximo de tareas por nivel (3 / 5 / 7) · lo que dura más de 1 h se parte.
+**La IA solo entiende el texto; el orden lo decide el código**, con estas reglas: **de más a menos importante** (la IA puntúa 1-3) · lo que vence en ≤ 48 h entra seguro · a igual importancia, primero lo rápido · lo difícil cuando hay energía (si estás cansado/a, se acorta) · estudio antes que deporte y fuerza antes que cardio · recados al final · como mucho el 80 % del tiempo libre · máximo de tareas por nivel (3 / 5 / 7) · lo que dura más de 1 h se parte.
 
 ## Idiomas
 
@@ -54,6 +56,11 @@ La app usa el idioma del móvil. Textos en `src/i18n/strings.ts` (es, en, fr, nl
 npm run typecheck   # TypeScript
 npm test            # tests de la lógica (planificador, parser, racha)
 ```
+
+## Antes de publicar
+
+- **Compartir desde WhatsApp/Mail directamente a GetGo** (extensión de compartir): necesita un development build; ahora mismo se hace pegando el mensaje o con una captura.
+- Development build con EAS y prueba en dispositivos reales (iOS y Android).
 
 ## Siguiente
 

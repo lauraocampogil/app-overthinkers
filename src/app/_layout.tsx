@@ -28,12 +28,13 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' }, animation: 'fade' }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="escuchando" options={{ gestureEnabled: false }} />
-        <Stack.Screen name="escribir" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="escribir" options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="ordenando" options={{ gestureEnabled: false }} />
         <Stack.Screen name="resumen" />
         <Stack.Screen name="ahora" />
         <Stack.Screen name="no-puedo" options={{ presentation: 'transparentModal', animation: 'fade' }} />
         <Stack.Screen name="hecho" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="racha" options={{ animation: 'slide_from_right' }} />
       </Stack>
     </SafeAreaProvider>
   );

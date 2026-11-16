@@ -83,10 +83,15 @@ export default function Resumen() {
                 ) : (
                   <Text style={styles.title}>{task.title}</Text>
                 )}
-                <Text style={styles.time}>
-                  {minutesLabel(task.minutes)}
-                  {task.status === 'hecha' ? t('summary.doneSuffix') : ''}
-                </Text>
+                <View style={styles.meta}>
+                  <View style={[styles.imp, task.importance === 3 && styles.impHigh, task.importance === 1 && styles.impLow]}>
+                    <Text style={[styles.impText, task.importance === 3 && { color: colors.white }]}>{t(`imp.${task.importance}`)}</Text>
+                  </View>
+                  <Text style={styles.time}>
+                    {minutesLabel(task.minutes)}
+                    {task.status === 'hecha' ? t('summary.doneSuffix') : ''}
+                  </Text>
+                </View>
               </View>
               {editing && (
                 <View style={styles.arrows}>
@@ -139,6 +144,11 @@ const styles = StyleSheet.create({
   badgeText: { fontFamily: fonts.medium, fontSize: 13, color: colors.accentDark },
   title: { fontFamily: fonts.medium, fontSize: 16, color: colors.ink },
   time: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+  imp: { height: 22, paddingHorizontal: 8, borderRadius: 11, backgroundColor: colors.soft, justifyContent: 'center' },
+  impHigh: { backgroundColor: colors.accentDark },
+  impLow: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.line },
+  impText: { fontFamily: fonts.medium, fontSize: 12, color: colors.accentDark },
   input: { height: 38, paddingHorizontal: 10, borderRadius: 10, borderWidth: 1, borderColor: '#DEDAF0', backgroundColor: colors.bgTop, fontFamily: fonts.regular, fontSize: 16, color: colors.ink },
   arrows: { gap: 2 },
   arrow: { width: 32, height: 24, alignItems: 'center', justifyContent: 'center' },

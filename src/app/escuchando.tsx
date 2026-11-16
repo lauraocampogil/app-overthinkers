@@ -2,6 +2,7 @@ import {
   RecordingPresets,
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
+  setIsAudioActiveAsync,
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio';
@@ -17,30 +18,60 @@ import { supabase } from '@/lib/supabase';
 import { useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
-type Phase = 'starting' | 'recording' | 'transcribing' | 'denied' | 'failed';
+type Phase = 'starting' | 'recording' | 'transcribing' | 'denied' | 'failed' | 'noServer';
+
+const RECORDING = { ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true };
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const mmss = (ms: number) => {
   const s = Math.floor(ms / 1000);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
 
+/** iOS needs a play-and-record session that does not mix with other apps before preparing. */
+async function enableRecordingSession() {
+  await setIsAudioActiveAsync(true);
+  await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true, interruptionMode: 'doNotMix' });
+}
+
+async function disableRecordingSession() {
+  try {
+    await setAudioModeAsync({ allowsRecording: false, interruptionMode: 'mixWithOthers' });
+  } catch {
+    // Not critical: the next recording sets the mode again.
+  }
+}
+
 export default function Escuchando() {
-  const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true });
+  const recorder = useAudioRecorder(RECORDING);
   const state = useAudioRecorderState(recorder, 100);
   const setDraft = useDay((s) => s.setDraft);
-  const [phase, setPhase] = useState<Phase>('starting');
+  // Without a server there is no real transcription: say so instead of inventing text.
+  const [phase, setPhase] = useState<Phase>(supabase ? 'starting' : 'noServer');
+  const started = useRef(false);
   const stopping = useRef(false);
 
   useEffect(() => {
+    if (!supabase || started.current) return; // guard against the effect running twice
+    started.current = true;
     let cancelled = false;
+
     (async () => {
       const perm = await requestRecordingPermissionsAsync();
       if (!perm.granted) {
         if (!cancelled) setPhase('denied');
         return;
       }
-      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-      await recorder.prepareToRecordAsync();
+      await enableRecordingSession();
+      try {
+        await recorder.prepareToRecordAsync(RECORDING);
+      } catch (first) {
+        // The session sometimes needs a moment to activate (e.g. right after other audio). Retry once.
+        console.warn('[record] first prepare failed, retrying', first);
+        await wait(400);
+        await enableRecordingSession();
+        await recorder.prepareToRecordAsync(RECORDING);
+      }
       if (cancelled) return;
       recorder.record();
       setPhase('recording');
@@ -48,9 +79,11 @@ export default function Escuchando() {
       console.warn('[record]', e);
       if (!cancelled) setPhase('failed');
     });
+
     return () => {
       cancelled = true;
       if (recorder.isRecording) void recorder.stop().catch(() => {});
+      void disableRecordingSession();
     };
   }, [recorder]);
 
@@ -63,17 +96,15 @@ export default function Escuchando() {
     setPhase('transcribing');
     try {
       await recorder.stop();
-      await setAudioModeAsync({ allowsRecording: false });
+      await disableRecordingSession();
       const uri = recorder.uri;
       const text = uri ? await transcribe(uri) : null;
-      // Without a backend we use a sample so the whole flow can be tried.
-      const finalText = text ?? (supabase ? null : t('listen.demo'));
-      if (!finalText) {
+      if (!text) {
         setPhase('failed');
         stopping.current = false;
         return;
       }
-      setDraft(finalText);
+      setDraft(text);
       router.replace('/ordenando');
     } catch (e) {
       console.warn('[record] stop failed', e);
@@ -87,14 +118,14 @@ export default function Escuchando() {
     router.back();
   };
 
-  if (phase === 'denied' || phase === 'failed') {
+  if (phase === 'denied' || phase === 'failed' || phase === 'noServer') {
+    const title = phase === 'denied' ? 'listen.deniedTitle' : phase === 'noServer' ? 'listen.noServerTitle' : 'listen.failedTitle';
+    const body = phase === 'denied' ? 'listen.deniedBody' : phase === 'noServer' ? 'listen.noServerBody' : 'listen.failedBody';
     return (
       <Screen style={styles.pad}>
         <View style={{ flex: 1, justifyContent: 'center', gap: 12 }}>
-          <Text style={type.title}>{t(phase === 'denied' ? 'listen.deniedTitle' : 'listen.failedTitle')}</Text>
-          <Text style={type.muted}>
-            {t(phase === 'denied' ? 'listen.deniedBody' : 'listen.failedBody')}
-          </Text>
+          <Text style={type.title}>{t(title)}</Text>
+          <Text style={type.muted}>{t(body)}</Text>
         </View>
         <PrimaryButton label={t('listen.writeInstead')} onPress={() => router.replace('/escribir')} />
         <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.secondary}>
@@ -117,9 +148,7 @@ export default function Escuchando() {
         <View style={{ width: 44 }} />
       </View>
 
-      <Text style={styles.prompt}>
-        {t(phase === 'transcribing' ? 'listen.wait' : 'listen.prompt')}
-      </Text>
+      <Text style={styles.prompt}>{t(phase === 'transcribing' ? 'listen.wait' : 'listen.prompt')}</Text>
 
       <View style={{ flex: 1, justifyContent: 'center' }}>
         <Ondas mode="habla" height={320} level={phase === 'recording' ? level : 0.2} />

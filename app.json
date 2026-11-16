@@ -32,7 +32,15 @@
           "microphonePermission": "Usamos el micrófono para que puedas soltar lo que tienes en la cabeza hablando."
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "GetGo lee la captura que eliges para sacar las tareas de tus mensajes.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

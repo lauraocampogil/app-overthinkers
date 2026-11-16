@@ -19,8 +19,10 @@ type DayState = {
   plan: PlannedTask[];
   /** Waiting list: carried over from other days or imported. Shown as "En espera". */
   later: Task[];
-  /** Last brain dump, so the "Escuchando" text can be shown again while ordering. */
+  /** Last brain dump, consumed by the "Ordenando" screen and then cleared. */
   draft: string;
+  /** Per-day record for the streak calendar: a completed day or a day covered by a freeze. */
+  history: Record<string, 'done' | 'freeze'>;
 
   setDraft: (text: string) => void;
   buildPlan: (raw: RawTask[], tired: boolean) => void;
@@ -38,11 +40,12 @@ type DayState = {
 
 const initial = {
   settings: { level: 'equilibrado', freeMinutes: 120, notifyAt: '08:00' } as Settings,
-  streak: { current: 0, freezes: START_FREEZES.equilibrado, lastCountedDate: null } as Streak,
+  streak: { current: 0, best: 0, freezes: START_FREEZES.equilibrado, lastCountedDate: null } as Streak,
   planDate: null as string | null,
   plan: [] as PlannedTask[],
   later: [] as Task[],
   draft: '',
+  history: {} as Record<string, 'done' | 'freeze'>,
 };
 
 export const useDay = create<DayState>()(
@@ -65,7 +68,7 @@ export const useDay = create<DayState>()(
           const titles = new Set(fresh.map((t) => t.title.toLowerCase()));
           const carried = later.filter((t) => !titles.has(t.title.toLowerCase()));
           const result = planDay([...fresh, ...carried], { level: settings.level, freeMinutes: settings.freeMinutes, tired });
-          set({ plan: result.planned, later: result.later, planDate: isoDay(new Date()) });
+          set({ plan: result.planned, later: result.later, planDate: isoDay(new Date()), draft: '' });
           syncDay(get());
         },
 
@@ -81,8 +84,19 @@ export const useDay = create<DayState>()(
 
         markDone: (id) => {
           patchTask(id, (t) => ({ ...t, status: 'hecha' }));
-          const outcome = countToday(get().streak, get().settings.level, isoDay(new Date()));
-          set({ streak: outcome.streak });
+          const today = isoDay(new Date());
+          const prev = get().streak.lastCountedDate;
+          const outcome = countToday(get().streak, get().settings.level, today);
+          const history = { ...get().history, [today]: 'done' as const };
+          // Mark the missed days that a freeze covered, right after the last counted day.
+          if (prev && outcome.usedFreezes > 0) {
+            const d = new Date(`${prev}T12:00:00`);
+            for (let i = 0; i < outcome.usedFreezes; i++) {
+              d.setDate(d.getDate() + 1);
+              history[isoDay(d)] = 'freeze';
+            }
+          }
+          set({ streak: outcome.streak, history });
           syncDay(get());
         },
 
@@ -120,6 +134,7 @@ export const useDay = create<DayState>()(
             energy: 'baja',
             kind: 'otro',
             sport: null,
+            importance: 2,
             postponed: 0,
             status: 'pendiente',
             why: ['why.added'],
@@ -144,7 +159,7 @@ export const useDay = create<DayState>()(
     {
       name: 'getgo-day',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: ({ settings, streak, planDate, plan, later }) => ({ settings, streak, planDate, plan, later }),
+      partialize: ({ settings, streak, planDate, plan, later, history }) => ({ settings, streak, planDate, plan, later, history }),
     },
   ),
 );
