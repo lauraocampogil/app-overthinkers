@@ -142,7 +142,7 @@ export const useDay = create<DayState>()(
       };
     },
     {
-      name: 'overthinkers-day',
+      name: 'getgo-day',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ settings, streak, planDate, plan, later }) => ({ settings, streak, planDate, plan, later }),
     },

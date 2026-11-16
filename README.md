@@ -1,4 +1,4 @@
-# App para overthinkers (nombre provisional)
+# GetGo
 
 Sueltas lo que tienes en la cabeza (voz o texto), la app lo ordena y te enseña **una sola tarea a la vez**.
 

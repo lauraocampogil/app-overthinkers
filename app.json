@@ -1,18 +1,18 @@
 {
   "expo": {
-    "name": "Overthinkers",
-    "slug": "app-overthinkers",
-    "scheme": "overthinkers",
+    "name": "GetGo",
+    "slug": "getgo",
+    "scheme": "getgo",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.unixcreative.overthinkers"
+      "bundleIdentifier": "com.unixcreative.getgo"
     },
     "android": {
-      "package": "com.unixcreative.overthinkers",
+      "package": "com.unixcreative.getgo",
       "adaptiveIcon": {
         "backgroundColor": "#F0EDFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
