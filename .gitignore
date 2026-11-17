@@ -43,3 +43,4 @@ yarn-error.*
 # env
 .env
 .env*.local
+_to_delete/
