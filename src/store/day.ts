@@ -23,6 +23,8 @@ type DayState = {
   draft: string;
   /** Per-day record for the streak calendar: a completed day or a day covered by a freeze. */
   history: Record<string, 'done' | 'freeze'>;
+  /** Account the local data belongs to. A different account on this phone starts from its own data. */
+  owner: string | null;
 
   setDraft: (text: string) => void;
   buildPlan: (raw: RawTask[], tired: boolean) => void;
@@ -36,7 +38,11 @@ type DayState = {
   add: (title: string) => void;
   move: (id: string, dir: -1 | 1) => void;
   reset: () => void;
+  /** Called after sign-in: wipes another account's local data and loads this account's copy from the server. */
+  adoptUser: (userId: string, remote: RemoteSnapshot | null) => void;
 };
+
+export type RemoteSnapshot = Partial<Pick<DayState, 'settings' | 'streak' | 'planDate' | 'plan' | 'later' | 'history'>>;
 
 const initial = {
   settings: { level: 'equilibrado', freeMinutes: 120, notifyAt: '08:00' } as Settings,
@@ -46,6 +52,7 @@ const initial = {
   later: [] as Task[],
   draft: '',
   history: {} as Record<string, 'done' | 'freeze'>,
+  owner: null as string | null,
 };
 
 export const useDay = create<DayState>()(
@@ -154,12 +161,30 @@ export const useDay = create<DayState>()(
         },
 
         reset: () => set({ ...initial }),
+
+        adoptUser: (userId, remote) => {
+          const sameOwner = get().owner === userId;
+          if (!sameOwner) set({ ...initial, owner: userId });
+          if (remote) {
+            // Server copy wins for another account; for the same account keep local work if it is newer (same day).
+            const keepLocalPlan = sameOwner && get().planDate && get().planDate === remote.planDate;
+            set({
+              settings: { ...get().settings, ...remote.settings },
+              streak: remote.streak ?? get().streak,
+              later: remote.later ?? get().later,
+              history: { ...remote.history, ...get().history },
+              ...(keepLocalPlan ? {} : { plan: remote.plan ?? [], planDate: remote.planDate ?? null }),
+            });
+          }
+          get().rollOverIfNewDay();
+          syncDay(get());
+        },
       };
     },
     {
       name: 'getgo-day',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: ({ settings, streak, planDate, plan, later, history }) => ({ settings, streak, planDate, plan, later, history }),
+      partialize: ({ settings, streak, planDate, plan, later, history, owner }) => ({ settings, streak, planDate, plan, later, history, owner }),
     },
   ),
 );

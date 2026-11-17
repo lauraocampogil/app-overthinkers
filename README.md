@@ -20,9 +20,15 @@ Sin las variables de `.env` la app **no inventa nada**: escribir funciona con el
 
 ## Supabase
 
-1. Crea un proyecto en Supabase y activa **Anonymous sign-ins** (Authentication → Sign In / Providers).
-2. Aplica la migración: pega `supabase/migrations/*.sql` en el **SQL Editor** y pulsa Run.
-3. Conecta la CLI y guarda los secretos de las funciones:
+1. Crea un proyecto en Supabase.
+2. Aplica las migraciones: pega cada archivo de `supabase/migrations/` (en orden) en el **SQL Editor** y pulsa Run.
+3. **Cuentas** (obligatorias, con Google o Apple):
+   - **Google**: en Google Cloud → APIs & Services → Credentials crea un *OAuth client ID* de tipo **Web application** con la redirect URI
+     `https://TU-REF.supabase.co/auth/v1/callback`. Pega Client ID y Secret en Supabase → Authentication → Sign In / Providers → Google.
+   - **Apple** (iOS, botón nativo): en el mismo sitio activa Apple y en *Client IDs* pon `com.unixcreative.getgo,host.exp.Exponent`
+     (el segundo es para probar en Expo Go). El botón nativo no necesita secret. Requiere la cuenta de Apple Developer.
+   - Authentication → URL Configuration → *Redirect URLs*: añade `getgo://**` y, para desarrollo, `exp://**`.
+4. Conecta la CLI y guarda los secretos de las funciones:
    ```bash
    npx supabase login
    npx supabase link --project-ref TU-REF
@@ -33,8 +39,8 @@ Sin las variables de `.env` la app **no inventa nada**: escribir funciona con el
    # opcionales: AI_PROVIDER=groq|anthropic, GROQ_MODEL, ANTHROPIC_MODEL, TRANSCRIBE_MODEL
    ```
    Si pones las tres claves se usa Anthropic + OpenAI; con `AI_PROVIDER=groq` se fuerza Groq.
-4. Despliega: `npx supabase functions deploy plan-day` y `npx supabase functions deploy transcribe`.
-5. Pon la URL y la **Publishable key** en `.env`.
+5. Despliega: `npx supabase functions deploy plan-day`, `npx supabase functions deploy transcribe` y `npx supabase functions deploy delete-account`.
+6. Pon la URL y la **Publishable key** en `.env`.
 
 ## Cómo funciona
 

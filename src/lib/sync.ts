@@ -1,7 +1,14 @@
 import { ensureSession, supabase } from './supabase';
 import type { PlannedTask, Settings, Streak, Task } from './types';
 
-type Snapshot = { planDate: string | null; plan: PlannedTask[]; later: Task[]; streak: Streak; settings: Settings };
+type Snapshot = {
+  planDate: string | null;
+  plan: PlannedTask[];
+  later: Task[];
+  streak: Streak;
+  settings: Settings;
+  history: Record<string, 'done' | 'freeze'>;
+};
 
 let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -26,6 +33,7 @@ async function push(s: Snapshot) {
         notify_at: s.settings.notifyAt,
         streak: s.streak,
         waiting: s.later,
+        history: s.history,
         updated_at: new Date().toISOString(),
       }),
     ];
@@ -38,5 +46,29 @@ async function push(s: Snapshot) {
     results.forEach((r) => r.error && console.warn('[sync]', r.error.message));
   } catch (e) {
     console.warn('[sync] failed', e);
+  }
+}
+
+/** Reads this account's copy from the server (used right after sign-in). null if there is none yet. */
+export async function pullDay(userId: string, today: string): Promise<Partial<Snapshot> | null> {
+  if (!supabase) return null;
+  try {
+    const [profile, day] = await Promise.all([
+      supabase.from('profiles').select('level, free_minutes, notify_at, streak, waiting, history').eq('user_id', userId).maybeSingle(),
+      supabase.from('day_plans').select('tasks').eq('user_id', userId).eq('day', today).maybeSingle(),
+    ]);
+    if (profile.error) console.warn('[sync] pull', profile.error.message);
+    const p = profile.data;
+    if (!p) return null;
+    return {
+      settings: { level: p.level, freeMinutes: p.free_minutes, notifyAt: p.notify_at } as Settings,
+      streak: p.streak as Streak,
+      later: (p.waiting ?? []) as Task[],
+      history: (p.history ?? {}) as Snapshot['history'],
+      ...(day.data ? { plan: day.data.tasks as PlannedTask[], planDate: today } : {}),
+    };
+  } catch (e) {
+    console.warn('[sync] pull failed', e);
+    return null;
   }
 }

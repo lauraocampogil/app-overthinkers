@@ -162,3 +162,10 @@ const styles = StyleSheet.create({
   dockWrite: { backgroundColor: colors.white },
   dockMic: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.55)' },
 });
+
+export const PersonIcon = ({ color = colors.ink }: { color?: string }) => (
+  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+    <Path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" stroke={color} strokeWidth={1.8} />
+    <Path d="M4.5 20c1.2-3.3 4-5 7.5-5s6.3 1.7 7.5 5" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+  </Svg>
+);

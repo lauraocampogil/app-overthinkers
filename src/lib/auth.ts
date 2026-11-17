@@ -1,0 +1,88 @@
+import type { Session } from '@supabase/supabase-js';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
+import { create } from 'zustand';
+
+import { supabase } from './supabase';
+
+WebBrowser.maybeCompleteAuthSession();
+
+type AuthState = { session: Session | null; ready: boolean };
+
+/** Current Supabase session. `ready` is false until the stored session has been read. */
+export const useAuth = create<AuthState>(() => ({ session: null, ready: !supabase }));
+
+if (supabase) {
+  supabase.auth.getSession().then(({ data }) => useAuth.setState({ session: data.session, ready: true }));
+  supabase.auth.onAuthStateChange((_event, session) => useAuth.setState({ session, ready: true }));
+}
+
+export type AuthResult = 'ok' | 'cancelled' | 'failed' | 'noServer';
+
+/** Where Google sends the user back: getgo://auth in a build, exp://…/--/auth in Expo Go. */
+export const redirectTo = Linking.createURL('auth');
+
+export async function signInWithGoogle(): Promise<AuthResult> {
+  if (!supabase) return 'noServer';
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo, skipBrowserRedirect: true, queryParams: { prompt: 'select_account' } },
+    });
+    if (error || !data?.url) throw error ?? new Error('no url');
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    if (result.type !== 'success') return 'cancelled';
+    const { queryParams } = Linking.parse(result.url);
+    const code = typeof queryParams?.code === 'string' ? queryParams.code : null;
+    if (!code) {
+      console.warn('[auth] google returned without code', queryParams?.error_description ?? queryParams?.error);
+      return 'failed';
+    }
+    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+    if (exchangeError) throw exchangeError;
+    return 'ok';
+  } catch (e) {
+    console.warn('[auth] google failed', e);
+    return 'failed';
+  }
+}
+
+/** Native Sign in with Apple (iOS). Apple only shares name/email the first time. */
+export async function signInWithApple(): Promise<AuthResult> {
+  if (!supabase) return 'noServer';
+  try {
+    const credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+    });
+    if (!credential.identityToken) return 'failed';
+    const { error } = await supabase.auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken });
+    if (error) throw error;
+    const name = [credential.fullName?.givenName, credential.fullName?.familyName].filter(Boolean).join(' ');
+    if (name) await supabase.auth.updateUser({ data: { full_name: name } });
+    return 'ok';
+  } catch (e) {
+    if ((e as { code?: string }).code === 'ERR_REQUEST_CANCELED') return 'cancelled';
+    console.warn('[auth] apple failed', e);
+    return 'failed';
+  }
+}
+
+export async function signOut() {
+  await supabase?.auth.signOut();
+}
+
+/** Deletes the account and all its data on the server (required by the App Store), then signs out. */
+export async function deleteAccount(): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase.functions.invoke('delete-account', { method: 'POST' });
+  if (error) {
+    console.warn('[auth] delete failed', error);
+    return false;
+  }
+  await supabase.auth.signOut();
+  return true;
+}
