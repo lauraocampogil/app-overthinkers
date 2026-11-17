@@ -1,10 +1,8 @@
 import { ensureSession, supabase } from './supabase';
-import type { PlannedTask, Settings, Streak, Task } from './types';
+import type { Settings, Streak, Task } from './types';
 
 type Snapshot = {
-  planDate: string | null;
-  plan: PlannedTask[];
-  later: Task[];
+  tasks: Task[];
   streak: Streak;
   settings: Settings;
   history: Record<string, 'done' | 'freeze'>;
@@ -16,7 +14,7 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 export function syncDay(s: Snapshot) {
   if (!supabase) return;
   if (timer) clearTimeout(timer);
-  const snapshot = { ...s };
+  const snapshot = { tasks: s.tasks, streak: s.streak, settings: s.settings, history: s.history };
   timer = setTimeout(() => void push(snapshot), 800);
 }
 
@@ -25,47 +23,38 @@ async function push(s: Snapshot) {
   try {
     const userId = await ensureSession();
     if (!userId) return;
-    const writes = [
-      supabase.from('profiles').upsert({
-        user_id: userId,
-        level: s.settings.level,
-        free_minutes: s.settings.freeMinutes,
-        notify_at: s.settings.notifyAt,
-        streak: s.streak,
-        waiting: s.later,
-        history: s.history,
-        updated_at: new Date().toISOString(),
-      }),
-    ];
-    if (s.planDate) {
-      writes.push(
-        supabase.from('day_plans').upsert({ user_id: userId, day: s.planDate, tasks: s.plan, updated_at: new Date().toISOString() }),
-      );
-    }
-    const results = await Promise.all(writes);
-    results.forEach((r) => r.error && console.warn('[sync]', r.error.message));
+    const { error } = await supabase.from('profiles').upsert({
+      user_id: userId,
+      level: s.settings.level,
+      free_minutes: s.settings.freeMinutes,
+      notify_at: s.settings.notifyAt,
+      streak: s.streak,
+      tasks: s.tasks,
+      history: s.history,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) console.warn('[sync]', error.message);
   } catch (e) {
     console.warn('[sync] failed', e);
   }
 }
 
 /** Reads this account's copy from the server (used right after sign-in). null if there is none yet. */
-export async function pullDay(userId: string, today: string): Promise<Partial<Snapshot> | null> {
+export async function pullDay(userId: string): Promise<Partial<Snapshot> | null> {
   if (!supabase) return null;
   try {
-    const [profile, day] = await Promise.all([
-      supabase.from('profiles').select('level, free_minutes, notify_at, streak, waiting, history').eq('user_id', userId).maybeSingle(),
-      supabase.from('day_plans').select('tasks').eq('user_id', userId).eq('day', today).maybeSingle(),
-    ]);
-    if (profile.error) console.warn('[sync] pull', profile.error.message);
-    const p = profile.data;
+    const { data: p, error } = await supabase
+      .from('profiles')
+      .select('level, free_minutes, notify_at, streak, tasks, history')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) console.warn('[sync] pull', error.message);
     if (!p) return null;
     return {
       settings: { level: p.level, freeMinutes: p.free_minutes, notifyAt: p.notify_at } as Settings,
       streak: p.streak as Streak,
-      later: (p.waiting ?? []) as Task[],
+      tasks: (p.tasks ?? []) as Task[],
       history: (p.history ?? {}) as Snapshot['history'],
-      ...(day.data ? { plan: day.data.tasks as PlannedTask[], planDate: today } : {}),
     };
   } catch (e) {
     console.warn('[sync] pull failed', e);

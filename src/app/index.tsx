@@ -1,17 +1,36 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Mascota } from '@/components/Mascota';
 import { Ondas } from '@/components/Ondas';
+import { TaskSheet } from '@/components/TaskSheet';
 import { CheckIcon, Dock, FlameIcon, IconCircle, PersonIcon, Screen } from '@/components/ui';
-import { t, todayLabel } from '@/i18n';
+import { locale, t, todayLabel } from '@/i18n';
 import { useAtajos } from '@/lib/atajos';
 import { useMascot } from '@/lib/auth';
-import { isoDay } from '@/lib/streak';
-import type { PlannedTask } from '@/lib/types';
-import { useDay } from '@/store/day';
+import { daysBetween } from '@/lib/planner';
+import type { Task } from '@/lib/types';
+import { todayIso, todayList, upcoming, useDay } from '@/store/day';
 import { colors, fonts, gradients, type } from '@/theme';
+
+/** "Mañana", "jueves 20 nov" or, past a week, "Más adelante". */
+function dayLabel(day: string): string {
+  const diff = daysBetween(todayIso(), day);
+  if (diff === 1) return t('hoy.tomorrow');
+  if (diff > 7) return t('hoy.later');
+  return new Date(`${day}T12:00:00`).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' });
+}
+
+/** Deadline tag on a task: "hoy", "mañana" or "jue 20". */
+function dueLabel(due: string | null): string | null {
+  if (!due) return null;
+  const diff = daysBetween(todayIso(), due);
+  if (diff <= 0) return t('due.today');
+  if (diff === 1) return t('due.tomorrow');
+  return new Date(`${due}T12:00:00`).toLocaleDateString(locale, { weekday: 'short', day: 'numeric' });
+}
 
 /** What the mascot says, so the list always pushes towards finishing. */
 function nudge(done: number, left: number, next?: string): { title: string; body: string } {
@@ -23,7 +42,7 @@ function nudge(done: number, left: number, next?: string): { title: string; body
   return { title: t('hoy.going', { n: done }), body: t('hoy.left', { n: left }) };
 }
 
-function Check({ task, onToggle }: { task: PlannedTask; onToggle: () => void }) {
+function Check({ task, onToggle }: { task: Task; onToggle: () => void }) {
   const on = task.status === 'hecha';
   return (
     <Pressable
@@ -46,23 +65,69 @@ function Check({ task, onToggle }: { task: PlannedTask; onToggle: () => void }) 
 
 export default function Inicio() {
   const streak = useDay((s) => s.streak);
-  const later = useDay((s) => s.later);
-  const plan = useDay((s) => s.plan);
-  const planDate = useDay((s) => s.planDate);
+  const tasks = useDay((s) => s.tasks);
   const { markDone, undoDone } = useDay.getState();
   const mascot = useMascot();
   useAtajos();
+  const [sheet, setSheet] = useState<Task | null>(null);
 
-  const active = planDate === isoDay(new Date()) ? plan.filter((x) => x.status !== 'quitada') : [];
+  // Confirmation after adding tasks ("4 añadidas · 2 hoy, 2 más adelante"), shown for a few seconds.
+  const params = useLocalSearchParams<{ added?: string; today?: string; later?: string }>();
+  const [toast, setToast] = useState<string | null>(null);
+  useEffect(() => {
+    const n = Number(params.added);
+    if (!n) return;
+    const msgText = [t('hoy.added', { n }), Number(params.later) ? t('hoy.addedSplit', { today: Number(params.today), later: Number(params.later) }) : '']
+      .filter(Boolean)
+      .join(' · ');
+    setToast(msgText);
+    const id = setTimeout(() => setToast(null), 3500);
+    router.setParams({ added: undefined, today: undefined, later: undefined });
+    return () => clearTimeout(id);
+  }, [params.added, params.today, params.later]);
+
+  const active = todayList(tasks);
   const pending = active.filter((x) => x.status === 'pendiente');
   const done = active.filter((x) => x.status === 'hecha');
+  const next = upcoming(tasks);
   const current = pending[0];
   const rest = pending.slice(1);
-  const hasList = active.length > 0;
-  const allDone = hasList && pending.length === 0;
-  const msg = nudge(done.length, pending.length, current?.title);
-  const progress = hasList ? done.length / active.length : 0;
-  const toggle = (task: PlannedTask) => (task.status === 'hecha' ? undoDone(task.id) : markDone(task.id));
+  const hasList = active.length > 0 || next.length > 0;
+  const allDone = active.length > 0 && pending.length === 0;
+  const msg = active.length ? nudge(done.length, pending.length, current?.title) : { title: t('hoy.freeToday'), body: t('hoy.freeTodayBody') };
+  const progress = active.length ? done.length / active.length : 0;
+  const toggle = (task: Task) => (task.status === 'hecha' ? undoDone(task.id) : markDone(task.id));
+  // Several upcoming days past a week fold into one "Más adelante" group.
+  const groups: [string, Task[]][] = [];
+  for (const [day, list] of next) {
+    const label = dayLabel(day);
+    const last = groups[groups.length - 1];
+    if (last && last[0] === label) last[1].push(...list);
+    else groups.push([label, [...list]]);
+  }
+  const row = (task: Task, i: number, all: Task[]) => {
+    const due = task.status === 'pendiente' ? dueLabel(task.due) : null;
+    return (
+      <Pressable
+        key={task.id}
+        onPress={() => setSheet(task)}
+        accessibilityHint={t('task.options')}
+        style={[styles.row, i === all.length - 1 && styles.rowLast]}
+      >
+        <Check task={task} onToggle={() => toggle(task)} />
+        <Text style={[styles.rowTitle, task.status === 'hecha' && styles.rowDone]}>{task.title}</Text>
+        {due ? (
+          <View style={styles.tag}>
+            <Text style={styles.tagText}>{due}</Text>
+          </View>
+        ) : task.importance === 3 && task.status === 'pendiente' ? (
+          <View style={styles.tag}>
+            <Text style={styles.tagText}>{t('imp.3')}</Text>
+          </View>
+        ) : null}
+      </Pressable>
+    );
+  };
 
   const header = (
     <View style={styles.header}>
@@ -93,8 +158,6 @@ export default function Inicio() {
 
   // No list yet today: the brain-dump invitation, as before.
   if (!hasList) {
-    const waiting = later.slice(0, 2).map((x) => x.title.toLowerCase());
-    const extra = later.length - waiting.length;
     return (
       <Screen>
         {header}
@@ -107,12 +170,6 @@ export default function Inicio() {
         <View style={styles.center}>
           {mascot.unlocked ? <Mascota seed={mascot.seed} size={250} /> : <Ondas mode="calma" height={300} />}
         </View>
-        {later.length > 0 ? (
-          <Text style={styles.waiting}>
-            {t('home.waiting', { list: waiting.join(' · ') })}
-            {extra > 0 ? t('home.more', { n: extra }) : ''}
-          </Text>
-        ) : null}
         {dock}
       </Screen>
     );
@@ -136,6 +193,7 @@ export default function Inicio() {
           </View>
         </View>
 
+        {active.length > 0 ? (
         <View style={styles.progressRow} accessibilityLabel={t('hoy.progress', { done: done.length, total: active.length })}>
           <View style={styles.track}>
             <LinearGradient
@@ -147,6 +205,7 @@ export default function Inicio() {
           </View>
           <Text style={styles.progressText}>{t('hoy.progress', { done: done.length, total: active.length })}</Text>
         </View>
+        ) : null}
 
         {current ? (
           <View style={styles.nowCard}>
@@ -154,10 +213,10 @@ export default function Inicio() {
               <Text style={styles.nowLabel}>{t('hoy.now')}</Text>
               {current.minutes !== null ? <Text style={styles.meta}>{t('time.min', { n: current.minutes })}</Text> : null}
             </View>
-            <View style={styles.nowRow}>
+            <Pressable style={styles.nowRow} onPress={() => setSheet(current)} accessibilityHint={t('task.options')}>
               <Check task={current} onToggle={() => toggle(current)} />
               <Text style={styles.nowTitle}>{current.title}</Text>
-            </View>
+            </Pressable>
             <Pressable accessibilityRole="button" onPress={() => router.push('/ahora')} style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }]}>
               <LinearGradient colors={gradients.action} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.startBtn}>
                 <Text style={styles.startText}>{t('hoy.start')}</Text>
@@ -166,44 +225,28 @@ export default function Inicio() {
           </View>
         ) : null}
 
-        {rest.length > 0 ? (
+        {rest.length > 0 || done.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('hoy.next')}</Text>
-            <View style={styles.list}>
-              {rest.map((task, i) => (
-                <View key={task.id} style={[styles.row, i === rest.length - 1 && styles.rowLast]}>
-                  <Check task={task} onToggle={() => toggle(task)} />
-                  <Text style={styles.rowTitle}>{task.title}</Text>
-                  {task.importance === 3 ? (
-                    <View style={styles.tag}>
-                      <Text style={styles.tagText}>{t('imp.3')}</Text>
-                    </View>
-                  ) : null}
-                </View>
-              ))}
-            </View>
+            <Text style={styles.sectionTitle}>{t('hoy.todayRest')}</Text>
+            <View style={styles.list}>{[...rest, ...done].map((task, i, all) => row(task, i, all))}</View>
           </View>
         ) : null}
 
-        {done.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('hoy.doneSection')}</Text>
-            <View style={styles.list}>
-              {done.map((task, i) => (
-                <View key={task.id} style={[styles.row, i === done.length - 1 && styles.rowLast]}>
-                  <Check task={task} onToggle={() => toggle(task)} />
-                  <Text style={[styles.rowTitle, styles.rowDone]}>{task.title}</Text>
-                </View>
-              ))}
-            </View>
+        {groups.map(([label, list]) => (
+          <View key={label} style={styles.section}>
+            <Text style={[styles.sectionTitle, styles.capital]}>{label}</Text>
+            <View style={styles.list}>{list.map((task, i, all) => row(task, i, all))}</View>
           </View>
-        ) : null}
-
-        <Pressable accessibilityRole="button" onPress={() => router.push('/resumen')} style={styles.editLink} hitSlop={8}>
-          <Text style={styles.editText}>{t('hoy.edit')}</Text>
-        </Pressable>
+        ))}
       </ScrollView>
+      {toast ? (
+        <View style={styles.toast} accessibilityLiveRegion="polite">
+          <CheckIcon color={colors.white} size={16} />
+          <Text style={styles.toastText}>{toast}</Text>
+        </View>
+      ) : null}
       {dock}
+      <TaskSheet task={sheet} onClose={() => setSheet(null)} />
     </Screen>
   );
 }
@@ -249,6 +292,19 @@ const styles = StyleSheet.create({
   check: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   checkOff: { borderWidth: 2, borderColor: '#D9CCF5', backgroundColor: colors.white },
 
-  editLink: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 16 },
-  editText: { fontFamily: fonts.medium, fontSize: 15, color: colors.accentDark },
+  capital: { textTransform: 'capitalize' },
+  toast: {
+    position: 'absolute',
+    left: 24,
+    right: 24,
+    bottom: 112,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 18,
+    minHeight: 48,
+    borderRadius: 24,
+    backgroundColor: colors.ink,
+  },
+  toastText: { flex: 1, fontFamily: fonts.medium, fontSize: 14, color: colors.white },
 });

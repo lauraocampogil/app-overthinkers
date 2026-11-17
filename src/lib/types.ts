@@ -17,17 +17,26 @@ export type RawTask = {
   sport?: 'fuerza' | 'cardio' | null;
 };
 
-export type Task = RawTask & {
+/** A task in the list. GetGo assigns it a day; the person can pin it to another one. */
+export type Task = Omit<RawTask, 'dueInDays'> & {
   id: string;
+  /** Deadline as an ISO date (yyyy-mm-dd), or null. */
+  due: string | null;
+  /** Day it is planned for (ISO date). */
+  day: string;
+  /** True when the person moved it by hand: the planner then keeps that day. */
+  pinned: boolean;
   /** How many times this task has been pushed to another day. */
   postponed: number;
-};
-
-export type PlannedTask = Task & {
+  status: 'pendiente' | 'hecha';
+  /** Day it was completed (ISO date). */
+  doneOn?: string;
   /** i18n keys (why.*) explaining why it is in this position. */
   why: string[];
-  status: 'pendiente' | 'hecha' | 'quitada';
 };
+
+/** Kept as an alias so older imports keep compiling. */
+export type PlannedTask = Task;
 
 export type Settings = {
   level: Level;

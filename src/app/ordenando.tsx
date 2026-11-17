@@ -3,21 +3,18 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Ondas } from '@/components/Ondas';
-import { CheckIcon, PrimaryButton, Screen } from '@/components/ui';
+import { PrimaryButton, Screen } from '@/components/ui';
 import { t } from '@/i18n';
 import { parseBrainDump } from '@/lib/ai';
 import { useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
-const MIN_MS = 1800; // long enough to feel the app is thinking for you, short enough not to wait
+const MIN_MS = 900; // a short beat so it feels sorted, without making anyone wait
 
 export default function Ordenando() {
-  // Read the brain dump once: buildPlan() clears the draft, and re-running on that change
-  // used to parse an empty text and flash "no he entendido" before the real result.
+  // Read the brain dump once: addTasks() clears the draft.
   const draftRef = useRef(useDay.getState().draft);
-  const buildPlan = useDay((s) => s.buildPlan);
-  const [steps, setSteps] = useState<string[]>([]);
-  const [ready, setReady] = useState(false);
+  const addTasks = useDay((s) => s.addTasks);
   const [empty, setEmpty] = useState(false);
 
   useEffect(() => {
@@ -25,31 +22,23 @@ export default function Ordenando() {
     const started = Date.now();
     (async () => {
       const text = draftRef.current.trim();
-      if (!text) {
-        setEmpty(true);
-        return;
-      }
-      const result = await parseBrainDump(text);
+      const result = text ? await parseBrainDump(text) : { tasks: [] };
       if (!alive) return;
       if (!result.tasks.length) {
         setEmpty(true);
         return;
       }
-      const urgent = result.tasks.filter((t) => t.dueInDays !== null && t.dueInDays <= 2);
-      const lines = [
-        t('order.found', { n: result.tasks.length }),
-        urgent.length ? t('order.urgentFirst', { title: urgent[0].title }) : t('order.noUrgent'),
-        t(result.tired ? 'order.tired' : 'order.fitted'),
-      ];
-      lines.forEach((l, i) => setTimeout(() => alive && setSteps((s) => [...s, l]), 350 * (i + 1)));
-      buildPlan(result.tasks, result.tired);
+      const added = addTasks(result.tasks);
+      // A short beat so it feels sorted, then straight to the list with a small confirmation.
       const wait = Math.max(0, MIN_MS - (Date.now() - started));
-      setTimeout(() => alive && setReady(true), wait);
+      setTimeout(() => {
+        if (alive) router.replace({ pathname: '/', params: { added: added.added, today: added.today, later: added.later } });
+      }, wait);
     })();
     return () => {
       alive = false;
     };
-  }, [buildPlan]);
+  }, [addTasks]);
 
   if (empty) {
     return (
@@ -65,28 +54,11 @@ export default function Ordenando() {
 
   return (
     <Screen>
-      <View style={styles.titleBlock}>
-        <Text style={[type.title, { fontSize: 30, textAlign: 'center' }]} accessibilityRole="header">
+      <View style={{ flex: 1, justifyContent: 'center', gap: 24 }}>
+        <Ondas mode="orden" height={300} />
+        <Text style={[type.title, { fontSize: 28, textAlign: 'center' }]} accessibilityRole="header" accessibilityLiveRegion="polite">
           {t('order.title')}
         </Text>
-        <Text style={[type.muted, { textAlign: 'center' }]}>{t(ready ? 'order.ready' : 'order.almost')}</Text>
-      </View>
-
-      <View style={{ flex: 1, justifyContent: 'center' }}>
-        <Ondas mode="orden" height={300} />
-      </View>
-
-      <View style={styles.steps} accessibilityLiveRegion="polite">
-        {steps.map((s) => (
-          <View key={s} style={styles.step}>
-            <CheckIcon />
-            <Text style={styles.stepText}>{s}</Text>
-          </View>
-        ))}
-      </View>
-
-      <View style={styles.footer}>
-        <PrimaryButton label={t('order.cta')} onPress={() => router.replace('/resumen')} disabled={!ready} />
       </View>
     </Screen>
   );

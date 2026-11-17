@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 
 import { t } from '../i18n';
-import type { PlannedTask } from './types';
+import type { Task } from './types';
 
 /**
  * Local reminders that help finish the list (no server needed):
@@ -34,7 +34,7 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export async function refreshReminders(opts: { plan: PlannedTask[]; isToday: boolean; notifyAt: string }) {
+export async function refreshReminders(opts: { today: Task[]; notifyAt: string }) {
   try {
     if (!(await ensureNotificationPermission())) return;
 
@@ -49,7 +49,7 @@ export async function refreshReminders(opts: { plan: PlannedTask[]; isToday: boo
 
     // Evening nudge, only today and only if there is something left.
     await Notifications.cancelScheduledNotificationAsync(EVENING_ID).catch(() => {});
-    const pending = opts.isToday ? opts.plan.filter((x) => x.status === 'pendiente') : [];
+    const pending = opts.today.filter((x) => x.status === 'pendiente');
     const at = new Date();
     at.setHours(EVENING_HOUR, 0, 0, 0);
     if (pending.length && at.getTime() > Date.now()) {

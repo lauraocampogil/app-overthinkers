@@ -2,7 +2,7 @@ import { requireOptionalNativeModule } from 'expo';
 
 import { t } from '../i18n';
 import { mascotTraits } from '../components/Mascota';
-import type { PlannedTask } from './types';
+import type { Task } from './types';
 import type { WidgetProps } from '../widgets/GetGoWidget';
 
 /**
@@ -26,10 +26,10 @@ if (requireOptionalNativeModule('ExpoWidgets')) {
 
 const BODY = 116; // mascot body diameter in the Mascota viewBox
 
-export function syncWidget(opts: { plan: PlannedTask[]; isToday: boolean; seed: string }) {
+export function syncWidget(opts: { today: Task[]; seed: string }) {
   if (!widget) return;
   try {
-    const list = opts.isToday ? opts.plan.filter((x) => x.status !== 'quitada') : [];
+    const list = opts.today;
     const pending = list.filter((x) => x.status === 'pendiente');
     const done = list.filter((x) => x.status === 'hecha');
     const tr = mascotTraits(opts.seed);

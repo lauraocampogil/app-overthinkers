@@ -2,115 +2,143 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { planDay } from '@/lib/planner';
+import { addDays, schedule } from '@/lib/planner';
 import { countToday, isoDay, START_FREEZES } from '@/lib/streak';
 import { syncDay } from '@/lib/sync';
-import type { PlannedTask, RawTask, Settings, Streak, Task } from '@/lib/types';
+import type { RawTask, Settings, Streak, Task } from '@/lib/types';
+
+/**
+ * One list for everything. Every task has a day; GetGo decides it (planner.schedule)
+ * unless the person moved the task by hand. The home screen shows today, tomorrow and the days after.
+ * The streak counts the days on which today's list was finished.
+ */
 
 let seq = 0;
 const newId = () => `${Date.now().toString(36)}-${(seq++).toString(36)}`;
 const round5 = (n: number) => Math.max(5, Math.round(n / 5) * 5);
+const today = () => isoDay(new Date());
+const KEEP_DONE_DAYS = 30;
+
+export type AddResult = { added: number; today: number; later: number };
 
 type DayState = {
   settings: Settings;
   streak: Streak;
-  /** ISO date the current plan belongs to. */
-  planDate: string | null;
-  plan: PlannedTask[];
-  /** Waiting list: carried over from other days or imported. Shown as "En espera". */
-  later: Task[];
+  tasks: Task[];
+  /** Last day the list was re-planned (to roll unfinished tasks over each morning). */
+  lastDay: string | null;
   /** Last brain dump, consumed by the "Ordenando" screen and then cleared. */
   draft: string;
-  /** Per-day record for the streak calendar: a completed day or a day covered by a freeze. */
+  /** Per-day record for the streak calendar: a finished day or a day covered by a freeze. */
   history: Record<string, 'done' | 'freeze'>;
   /** Account the local data belongs to. A different account on this phone starts from its own data. */
   owner: string | null;
 
   setDraft: (text: string) => void;
-  buildPlan: (raw: RawTask[], tired: boolean) => void;
+  /** New tasks from voice / text / screenshot: GetGo places them on the right days. */
+  addTasks: (raw: RawTask[]) => AddResult;
+  addTitle: (title: string, day?: string) => void;
   rollOverIfNewDay: () => void;
   markDone: (id: string) => void;
-  /** Untick a task in the list (the day's streak stays counted). */
   undoDone: (id: string) => void;
+  moveTo: (id: string, day: string) => void;
   shrink: (id: string) => void;
-  postpone: (id: string) => void;
-  drop: (id: string) => void;
   rename: (id: string, title: string) => void;
   remove: (id: string) => void;
-  add: (title: string) => void;
-  move: (id: string, dir: -1 | 1) => void;
   reset: () => void;
   /** Called after sign-in: wipes another account's local data and loads this account's copy from the server. */
   adoptUser: (userId: string, remote: RemoteSnapshot | null) => void;
 };
 
-export type RemoteSnapshot = Partial<Pick<DayState, 'settings' | 'streak' | 'planDate' | 'plan' | 'later' | 'history'>>;
+export type RemoteSnapshot = Partial<Pick<DayState, 'settings' | 'streak' | 'tasks' | 'history'>>;
 
 const initial = {
   settings: { level: 'equilibrado', freeMinutes: 120, notifyAt: '08:00' } as Settings,
   streak: { current: 0, best: 0, freezes: START_FREEZES.equilibrado, lastCountedDate: null } as Streak,
-  planDate: null as string | null,
-  plan: [] as PlannedTask[],
-  later: [] as Task[],
+  tasks: [] as Task[],
+  lastDay: null as string | null,
   draft: '',
   history: {} as Record<string, 'done' | 'freeze'>,
   owner: null as string | null,
 };
 
+const fromRaw = (r: RawTask, day: string): Task => {
+  const { dueInDays, ...rest } = r;
+  return {
+    ...rest,
+    id: newId(),
+    due: dueInDays === null || dueInDays === undefined ? null : addDays(day, Math.max(0, dueInDays)),
+    day,
+    pinned: false,
+    postponed: 0,
+    status: 'pendiente',
+    why: [],
+  };
+};
+
 export const useDay = create<DayState>()(
   persist(
     (set, get) => {
-      const patchTask = (id: string, fn: (t: PlannedTask) => PlannedTask) => {
-        set({ plan: get().plan.map((t) => (t.id === id ? fn(t) : t)) });
+      const commit = (tasks: Task[]) => {
+        set({ tasks: schedule(tasks, { level: get().settings.level, today: today() }) });
         syncDay(get());
       };
+      const patch = (id: string, fn: (t: Task) => Task) => commit(get().tasks.map((t) => (t.id === id ? fn(t) : t)));
 
       return {
         ...initial,
 
         setDraft: (draft) => set({ draft }),
 
-        buildPlan: (raw, tired) => {
-          const { settings, later, plan, planDate } = get();
-          const today = isoDay(new Date());
-          // Adding to an existing list for today: keep what is done, re-order the rest with the new tasks.
-          const current = planDate === today ? plan : [];
-          const done = current.filter((t) => t.status === 'hecha');
-          const open: Task[] = current
-            .filter((t) => t.status === 'pendiente')
-            .map(({ why: _why, status: _status, ...t }) => t);
-          const fresh: Task[] = raw.map((r) => ({ ...r, id: newId(), postponed: 0 }));
-          // Carried-over tasks join today's dump; duplicates by title are skipped.
-          const titles = new Set([...fresh, ...open, ...done].map((t) => t.title.toLowerCase()));
-          const newOnes = fresh.filter((t, i, all) => all.findIndex((o) => o.title.toLowerCase() === t.title.toLowerCase()) === i);
-          const carried = later.filter((t) => !titles.has(t.title.toLowerCase()));
-          const freshTitles = new Set(open.map((t) => t.title.toLowerCase()));
-          const result = planDay([...open, ...newOnes.filter((t) => !freshTitles.has(t.title.toLowerCase())), ...carried], {
-            level: settings.level,
-            tired,
-            keep: new Set(open.map((t) => t.id)),
-          });
-          set({ plan: [...result.planned, ...done], later: result.later, planDate: today, draft: '' });
-          syncDay(get());
+        addTasks: (raw) => {
+          const day = today();
+          const existing = new Set(get().tasks.filter((t) => t.status === 'pendiente').map((t) => t.title.toLowerCase()));
+          const fresh: Task[] = [];
+          for (const r of raw) {
+            const key = r.title.toLowerCase();
+            if (existing.has(key)) continue; // already in the list
+            existing.add(key);
+            fresh.push(fromRaw(r, day));
+          }
+          set({ draft: '' });
+          commit([...get().tasks, ...fresh]);
+          const ids = new Set(fresh.map((t) => t.id));
+          const placed = get().tasks.filter((t) => ids.has(t.id));
+          const forToday = placed.filter((t) => t.day === day).length;
+          return { added: placed.length, today: forToday, later: placed.length - forToday };
+        },
+
+        addTitle: (title, day) => {
+          const task = fromRaw(
+            { title, minutes: null, dueInDays: null, energy: 'baja', kind: 'otro', importance: 2, sport: null },
+            today(),
+          );
+          commit([...get().tasks, day ? { ...task, day, pinned: true } : task]);
         },
 
         rollOverIfNewDay: () => {
-          const { planDate, plan, later } = get();
-          const today = isoDay(new Date());
-          if (!planDate || planDate === today) return;
-          const leftovers: Task[] = plan
-            .filter((t) => t.status === 'pendiente')
-            .map(({ why: _why, status: _status, ...t }) => ({ ...t, postponed: t.postponed + 1 }));
-          set({ plan: [], planDate: null, later: [...leftovers, ...later] });
+          const day = today();
+          if (get().lastDay === day) return;
+          const oldest = addDays(day, -KEEP_DONE_DAYS);
+          const tasks = get()
+            .tasks.filter((t) => t.status === 'pendiente' || (t.doneOn ?? day) >= oldest)
+            .map((t) =>
+              // Unfinished from a past day: comes back today with priority, no longer pinned to the old day.
+              t.status === 'pendiente' && t.day < day ? { ...t, pinned: false, postponed: t.postponed + 1 } : t,
+            );
+          set({ lastDay: day });
+          commit(tasks);
         },
 
         markDone: (id) => {
-          patchTask(id, (t) => ({ ...t, status: 'hecha' }));
-          const today = isoDay(new Date());
+          const day = today();
+          patch(id, (t) => ({ ...t, status: 'hecha', doneOn: day }));
+          // The streak counts when today's list is finished.
+          const leftToday = get().tasks.some((t) => t.status === 'pendiente' && t.day <= day);
+          if (leftToday) return;
           const prev = get().streak.lastCountedDate;
-          const outcome = countToday(get().streak, get().settings.level, today);
-          const history = { ...get().history, [today]: 'done' as const };
-          // Mark the missed days that a freeze covered, right after the last counted day.
+          const outcome = countToday(get().streak, get().settings.level, day);
+          const history = { ...get().history, [day]: 'done' as const };
           if (prev && outcome.usedFreezes > 0) {
             const d = new Date(`${prev}T12:00:00`);
             for (let i = 0; i < outcome.usedFreezes; i++) {
@@ -122,60 +150,21 @@ export const useDay = create<DayState>()(
           syncDay(get());
         },
 
-        undoDone: (id) => patchTask(id, (t) => ({ ...t, status: 'pendiente' })),
+        undoDone: (id) => patch(id, (t) => ({ ...t, status: 'pendiente', doneOn: undefined })),
+
+        moveTo: (id, day) =>
+          patch(id, (t) => ({ ...t, day, pinned: true, postponed: day > t.day ? t.postponed + 1 : t.postponed })),
 
         shrink: (id) =>
-          patchTask(id, (t) => ({
+          patch(id, (t) => ({
             ...t,
             minutes: t.minutes === null ? null : Math.max(5, round5(t.minutes / 2)),
             why: ['why.smaller'],
           })),
 
-        postpone: (id) => {
-          const task = get().plan.find((t) => t.id === id);
-          if (!task) return;
-          const { why: _why, status: _status, ...rest } = task;
-          // Tomorrow it goes first: due today, one more postponement on record.
-          set({ later: [{ ...rest, dueInDays: 0, postponed: rest.postponed + 1 }, ...get().later] });
-          patchTask(id, (t) => ({ ...t, status: 'quitada' }));
-        },
+        rename: (id, title) => patch(id, (t) => ({ ...t, title })),
 
-        drop: (id) => patchTask(id, (t) => ({ ...t, status: 'quitada' })),
-
-        rename: (id, title) => patchTask(id, (t) => ({ ...t, title })),
-
-        remove: (id) => {
-          set({ plan: get().plan.filter((t) => t.id !== id) });
-          syncDay(get());
-        },
-
-        add: (title) => {
-          const task: PlannedTask = {
-            id: newId(),
-            title,
-            minutes: null,
-            dueInDays: null,
-            energy: 'baja',
-            kind: 'otro',
-            sport: null,
-            importance: 2,
-            postponed: 0,
-            status: 'pendiente',
-            why: ['why.added'],
-          };
-          set({ plan: [...get().plan, task] });
-          syncDay(get());
-        },
-
-        move: (id, dir) => {
-          const plan = [...get().plan];
-          const i = plan.findIndex((t) => t.id === id);
-          const j = i + dir;
-          if (i < 0 || j < 0 || j >= plan.length) return;
-          [plan[i], plan[j]] = [plan[j], plan[i]];
-          set({ plan });
-          syncDay(get());
-        },
+        remove: (id) => commit(get().tasks.filter((t) => t.id !== id)),
 
         reset: () => set({ ...initial }),
 
@@ -183,31 +172,78 @@ export const useDay = create<DayState>()(
           const sameOwner = get().owner === userId;
           if (!sameOwner) set({ ...initial, owner: userId });
           if (remote) {
-            // Server copy wins for another account; for the same account keep local work if it is newer (same day).
-            const keepLocalPlan = sameOwner && get().planDate && get().planDate === remote.planDate;
+            // Another account: the server copy wins. Same account: merge, local edits win for the same task.
+            const local = sameOwner ? get().tasks : [];
+            const ids = new Set(local.map((t) => t.id));
             set({
               settings: { ...get().settings, ...remote.settings },
               streak: remote.streak ?? get().streak,
-              later: remote.later ?? get().later,
               history: { ...remote.history, ...get().history },
-              ...(keepLocalPlan ? {} : { plan: remote.plan ?? [], planDate: remote.planDate ?? null }),
+              tasks: [...local, ...(remote.tasks ?? []).filter((t) => !ids.has(t.id))],
             });
           }
+          set({ lastDay: null });
           get().rollOverIfNewDay();
-          syncDay(get());
         },
       };
     },
     {
       name: 'getgo-day',
+      version: 2,
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: ({ settings, streak, planDate, plan, later, history, owner }) => ({ settings, streak, planDate, plan, later, history, owner }),
+      partialize: ({ settings, streak, tasks, lastDay, history, owner }) => ({ settings, streak, tasks, lastDay, history, owner }),
+      // v1 kept "plan" (today) and "later" (waiting list) apart: fold both into the single list.
+      migrate: (persisted, version) => {
+        const s = (persisted ?? {}) as Record<string, unknown>;
+        if (version >= 2) return s as never;
+        const day = (s.planDate as string | null) ?? today();
+        type Old = Omit<RawTask, 'dueInDays'> & { id: string; dueInDays: number | null; postponed?: number; status?: string };
+        const conv = (t: Old): Task => ({
+          id: t.id,
+          title: t.title,
+          minutes: t.minutes ?? null,
+          energy: t.energy,
+          kind: t.kind,
+          importance: t.importance ?? 2,
+          sport: t.sport ?? null,
+          due: t.dueInDays === null || t.dueInDays === undefined ? null : addDays(day, t.dueInDays),
+          day,
+          pinned: false,
+          postponed: t.postponed ?? 0,
+          status: t.status === 'hecha' ? 'hecha' : 'pendiente',
+          doneOn: t.status === 'hecha' ? day : undefined,
+          why: [],
+        });
+        const plan = ((s.plan as Old[]) ?? []).filter((t) => t.status !== 'quitada').map(conv);
+        const later = ((s.later as Old[]) ?? []).map(conv);
+        return {
+          settings: s.settings ?? initial.settings,
+          streak: s.streak ?? initial.streak,
+          history: s.history ?? {},
+          owner: s.owner ?? null,
+          tasks: [...plan, ...later],
+          lastDay: null,
+        } as never;
+      },
     },
   ),
 );
 
 /** Helpers for screens. */
-export const pendingTasks = (plan: PlannedTask[]) => plan.filter((t) => t.status === 'pendiente');
-export const doneTasks = (plan: PlannedTask[]) => plan.filter((t) => t.status === 'hecha');
-export const totalMinutes = (plan: PlannedTask[]) =>
-  plan.filter((t) => t.status !== 'quitada').reduce((s, t) => s + (t.minutes ?? 0), 0);
+export const todayIso = today;
+export const tasksOn = (tasks: Task[], day: string) => tasks.filter((t) => t.day === day && t.status === 'pendiente');
+/** Today's list: what is planned for today plus what was finished today. */
+export const todayList = (tasks: Task[]) => {
+  const day = today();
+  return tasks.filter((t) => (t.status === 'pendiente' && t.day <= day) || (t.status === 'hecha' && t.doneOn === day));
+};
+/** Pending tasks after today, grouped by day in order. */
+export const upcoming = (tasks: Task[]) => {
+  const day = today();
+  const groups = new Map<string, Task[]>();
+  for (const t of tasks) {
+    if (t.status !== 'pendiente' || t.day <= day) continue;
+    groups.set(t.day, [...(groups.get(t.day) ?? []), t]);
+  }
+  return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
+};

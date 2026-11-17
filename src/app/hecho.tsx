@@ -7,14 +7,14 @@ import { useMascot } from '@/lib/auth';
 import { PrimaryButton, Screen } from '@/components/ui';
 import { t, weekdayLetter } from '@/i18n';
 import { isoDay } from '@/lib/streak';
-import { doneTasks, useDay } from '@/store/day';
+import { todayList, useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
 export default function Hecho() {
-  const plan = useDay((s) => s.plan);
+  const tasks = useDay((s) => s.tasks);
   const streak = useDay((s) => s.streak);
-  const visible = plan.filter((t) => t.status !== 'quitada');
-  const done = doneTasks(visible).length;
+  const visible = todayList(tasks);
+  const done = visible.filter((t) => t.status === 'hecha').length;
 
   // Last 7 days, today on the right. A day is filled if it falls inside the current streak.
   const days = Array.from({ length: 7 }, (_, i) => {

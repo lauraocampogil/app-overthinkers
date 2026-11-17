@@ -6,7 +6,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { Ondas } from '@/components/Ondas';
 import { BackIcon, ChevronIcon, IconCircle, PrimaryButton, Screen, TextButton } from '@/components/ui';
 import { minutesLabel, t, whyText } from '@/i18n';
-import { useDay } from '@/store/day';
+import { todayList, useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
 const Clock = () => (
@@ -17,11 +17,12 @@ const Clock = () => (
 );
 
 export default function Ahora() {
-  const plan = useDay((s) => s.plan);
+  const tasks = useDay((s) => s.tasks);
   const markDone = useDay((s) => s.markDone);
   const [showWhy, setShowWhy] = useState(true);
 
-  const visible = plan.filter((t) => t.status !== 'quitada');
+  // Today's list in order: done ones keep their place in the progress bar.
+  const visible = [...todayList(tasks)].sort((a, b) => (a.status === b.status ? 0 : a.status === 'hecha' ? -1 : 1));
   const current = visible.find((t) => t.status === 'pendiente');
   const index = current ? visible.indexOf(current) : visible.length;
 
@@ -34,7 +35,7 @@ export default function Ahora() {
   return (
     <Screen>
       <View style={styles.header}>
-        <IconCircle label={t('now.backToDay')} onPress={() => router.replace('/resumen')}>
+        <IconCircle label={t('now.backToDay')} onPress={() => router.replace('/')}>
           <BackIcon />
         </IconCircle>
         <View style={styles.progress} accessibilityLabel={t('now.label', { i: index + 1, n: visible.length })}>

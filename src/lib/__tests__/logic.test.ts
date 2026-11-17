@@ -1,16 +1,37 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseLocal, dueInDaysFrom } from '../parse-local';
-import { planDay } from '../planner';
+import { addDays, schedule } from '../planner';
 import { countToday } from '../streak';
 import type { Task } from '../types';
 
 // Monday 16 Nov 2026
 const MONDAY = new Date('2026-11-16T09:00:00');
+const TODAY = '2026-11-16';
 
-const toTasks = (text: string): { tasks: Task[]; tired: boolean } => {
-  const { tasks, tired } = parseLocal(text, MONDAY);
-  return { tasks: tasks.map((t, i) => ({ ...t, id: `t${i}`, postponed: 0 })), tired };
+const toTasks = (text: string): Task[] =>
+  parseLocal(text, MONDAY).tasks.map(({ dueInDays, ...t }, i) => ({
+    ...t,
+    id: `t${i}`,
+    due: dueInDays === null ? null : addDays(TODAY, dueInDays),
+    day: TODAY,
+    pinned: false,
+    postponed: 0,
+    status: 'pendiente' as const,
+    why: [],
+  }));
+
+const base: Omit<Task, 'id' | 'title'> = {
+  minutes: null,
+  due: null,
+  day: TODAY,
+  pinned: false,
+  energy: 'baja',
+  kind: 'otro',
+  importance: 2,
+  postponed: 0,
+  status: 'pendiente',
+  why: [],
 };
 
 describe('parseLocal', () => {
@@ -39,11 +60,12 @@ describe('parseLocal', () => {
   });
 });
 
-describe('planDay', () => {
+describe('schedule', () => {
+  const onDay = (list: Task[], day: string) => list.filter((t) => t.day === day).map((t) => t.title);
+
   it('starts with a quick win, studies before sport and puts strength before cardio', () => {
-    const { tasks, tired } = toTasks('cardio, gym, estudiar mates, contestar a mi jefe 5 min');
-    const { planned } = planDay(tasks, { level: 'equilibrado', freeMinutes: 180, tired });
-    const titles = planned.map((t) => t.title);
+    const planned = schedule(toTasks('cardio, gym, estudiar mates, contestar a mi jefe 5 min'), { level: 'equilibrado', today: TODAY });
+    const titles = onDay(planned, TODAY);
     expect(titles[0]).toBe('Contestar a mi jefe 5 min');
     expect(titles.indexOf('Estudiar mates')).toBeLessThan(titles.indexOf('Gym'));
     expect(titles.indexOf('Gym')).toBeLessThan(titles.indexOf('Cardio'));
@@ -51,35 +73,35 @@ describe('planDay', () => {
   });
 
   it('orders from most to least important', () => {
-    const base: Omit<Task, 'id' | 'title' | 'importance'> = { minutes: 20, dueInDays: null, energy: 'baja', kind: 'otro', postponed: 0 };
     const tasks: Task[] = [
       { ...base, id: 'a', title: 'Puede esperar', importance: 1 },
       { ...base, id: 'b', title: 'Importante', importance: 3 },
       { ...base, id: 'c', title: 'Normal', importance: 2 },
     ];
-    const { planned } = planDay(tasks, { level: 'duro', freeMinutes: 240, tired: false });
-    expect(planned.map((t) => t.title)).toEqual(['Importante', 'Normal', 'Puede esperar']);
+    const planned = schedule(tasks, { level: 'duro', today: TODAY });
+    expect(onDay(planned, TODAY)).toEqual(['Importante', 'Normal', 'Puede esperar']);
     expect(planned[0].why).toContain('why.important');
   });
 
-  it('respects the per-level maximum, but urgent always goes in', () => {
-    const base: Omit<Task, 'id' | 'title'> = { minutes: 30, dueInDays: null, energy: 'baja', kind: 'otro', importance: 1, postponed: 0 };
-    const tasks: Task[] = Array.from({ length: 6 }, (_, i) => ({ ...base, id: `x${i}`, title: `Tarea ${i}` }));
-    tasks.push({ ...base, id: 'urgent', title: 'Entregar hoy', dueInDays: 0, minutes: 40 });
-    const { planned, later } = planDay(tasks, { level: 'suave', freeMinutes: 60, tired: false });
-    expect(planned.some((t) => t.id === 'urgent')).toBe(true);
-    expect(planned.length).toBeLessThanOrEqual(3);
-    expect(planned.length + later.length).toBe(7);
+  it('fills today up to the level, moves the rest to the next days, urgent always today', () => {
+    const tasks: Task[] = Array.from({ length: 6 }, (_, i) => ({ ...base, id: `x${i}`, title: `Tarea ${i}`, importance: 1 as const }));
+    tasks.push({ ...base, id: 'urgent', title: 'Entregar hoy', due: TODAY });
+    const planned = schedule(tasks, { level: 'suave', today: TODAY });
+    const today = planned.filter((t) => t.day === TODAY);
+    expect(today.some((t) => t.id === 'urgent')).toBe(true);
+    expect(today.length).toBe(3);
+    expect(planned.filter((t) => t.day === addDays(TODAY, 1)).length).toBe(3);
+    expect(planned.filter((t) => t.day === addDays(TODAY, 2)).length).toBe(1);
   });
 
-  it('shortens heavy tasks when tired and splits anything over an hour', () => {
-    const tasks: Task[] = [
-      { id: 'a', title: 'Informe', minutes: 120, dueInDays: null, energy: 'alta', kind: 'trabajo', importance: 2, postponed: 0 },
-    ];
-    const { planned, later } = planDay(tasks, { level: 'duro', freeMinutes: 240, tired: true });
-    expect(planned[0].title).toBe('Informe (parte 1)');
-    expect(planned[0].minutes).toBe(45);
-    expect(later[0].title).toBe('Informe (continuación)');
+  it('never plans a task after its deadline and keeps tasks moved by hand', () => {
+    const tasks: Task[] = Array.from({ length: 5 }, (_, i) => ({ ...base, id: `x${i}`, title: `Importante ${i}`, importance: 3 as const }));
+    tasks.push({ ...base, id: 'due', title: 'Examen mañana', importance: 1, due: addDays(TODAY, 1) });
+    tasks.push({ ...base, id: 'pin', title: 'El viernes', importance: 3, day: addDays(TODAY, 4), pinned: true });
+    const planned = schedule(tasks, { level: 'suave', today: TODAY });
+    const due = planned.find((t) => t.id === 'due');
+    expect(due && due.day <= addDays(TODAY, 1)).toBe(true);
+    expect(planned.find((t) => t.id === 'pin')?.day).toBe(addDays(TODAY, 4));
   });
 });
 

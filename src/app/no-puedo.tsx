@@ -5,15 +5,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ChevronIcon } from '@/components/ui';
 import { t, type Key } from '@/i18n';
-import { useDay } from '@/store/day';
+import { addDays } from '@/lib/planner';
+import { todayIso, useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
 const REASONS: Key[] = ['cant.energy', 'cant.time', 'cant.overwhelmed', 'cant.other'];
 
 export default function NoPuedo() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const task = useDay((s) => s.plan.find((t) => t.id === id));
-  const { shrink, postpone, drop } = useDay.getState();
+  const task = useDay((s) => s.tasks.find((t) => t.id === id));
+  const { shrink, moveTo, remove } = useDay.getState();
+  const postpone = (taskId: string) => moveTo(taskId, addDays(todayIso(), 1));
+  const drop = remove;
   const [reason, setReason] = useState<Key>('cant.energy');
   const insets = useSafeAreaInsets();
 
