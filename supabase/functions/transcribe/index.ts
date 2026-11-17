@@ -1,10 +1,14 @@
 // Supabase Edge Function (Deno): voice note (multipart "file") -> text.
-// Uses an OpenAI-compatible transcription endpoint.
+// Uses an OpenAI-compatible transcription endpoint (Whisper).
 //
-// Secrets: OPENAI_API_KEY (required), TRANSCRIBE_MODEL (optional), TRANSCRIBE_URL (optional).
+// Secrets, either one:
+//   - GROQ_API_KEY   (free tier, whisper-large-v3)
+//   - OPENAI_API_KEY (paid, whisper-1)
+// If both are set, OpenAI is used unless AI_PROVIDER=groq.
+// Optional overrides: TRANSCRIBE_MODEL, TRANSCRIBE_URL.
 
-const MODEL = Deno.env.get('TRANSCRIBE_MODEL') ?? 'whisper-1';
-const URL = Deno.env.get('TRANSCRIBE_URL') ?? 'https://api.openai.com/v1/audio/transcriptions';
+const GROQ = { url: 'https://api.groq.com/openai/v1/audio/transcriptions', model: 'whisper-large-v3' };
+const OPENAI = { url: 'https://api.openai.com/v1/audio/transcriptions', model: 'whisper-1' };
 const MAX_BYTES = 10 * 1024 * 1024;
 
 const cors = {
@@ -15,8 +19,14 @@ const cors = {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
-    const key = Deno.env.get('OPENAI_API_KEY');
-    if (!key) return Response.json({ error: 'OPENAI_API_KEY not set' }, { status: 500, headers: cors });
+    const openaiKey = Deno.env.get('OPENAI_API_KEY');
+    const groqKey = Deno.env.get('GROQ_API_KEY');
+    const useGroq = groqKey && (!openaiKey || Deno.env.get('AI_PROVIDER') === 'groq');
+    const key = useGroq ? groqKey : openaiKey;
+    if (!key) return Response.json({ error: 'no key set (GROQ_API_KEY or OPENAI_API_KEY)' }, { status: 500, headers: cors });
+    const base = useGroq ? GROQ : OPENAI;
+    const MODEL = Deno.env.get('TRANSCRIBE_MODEL') ?? base.model;
+    const URL = Deno.env.get('TRANSCRIBE_URL') ?? base.url;
 
     const form = await req.formData();
     const file = form.get('file');

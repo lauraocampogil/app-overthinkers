@@ -1,0 +1,8 @@
+# Minimal Supabase CLI config. The real project is chosen with `npx supabase link`.
+project_id = "getgo"
+
+[functions.plan-day]
+verify_jwt = true
+
+[functions.transcribe]
+verify_jwt = true

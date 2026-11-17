@@ -2,7 +2,7 @@
 
 Sueltas lo que tienes en la cabeza (voz o texto), la app lo ordena y te enseña **una sola tarea a la vez**.
 
-Stack: **Expo (SDK 58) + Expo Router + TypeScript**, **Supabase** (datos, login anónimo y Edge Functions), **Claude** para entender el texto y **Whisper** (o compatible) para la voz.
+Stack: **Expo (SDK 58) + Expo Router + TypeScript**, **Supabase** (datos, login anónimo y Edge Functions), IA para entender el texto y las capturas (**Groq** gratis o **Claude**) y **Whisper** para la voz (Groq gratis u OpenAI).
 
 ## Puesta en marcha
 
@@ -20,15 +20,21 @@ Sin las variables de `.env` la app **no inventa nada**: escribir funciona con el
 
 ## Supabase
 
-1. Crea un proyecto en Supabase y activa **Anonymous sign-ins** (Authentication → Providers).
-2. Aplica la migración: `npx supabase db push` (o pega `supabase/migrations/*.sql` en el SQL editor).
-3. Secretos de las funciones:
+1. Crea un proyecto en Supabase y activa **Anonymous sign-ins** (Authentication → Sign In / Providers).
+2. Aplica la migración: pega `supabase/migrations/*.sql` en el **SQL Editor** y pulsa Run.
+3. Conecta la CLI y guarda los secretos de las funciones:
    ```bash
+   npx supabase login
+   npx supabase link --project-ref TU-REF
+   # Gratis (Groq, una sola clave para texto, capturas y voz):
+   npx supabase secrets set GROQ_API_KEY=...
+   # o de pago (mejor calidad):
    npx supabase secrets set ANTHROPIC_API_KEY=... OPENAI_API_KEY=...
-   # opcionales: ANTHROPIC_MODEL, TRANSCRIBE_MODEL, TRANSCRIBE_URL
+   # opcionales: AI_PROVIDER=groq|anthropic, GROQ_MODEL, ANTHROPIC_MODEL, TRANSCRIBE_MODEL
    ```
+   Si pones las tres claves se usa Anthropic + OpenAI; con `AI_PROVIDER=groq` se fuerza Groq.
 4. Despliega: `npx supabase functions deploy plan-day` y `npx supabase functions deploy transcribe`.
-5. Pon la URL y la key en `.env`.
+5. Pon la URL y la **Publishable key** en `.env`.
 
 ## Cómo funciona
 
