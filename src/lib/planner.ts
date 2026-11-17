@@ -5,7 +5,13 @@ export const QUICK_MINUTES = 10;
 export const SPLIT_OVER = 60;
 export const BLOCK_MINUTES = 45;
 
-type PlanOptions = { level: Level; freeMinutes?: number; tired: boolean };
+type PlanOptions = {
+  level: Level;
+  freeMinutes?: number;
+  tired: boolean;
+  /** Ids that must stay in today's list (tasks already planned before adding new ones). */
+  keep?: Set<string>;
+};
 export type PlanResult = { planned: PlannedTask[]; later: Task[] };
 
 const round5 = (n: number) => Math.max(5, Math.round(n / 5) * 5);
@@ -59,7 +65,7 @@ export function planDay(input: Task[], opts: PlanOptions): PlanResult {
   const byScore = [...tasks].sort((a, b) => score(b) - score(a));
   const chosen: Task[] = [];
   for (const t of byScore) {
-    if (isUrgent(t) || chosen.length < maxCount) chosen.push(t);
+    if (isUrgent(t) || opts.keep?.has(t.id) || chosen.length < maxCount) chosen.push(t);
     else later.push(t);
   }
 

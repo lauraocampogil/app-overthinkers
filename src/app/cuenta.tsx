@@ -1,6 +1,7 @@
+import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BackIcon, IconCircle, Screen } from '@/components/ui';
 import { t } from '@/i18n';
@@ -14,6 +15,12 @@ export default function Cuenta() {
   const reset = useDay((s) => s.reset);
   const [deleting, setDeleting] = useState(false);
   const mascot = useMascot();
+  const [copied, setCopied] = useState(false);
+  const copyLink = async () => {
+    await Clipboard.setStringAsync('getgo://hablar');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const name = (user?.user_metadata?.full_name as string | undefined) ?? (user?.user_metadata?.name as string | undefined);
   const email = user?.email ?? '';
@@ -42,7 +49,7 @@ export default function Cuenta() {
           <BackIcon />
         </IconCircle>
       </View>
-      <View style={styles.body}>
+      <ScrollView contentContainerStyle={styles.body}>
         <Text style={type.title} accessibilityRole="header">{t('account.title')}</Text>
 
         <View style={styles.card}>
@@ -62,6 +69,14 @@ export default function Cuenta() {
           )}
         </View>
 
+        <View style={[styles.card, { gap: 8 }]}>
+          <Text style={styles.name}>{t('atajo.title')}</Text>
+          <Text style={type.muted}>{t('atajo.body')}</Text>
+          <Pressable accessibilityRole="button" onPress={() => void copyLink()} style={styles.copy} hitSlop={6}>
+            <Text style={styles.copyText}>{copied ? t('atajo.copied') : t('atajo.copy')}</Text>
+          </Pressable>
+        </View>
+
         <Pressable accessibilityRole="button" onPress={() => void signOut()} style={styles.row}>
           <Text style={styles.rowText}>{t('account.signOut')}</Text>
         </Pressable>
@@ -71,14 +86,14 @@ export default function Cuenta() {
         <Pressable accessibilityRole="button" onPress={confirmDelete} disabled={deleting} style={styles.danger} hitSlop={8}>
           {deleting ? <ActivityIndicator color="#C2364B" /> : <Text style={styles.dangerText}>{t('account.delete')}</Text>}
         </Pressable>
-      </View>
+      </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, height: 52, justifyContent: 'center', marginTop: 4 },
-  body: { flex: 1, paddingHorizontal: 24, paddingTop: 16, gap: 16 },
+  body: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 16 },
   card: { backgroundColor: colors.white, borderRadius: 24, padding: 20, gap: 4, marginTop: 8 },
   name: { fontFamily: fonts.semibold, fontSize: 18, color: colors.ink },
   email: { ...type.body, color: colors.ink },
@@ -86,6 +101,8 @@ const styles = StyleSheet.create({
   row: { backgroundColor: colors.white, borderRadius: 20, minHeight: 56, justifyContent: 'center', paddingHorizontal: 20 },
   rowText: { fontFamily: fonts.medium, fontSize: 16, color: colors.ink },
   spacer: { flex: 1 },
+  copy: { alignSelf: 'flex-start', minHeight: 40, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 20, backgroundColor: colors.soft },
+  copyText: { fontFamily: fonts.medium, fontSize: 14, color: colors.accentDark },
   danger: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', marginBottom: 12 },
   dangerText: { fontFamily: fonts.medium, fontSize: 15, color: '#C2364B' },
 });

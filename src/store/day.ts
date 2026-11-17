@@ -71,13 +71,26 @@ export const useDay = create<DayState>()(
         setDraft: (draft) => set({ draft }),
 
         buildPlan: (raw, tired) => {
-          const { settings, later } = get();
+          const { settings, later, plan, planDate } = get();
+          const today = isoDay(new Date());
+          // Adding to an existing list for today: keep what is done, re-order the rest with the new tasks.
+          const current = planDate === today ? plan : [];
+          const done = current.filter((t) => t.status === 'hecha');
+          const open: Task[] = current
+            .filter((t) => t.status === 'pendiente')
+            .map(({ why: _why, status: _status, ...t }) => t);
           const fresh: Task[] = raw.map((r) => ({ ...r, id: newId(), postponed: 0 }));
           // Carried-over tasks join today's dump; duplicates by title are skipped.
-          const titles = new Set(fresh.map((t) => t.title.toLowerCase()));
+          const titles = new Set([...fresh, ...open, ...done].map((t) => t.title.toLowerCase()));
+          const newOnes = fresh.filter((t, i, all) => all.findIndex((o) => o.title.toLowerCase() === t.title.toLowerCase()) === i);
           const carried = later.filter((t) => !titles.has(t.title.toLowerCase()));
-          const result = planDay([...fresh, ...carried], { level: settings.level, tired });
-          set({ plan: result.planned, later: result.later, planDate: isoDay(new Date()), draft: '' });
+          const freshTitles = new Set(open.map((t) => t.title.toLowerCase()));
+          const result = planDay([...open, ...newOnes.filter((t) => !freshTitles.has(t.title.toLowerCase())), ...carried], {
+            level: settings.level,
+            tired,
+            keep: new Set(open.map((t) => t.id)),
+          });
+          set({ plan: [...result.planned, ...done], later: result.later, planDate: today, draft: '' });
           syncDay(get());
         },
 

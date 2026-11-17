@@ -50,6 +50,37 @@
           "microphonePermission": "Usamos el micrófono para que puedas soltar lo que tienes en la cabeza hablando.",
           "speechRecognitionPermission": "GetGo escribe lo que dices mientras hablas para poder ordenar tus tareas."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#8A5CFF"
+        }
+      ],
+      "expo-quick-actions",
+      [
+        "expo-widgets",
+        {
+          "enableAndroid": false,
+          "widgets": [
+            {
+              "name": "GetGoWidget",
+              "displayName": "GetGo",
+              "description": "Tu mascota y lo que te queda por hacer hoy.",
+              "ios": {
+                "supportedFamilies": [
+                  "systemSmall",
+                  "systemMedium",
+                  "systemLarge",
+                  "accessoryCircular",
+                  "accessoryRectangular",
+                  "accessoryInline"
+                ],
+                "initialLayout": "./src/widgets/GetGoWidget.tsx"
+              }
+            }
+          ]
+        }
       ]
     ],
     "experiments": {
