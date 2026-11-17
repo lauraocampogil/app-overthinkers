@@ -19,7 +19,7 @@ import { Mascota } from '@/components/Mascota';
 import { Ondas } from '@/components/Ondas';
 import { PrimaryButton, Screen } from '@/components/ui';
 import { locale, t } from '@/i18n';
-import { transcribe } from '@/lib/ai';
+import { lastVoiceError, transcribe } from '@/lib/ai';
 import { useMascot } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { liveSpeechAvailable, requestLivePermission, startLive, type LiveSession } from '@/lib/voz';
@@ -55,6 +55,7 @@ export default function Escuchando() {
   const [live] = useState(() => liveSpeechAvailable());
   const [phase, setPhase] = useState<Phase>(live || supabase ? 'starting' : 'noServer');
   const [heard, setHeard] = useState('');
+  const [errCode, setErrCode] = useState('');
   const [liveLevel, setLiveLevel] = useState(0);
   const session = useRef<LiveSession | null>(null);
   const started = useRef(false);
@@ -78,6 +79,7 @@ export default function Escuchando() {
           onLevel: setLiveLevel,
           onError: (code) => {
             console.warn('[voz]', code);
+            setErrCode(`voz: ${code}`);
             if (!stopping.current) setPhase('failed');
           },
         });
@@ -164,6 +166,7 @@ export default function Escuchando() {
         <View style={{ flex: 1, justifyContent: 'center', gap: 12 }}>
           <Text style={type.title}>{t(title)}</Text>
           <Text style={type.muted}>{t(body)}</Text>
+          {phase === 'failed' && (errCode || lastVoiceError) ? <Text style={styles.code}>{errCode || lastVoiceError}</Text> : null}
         </View>
         <PrimaryButton label={t('listen.writeInstead')} onPress={() => router.replace('/escribir')} />
         <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.secondary}>
@@ -260,6 +263,7 @@ const styles = StyleSheet.create({
   },
   done: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
   hint: { fontFamily: fonts.medium, fontSize: 14, color: 'rgba(255,255,255,0.8)' },
+  code: { fontFamily: fonts.regular, fontSize: 12, color: colors.faint, marginTop: 8 },
   secondary: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   secondaryText: { fontFamily: fonts.regular, fontSize: 15, color: colors.muted },
 });

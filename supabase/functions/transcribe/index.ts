@@ -9,7 +9,7 @@
 
 const GROQ = { url: 'https://api.groq.com/openai/v1/audio/transcriptions', model: 'whisper-large-v3' };
 const OPENAI = { url: 'https://api.openai.com/v1/audio/transcriptions', model: 'whisper-1' };
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = 20 * 1024 * 1024;
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -28,27 +28,43 @@ Deno.serve(async (req) => {
     const MODEL = Deno.env.get('TRANSCRIBE_MODEL') ?? base.model;
     const URL = Deno.env.get('TRANSCRIBE_URL') ?? base.url;
 
-    const form = await req.formData();
-    const file = form.get('file');
-    if (!(file instanceof File)) return Response.json({ error: 'file is required' }, { status: 400, headers: cors });
+    // Two ways in: JSON { audio: base64, name, lang } (what the app sends) or multipart "file".
+    let file: File;
+    let lang: unknown = null;
+    if ((req.headers.get('content-type') ?? '').includes('application/json')) {
+      const body = await req.json();
+      if (typeof body.audio !== 'string' || !body.audio) return Response.json({ error: 'audio is required' }, { status: 400, headers: cors });
+      const bytes = Uint8Array.from(atob(body.audio), (c) => c.charCodeAt(0));
+      const name = typeof body.name === 'string' && /\.[a-z0-9]{2,4}$/i.test(body.name) ? body.name : 'nota.m4a';
+      file = new File([bytes], name, { type: 'audio/mp4' });
+      lang = body.lang;
+    } else {
+      const form = await req.formData();
+      const f = form.get('file');
+      if (!(f instanceof File)) return Response.json({ error: 'file is required' }, { status: 400, headers: cors });
+      file = f;
+      lang = form.get('lang');
+    }
     if (file.size > MAX_BYTES) return Response.json({ error: 'file too large' }, { status: 413, headers: cors });
+    if (file.size < 1000) return Response.json({ error: 'audio too short', size: file.size }, { status: 400, headers: cors });
 
     const out = new FormData();
     out.append('file', file, file.name || 'nota.m4a');
     out.append('model', MODEL);
+    out.append('response_format', 'json');
     // Language hint from the phone; the model also auto-detects if it is missing.
-    const lang = form.get('lang');
     if (typeof lang === 'string' && /^[a-z]{2}$/.test(lang)) out.append('language', lang);
 
     const res = await fetch(URL, { method: 'POST', headers: { Authorization: `Bearer ${key}` }, body: out });
     if (!res.ok) {
-      console.error('transcribe error', res.status, await res.text());
-      return Response.json({ error: 'transcription_failed' }, { status: 502, headers: cors });
+      const detail = await res.text();
+      console.error('transcribe error', res.status, detail);
+      return Response.json({ error: 'transcription_failed', status: res.status, detail: detail.slice(0, 300) }, { status: 502, headers: cors });
     }
     const data = await res.json();
     return Response.json({ text: typeof data.text === 'string' ? data.text : '' }, { headers: cors });
   } catch (e) {
     console.error(e);
-    return Response.json({ error: 'bad_request' }, { status: 400, headers: cors });
+    return Response.json({ error: 'bad_request', detail: String(e).slice(0, 300) }, { status: 400, headers: cors });
   }
 });

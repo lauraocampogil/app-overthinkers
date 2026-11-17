@@ -1,3 +1,5 @@
+import { File } from 'expo-file-system';
+
 import { parseLocal } from './parse-local';
 import { lang } from '../i18n';
 import { isoDay } from './streak';
@@ -61,19 +63,42 @@ export async function tasksFromImage(base64: string, mediaType = 'image/jpeg'): 
   }
 }
 
-/** Voice note -> text via the transcribe Edge Function. Returns null if it is not available. */
+/** Last transcription error, shown small on the "no te he entendido" screen so problems can be reported. */
+export let lastVoiceError = '';
+
+/**
+ * Voice note -> text via the transcribe Edge Function. Returns null if it is not available.
+ * The audio goes as base64 JSON: React Native's multipart uploads were unreliable through functions.invoke.
+ */
 export async function transcribe(uri: string): Promise<string | null> {
-  if (!supabase) return null;
+  lastVoiceError = '';
+  if (!supabase) {
+    lastVoiceError = 'no-server';
+    return null;
+  }
   try {
     await ensureSession();
-    const form = new FormData();
-    // React Native's FormData accepts { uri, name, type } for files.
-    form.append('file', { uri, name: 'nota.m4a', type: 'audio/m4a' } as unknown as Blob);
-    form.append('lang', lang);
-    const { data, error } = await supabase.functions.invoke('transcribe', { body: form });
-    if (error) throw error;
-    return typeof data?.text === 'string' && data.text.trim() ? data.text.trim() : null;
+    const audio = await new File(uri).base64();
+    if (!audio) {
+      lastVoiceError = 'empty-audio';
+      return null;
+    }
+    const name = uri.split('/').pop() || 'nota.m4a';
+    const { data, error } = await supabase.functions.invoke('transcribe', {
+      body: { audio, name, lang },
+    });
+    if (error) {
+      const ctx = (error as { context?: Response }).context;
+      const detail = ctx && typeof ctx.text === 'function' ? await ctx.text().catch(() => '') : '';
+      lastVoiceError = `${ctx?.status ?? ''} ${detail || error.message}`.trim().slice(0, 160);
+      console.warn('[ai] transcribe failed', lastVoiceError);
+      return null;
+    }
+    const text = typeof data?.text === 'string' ? data.text.trim() : '';
+    if (!text) lastVoiceError = 'no-speech';
+    return text || null;
   } catch (e) {
+    lastVoiceError = String(e).slice(0, 160);
     console.warn('[ai] transcribe failed', e);
     return null;
   }
