@@ -43,6 +43,11 @@ export type Settings = {
   /** Free minutes per day (kept for the server schema; the planner no longer fills by time). */
   freeMinutes: number;
   notifyAt: string;
+  /** Calendar connection: off, read your events, or read + write GetGo's blocks. */
+  calendar: 'off' | 'read' | 'write';
+  /** The part of the day GetGo may plan in (HH:MM). */
+  dayStart: string;
+  dayEnd: string;
 };
 
 export type Streak = {

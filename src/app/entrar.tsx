@@ -1,4 +1,5 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
+import Constants from 'expo-constants';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -27,7 +28,9 @@ export default function Entrar() {
   const [appleAvailable, setAppleAvailable] = useState(false);
 
   useEffect(() => {
-    if (Platform.OS === 'ios') AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => {});
+    // The free-signing build can't use Sign in with Apple (app.config.ts sets extra.appleSignIn = false).
+    const allowed = Constants.expoConfig?.extra?.appleSignIn !== false;
+    if (Platform.OS === 'ios' && allowed) AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => {});
   }, []);
 
   const run = async (which: 'google' | 'apple') => {

@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
+import { TurboModuleRegistry } from 'react-native';
 import { create } from 'zustand';
 
 import { supabase } from './supabase';
@@ -23,8 +24,46 @@ export type AuthResult = 'ok' | 'cancelled' | 'failed' | 'noServer';
 /** Where Google sends the user back: getgo://auth in a build, exp://…/--/auth in Expo Go. */
 export const redirectTo = Linking.createURL('auth');
 
+/**
+ * Native Google sign-in (system sheet that says "GetGo", no supabase.co domain).
+ * Needs a development / store build and the Google client IDs in .env; otherwise the web flow below is used.
+ */
+const GOOGLE_IOS = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+const GOOGLE_WEB = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+type GoogleSdk = typeof import('@react-native-google-signin/google-signin');
+let google: GoogleSdk | null = null;
+if (GOOGLE_WEB && TurboModuleRegistry.get('RNGoogleSignin')) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    google = require('@react-native-google-signin/google-signin') as GoogleSdk;
+    google.GoogleSignin.configure({ iosClientId: GOOGLE_IOS, webClientId: GOOGLE_WEB });
+  } catch (e) {
+    console.warn('[auth] native google unavailable', e);
+    google = null;
+  }
+}
+
+async function signInWithGoogleNative(sdk: GoogleSdk): Promise<AuthResult> {
+  if (!supabase) return 'noServer';
+  try {
+    await sdk.GoogleSignin.hasPlayServices();
+    const res = await sdk.GoogleSignin.signIn();
+    if (res.type !== 'success') return 'cancelled';
+    const token = res.data.idToken;
+    if (!token) return 'failed';
+    const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token });
+    if (error) throw error;
+    return 'ok';
+  } catch (e) {
+    if (sdk.isErrorWithCode(e) && e.code === sdk.statusCodes.SIGN_IN_CANCELLED) return 'cancelled';
+    console.warn('[auth] native google failed', e);
+    return 'failed';
+  }
+}
+
 export async function signInWithGoogle(): Promise<AuthResult> {
   if (!supabase) return 'noServer';
+  if (google) return signInWithGoogleNative(google);
   try {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -72,6 +111,7 @@ export async function signInWithApple(): Promise<AuthResult> {
 }
 
 export async function signOut() {
+  await google?.GoogleSignin.signOut().catch(() => null);
   await supabase?.auth.signOut();
 }
 

@@ -81,6 +81,12 @@
             }
           ]
         }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "GetGo lee tu calendario para saber cuándo estás libre y, si lo activas, añade tu plan como bloques."
+        }
       ]
     ],
     "experiments": {

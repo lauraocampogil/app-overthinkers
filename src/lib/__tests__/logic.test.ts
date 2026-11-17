@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseLocal, dueInDaysFrom } from '../parse-local';
+import { dayWindow, freeMinutes, placeTasks } from '../agenda-plan';
+import { estimate, learn, taskKey } from '../duraciones';
 import { addDays, schedule } from '../planner';
 import { countToday } from '../streak';
 import type { Task } from '../types';
@@ -119,5 +121,50 @@ describe('countToday', () => {
   it('counts a day only once', () => {
     const once = countToday({ ...s, lastCountedDate: '2026-11-15' }, 'suave', '2026-11-16').streak;
     expect(countToday(once, 'suave', '2026-11-16').streak.current).toBe(once.current);
+  });
+});
+
+describe('personal durations', () => {
+  const gym = { title: 'Ir al gym', kind: 'deporte' as const, sport: null, minutes: null };
+
+  it('uses a neutral first guess, then learns the real time', () => {
+    expect(estimate(gym, {}).source).toBe('guess');
+    let learned = learn({}, gym, 110);
+    expect(estimate(gym, learned)).toEqual({ minutes: 110, source: 'learned' });
+    learned = learn(learned, gym, 120);
+    expect(estimate(gym, learned).minutes).toBe(115);
+  });
+
+  it('what the person says always wins, and silly measurements are ignored', () => {
+    const learned = learn({}, gym, 110);
+    expect(estimate({ ...gym, minutes: 30 }, learned)).toEqual({ minutes: 30, source: 'stated' });
+    expect(learn({}, gym, 0.5)).toEqual({});
+    expect(taskKey(gym)).toBe('w:gym');
+  });
+});
+
+describe('day with hours', () => {
+  const day = new Date('2026-11-16T07:00:00');
+  const at = (h: number, m = 0) => new Date(2026, 10, 16, h, m);
+
+  it('places tasks around calendar events, with a buffer, and reports what does not fit', () => {
+    const win = dayWindow(day, '08:00', '12:00', day);
+    const busy = [{ title: 'Clase', start: at(9), end: at(10) }];
+    expect(freeMinutes(win, busy)).toBe(180);
+    const { blocks, overflow } = placeTasks(['a', 'b', 'c'], (x) => (x === 'a' ? 50 : x === 'b' ? 90 : 120), win, busy);
+    const tasks = blocks.filter((b) => b.type === 'task');
+    expect(tasks[0].start).toEqual(at(8));
+    expect(tasks[1].start).toEqual(at(10));
+    expect(overflow).toEqual(['c']);
+  });
+
+  it('fills days by free time when the calendar is known', () => {
+    const tasks: Task[] = [
+      { ...base, id: 'study', title: 'Estudiar', kind: 'estudio', importance: 3, minutes: 120 },
+      { ...base, id: 'gym', title: 'Gym', kind: 'deporte', importance: 2, minutes: 90 },
+    ];
+    const planned = schedule(tasks, { level: 'equilibrado', today: TODAY, minutesOf: (t) => t.minutes ?? 30, capacity: () => 180 });
+    expect(planned.find((t) => t.id === 'study')?.day).toBe(TODAY);
+    expect(planned.find((t) => t.id === 'gym')?.day).toBe(addDays(TODAY, 1));
   });
 });

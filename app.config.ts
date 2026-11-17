@@ -20,14 +20,23 @@ const withoutPaidEntitlements: ConfigPlugin = (cfg) =>
  *   - home-screen widgets (they need an App Group).
  * Store builds (paid Apple Developer account) use the full config.
  */
+/** Native Google sign-in needs the reversed iOS client ID as a URL scheme. Only added when the ID is set. */
+function withGoogle(cfg: ExpoConfig): ExpoConfig {
+  const ios = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+  if (!ios) return cfg;
+  const iosUrlScheme = `com.googleusercontent.apps.${ios.replace('.apps.googleusercontent.com', '')}`;
+  return { ...cfg, plugins: [...(cfg.plugins ?? []), ['@react-native-google-signin/google-signin', { iosUrlScheme }]] };
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => {
-  const base = config as ExpoConfig;
+  const base = withGoogle(config as ExpoConfig);
   if (process.env.GETGO_FREE_SIGNING !== '1') return base;
 
   const skip = new Set(['expo-notifications', 'expo-widgets', 'expo-apple-authentication']);
   const name = (p: unknown) => (Array.isArray(p) ? p[0] : p) as string;
   return withoutPaidEntitlements({
     ...base,
+    extra: { ...base.extra, appleSignIn: false },
     ios: { ...base.ios, usesAppleSignIn: false },
     plugins: (base.plugins ?? []).filter((p) => !skip.has(name(p))),
   });

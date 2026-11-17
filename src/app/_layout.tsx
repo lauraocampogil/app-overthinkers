@@ -12,9 +12,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/lib/auth';
 import { refreshReminders } from '@/lib/avisos';
+import { refreshAgenda } from '@/lib/calendario';
 import { syncWidget, widgetChanges } from '@/lib/widget';
 import { pullDay } from '@/lib/sync';
-import { todayList, useDay } from '@/store/day';
+import { todayList, useDay, withDefaults } from '@/store/day';
 
 export default function RootLayout() {
   const [loaded] = useFonts({ InterTight_400Regular, InterTight_500Medium, InterTight_600SemiBold });
@@ -71,6 +72,19 @@ export default function RootLayout() {
     const sub = AppState.addEventListener('change', (s) => s === 'active' && void apply());
     return () => sub.remove();
   }, [signedIn]);
+
+  // Calendar: re-read events when the app opens or comes back, then re-plan around them.
+  const calendarMode = useDay((s) => withDefaults(s.settings).calendar);
+  useEffect(() => {
+    if (!signedIn || calendarMode === 'off') return;
+    const run = async () => {
+      await refreshAgenda(withDefaults(useDay.getState().settings));
+      useDay.getState().replan();
+    };
+    void run();
+    const sub = AppState.addEventListener('change', (s) => s === 'active' && void run());
+    return () => sub.remove();
+  }, [signedIn, calendarMode]);
 
   if (!loaded || !ready) return null;
 

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { t } from '@/i18n';
+import { minutesLabel, t } from '@/i18n';
+import { estimate } from '@/lib/duraciones';
 import { addDays } from '@/lib/planner';
 import type { Task } from '@/lib/types';
 import { todayIso, useDay } from '@/store/day';
@@ -10,7 +11,8 @@ import { colors, fonts, type } from '@/theme';
 
 /** Bottom sheet with what you can do with one task: tick, today, tomorrow, rename, delete. */
 export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () => void }) {
-  const { markDone, undoDone, moveTo, rename, remove } = useDay.getState();
+  const { markDone, undoDone, moveTo, rename, remove, setMinutes } = useDay.getState();
+  const learned = useDay((s) => s.learned);
   const insets = useSafeAreaInsets();
   const [title, setTitle] = useState('');
   const [editing, setEditing] = useState(false);
@@ -57,6 +59,34 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
               <Text style={[type.title, styles.title]} numberOfLines={3}>
                 {task.title}
               </Text>
+              {task.status === 'pendiente' ? (
+                <View style={{ gap: 8 }}>
+                  <Text style={type.muted}>
+                    {(() => {
+                      const est = estimate(task, learned);
+                      if (est.source === 'stated') return t('dur.set', { time: minutesLabel(est.minutes) });
+                      if (est.source === 'learned') return t('dur.learned', { time: minutesLabel(est.minutes) });
+                      return t('dur.guess', { time: minutesLabel(est.minutes) });
+                    })()}
+                  </Text>
+                  <View style={styles.chips}>
+                    {DURATIONS.map((m) => {
+                      const on = task.minutes === m;
+                      return (
+                        <Pressable
+                          key={m}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: on }}
+                          onPress={() => act(() => setMinutes(task.id, m))}
+                          style={[styles.chip, on && styles.chipOn]}
+                        >
+                          <Text style={[styles.chipText, on && { color: colors.white }]}>{minutesLabel(m)}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              ) : null}
               <View>
                 {task.status === 'hecha' ? (
                   <Option label={t('task.undo')} onPress={() => act(() => undoDone(task.id))} />
@@ -88,7 +118,13 @@ function Option({ label, onPress, strong, danger, last }: { label: string; onPre
   );
 }
 
+const DURATIONS = [15, 30, 45, 60, 90, 120, 180];
+
 const styles = StyleSheet.create({
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { minHeight: 40, paddingHorizontal: 14, borderRadius: 20, backgroundColor: colors.soft, justifyContent: 'center' },
+  chipOn: { backgroundColor: colors.accentDark },
+  chipText: { fontFamily: fonts.medium, fontSize: 14, color: colors.accentDark },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(31,26,61,0.35)' },
   sheet: { backgroundColor: colors.white, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 24, paddingTop: 10, gap: 14 },
   grabber: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: colors.line, marginBottom: 6 },

@@ -10,7 +10,18 @@ const DAY = 86_400_000;
 export const addDays = (iso: string, n: number) => isoDay(new Date(Date.parse(`${iso}T12:00:00`) + n * DAY));
 export const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00`) - Date.parse(`${a}T12:00:00`)) / DAY);
 
-type Opts = { level: Level; today: string };
+/** With the calendar connected: share of each day's free time GetGo fills, per level. */
+export const FILL_SHARE: Record<Level, number> = { suave: 0.6, equilibrado: 0.8, duro: 0.95 };
+const MAX_WITH_TIME = 12;
+
+type Opts = {
+  level: Level;
+  today: string;
+  /** Personal duration of a task in minutes (stated, learned or first guess). */
+  minutesOf?: (t: Task) => number;
+  /** Free minutes on that day according to the calendar; undefined = calendar not connected / unknown. */
+  capacity?: (day: string) => number | undefined;
+};
 
 const daysLeft = (t: Task, today: string) => (t.due ? daysBetween(today, t.due) : null);
 const isQuick = (t: Task) => t.minutes !== null && t.minutes <= QUICK_MINUTES;
@@ -49,14 +60,27 @@ export function schedule(all: Task[], opts: Opts): Task[] {
   const done = all.filter((t) => t.status === 'hecha');
   const open = all.filter((t) => t.status === 'pendiente');
   const count = new Map<string, number>();
+  const used = new Map<string, number>();
   const placed = new Map<string, string>();
-  const bump = (day: string) => count.set(day, (count.get(day) ?? 0) + 1);
+  const mins = (t: Task) => opts.minutesOf?.(t) ?? 0;
+  const bump = (day: string, t: Task) => {
+    count.set(day, (count.get(day) ?? 0) + 1);
+    used.set(day, (used.get(day) ?? 0) + mins(t));
+  };
+  // A day "has room" by time when the calendar is known, otherwise by number of tasks.
+  const hasRoom = (day: string, t: Task) => {
+    const free = opts.minutesOf ? opts.capacity?.(day) : undefined;
+    if (free === undefined) return (count.get(day) ?? 0) < cap;
+    const n = count.get(day) ?? 0;
+    // Always allow one task on an empty day, even if it is longer than the free time.
+    return n < MAX_WITH_TIME && (n === 0 || (used.get(day) ?? 0) + mins(t) <= free * FILL_SHARE[level]);
+  };
 
   for (const t of open) {
     if (t.pinned) {
       const day = t.day < today ? today : t.day;
       placed.set(t.id, day);
-      bump(day);
+      bump(day, t);
     }
   }
 
@@ -73,14 +97,14 @@ export function schedule(all: Task[], opts: Opts): Task[] {
           break;
         }
         const candidate = addDays(today, d);
-        if ((count.get(candidate) ?? 0) < cap) {
+        if (hasRoom(candidate, t)) {
           day = candidate;
           break;
         }
       }
     }
     placed.set(t.id, day);
-    bump(day);
+    bump(day, t);
   }
 
   // Group by day, order inside each day, explain today's.

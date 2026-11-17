@@ -7,7 +7,8 @@ import { BackIcon, IconCircle, Screen } from '@/components/ui';
 import { t } from '@/i18n';
 import { Mascota } from '@/components/Mascota';
 import { deleteAccount, signOut, useAuth, useMascot } from '@/lib/auth';
-import { useDay } from '@/store/day';
+import { connectCalendar, refreshAgenda } from '@/lib/calendario';
+import { useDay, withDefaults } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
 export default function Cuenta() {
@@ -15,6 +16,17 @@ export default function Cuenta() {
   const reset = useDay((s) => s.reset);
   const [deleting, setDeleting] = useState(false);
   const mascot = useMascot();
+  const settings = withDefaults(useDay((s) => s.settings));
+  const setSettings = useDay((s) => s.setSettings);
+  const setCalendar = async (mode: 'off' | 'read' | 'write') => {
+    if (mode !== 'off' && !(await connectCalendar())) {
+      Alert.alert(t('cal.deniedTitle'), t('cal.deniedBody'));
+      return;
+    }
+    setSettings({ calendar: mode });
+    await refreshAgenda({ ...settings, calendar: mode });
+    useDay.getState().replan();
+  };
   const [copied, setCopied] = useState(false);
   const copyLink = async () => {
     await Clipboard.setStringAsync('getgo://hablar');
@@ -69,6 +81,39 @@ export default function Cuenta() {
           )}
         </View>
 
+        <View style={[styles.card, { gap: 10 }]}>
+          <Text style={styles.name}>{t('cal.title')}</Text>
+          <Text style={type.muted}>{t('cal.body')}</Text>
+          <View style={styles.chips}>
+            {(['off', 'read', 'write'] as const).map((m) => (
+              <Pressable
+                key={m}
+                accessibilityRole="button"
+                accessibilityState={{ selected: settings.calendar === m }}
+                onPress={() => void setCalendar(m)}
+                style={[styles.chip, settings.calendar === m && styles.chipOn]}
+              >
+                <Text style={[styles.chipText, settings.calendar === m && { color: colors.white }]}>{t(`cal.mode.${m}`)}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={[type.muted, { marginTop: 4 }]}>{t('cal.hours')}</Text>
+          <View style={styles.chips}>
+            {['06:00', '07:00', '08:00', '09:00', '10:00'].map((h) => (
+              <Pressable key={h} onPress={() => setSettings({ dayStart: h })} style={[styles.chip, settings.dayStart === h && styles.chipOn]}>
+                <Text style={[styles.chipText, settings.dayStart === h && { color: colors.white }]}>{h}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={styles.chips}>
+            {['20:00', '21:00', '22:00', '23:00', '24:00'].map((h) => (
+              <Pressable key={h} onPress={() => setSettings({ dayEnd: h })} style={[styles.chip, settings.dayEnd === h && styles.chipOn]}>
+                <Text style={[styles.chipText, settings.dayEnd === h && { color: colors.white }]}>{h}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
         <View style={[styles.card, { gap: 8 }]}>
           <Text style={styles.name}>{t('atajo.title')}</Text>
           <Text style={type.muted}>{t('atajo.body')}</Text>
@@ -101,6 +146,10 @@ const styles = StyleSheet.create({
   row: { backgroundColor: colors.white, borderRadius: 20, minHeight: 56, justifyContent: 'center', paddingHorizontal: 20 },
   rowText: { fontFamily: fonts.medium, fontSize: 16, color: colors.ink },
   spacer: { flex: 1 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { minHeight: 38, paddingHorizontal: 14, borderRadius: 19, backgroundColor: colors.soft, justifyContent: 'center' },
+  chipOn: { backgroundColor: colors.accentDark },
+  chipText: { fontFamily: fonts.medium, fontSize: 14, color: colors.accentDark },
   copy: { alignSelf: 'flex-start', minHeight: 40, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 20, backgroundColor: colors.soft },
   copyText: { fontFamily: fonts.medium, fontSize: 14, color: colors.accentDark },
   danger: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', marginBottom: 12 },

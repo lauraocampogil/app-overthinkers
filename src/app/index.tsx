@@ -7,12 +7,14 @@ import { Mascota } from '@/components/Mascota';
 import { Ondas } from '@/components/Ondas';
 import { TaskSheet } from '@/components/TaskSheet';
 import { CheckIcon, Dock, FlameIcon, IconCircle, PersonIcon, Screen } from '@/components/ui';
-import { locale, t, todayLabel } from '@/i18n';
+import { locale, minutesLabel, t, todayLabel } from '@/i18n';
+import { connectCalendar, refreshAgenda, todayTimeline, useAgenda } from '@/lib/calendario';
+import { estimate } from '@/lib/duraciones';
 import { useAtajos } from '@/lib/atajos';
 import { useMascot } from '@/lib/auth';
 import { daysBetween } from '@/lib/planner';
 import type { Task } from '@/lib/types';
-import { todayIso, todayList, upcoming, useDay } from '@/store/day';
+import { todayIso, todayList, upcoming, useDay, withDefaults } from '@/store/day';
 import { colors, fonts, gradients, type } from '@/theme';
 
 /** "Mañana", "jueves 20 nov" or, past a week, "Más adelante". */
@@ -66,6 +68,22 @@ function Check({ task, onToggle }: { task: Task; onToggle: () => void }) {
 export default function Inicio() {
   const streak = useDay((s) => s.streak);
   const tasks = useDay((s) => s.tasks);
+  const learned = useDay((s) => s.learned);
+  const settings = withDefaults(useDay((s) => s.settings));
+  const agenda = useAgenda((s) => s.status);
+  useAgenda((s) => s.loadedAt); // re-render when the calendar is re-read
+  const est = (task: Task) => estimate(task, learned);
+  const durLabel = (task: Task) => {
+    const e = est(task);
+    return `${e.source === 'guess' ? '~' : ''}${minutesLabel(e.minutes)}`;
+  };
+  const clock = (d: Date) => d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  const connect = async () => {
+    if (!(await connectCalendar())) return;
+    useDay.getState().setSettings({ calendar: 'read' });
+    await refreshAgenda({ ...settings, calendar: 'read' });
+    useDay.getState().replan();
+  };
   const { markDone, undoDone } = useDay.getState();
   const mascot = useMascot();
   useAtajos();
@@ -96,6 +114,12 @@ export default function Inicio() {
   const allDone = active.length > 0 && pending.length === 0;
   const msg = active.length ? nudge(done.length, pending.length, current?.title) : { title: t('hoy.freeToday'), body: t('hoy.freeTodayBody') };
   const progress = active.length ? done.length / active.length : 0;
+  // With the calendar: today's pending tasks placed in your free time, with hours.
+  const timeline = agenda === 'on' ? todayTimeline(pending, (x) => est(x).minutes, settings) : null;
+  const slotOf = (task: Task) => {
+    const b = timeline?.blocks.find((x) => x.type === 'task' && x.task.id === task.id);
+    return b ? `${clock(b.start)} – ${clock(b.end)}` : null;
+  };
   const toggle = (task: Task) => (task.status === 'hecha' ? undoDone(task.id) : markDone(task.id));
   // Several upcoming days past a week fold into one "Más adelante" group.
   const groups: [string, Task[]][] = [];
@@ -115,7 +139,10 @@ export default function Inicio() {
         style={[styles.row, i === all.length - 1 && styles.rowLast]}
       >
         <Check task={task} onToggle={() => toggle(task)} />
-        <Text style={[styles.rowTitle, task.status === 'hecha' && styles.rowDone]}>{task.title}</Text>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={[styles.rowTitle, task.status === 'hecha' && styles.rowDone]}>{task.title}</Text>
+          {task.status === 'pendiente' ? <Text style={styles.rowMeta}>{durLabel(task)}</Text> : null}
+        </View>
         {due ? (
           <View style={styles.tag}>
             <Text style={styles.tagText}>{due}</Text>
@@ -211,7 +238,7 @@ export default function Inicio() {
           <View style={styles.nowCard}>
             <View style={styles.nowTop}>
               <Text style={styles.nowLabel}>{t('hoy.now')}</Text>
-              {current.minutes !== null ? <Text style={styles.meta}>{t('time.min', { n: current.minutes })}</Text> : null}
+              <Text style={styles.meta}>{slotOf(current) ?? durLabel(current)}</Text>
             </View>
             <Pressable style={styles.nowRow} onPress={() => setSheet(current)} accessibilityHint={t('task.options')}>
               <Check task={current} onToggle={() => toggle(current)} />
@@ -225,11 +252,65 @@ export default function Inicio() {
           </View>
         ) : null}
 
-        {rest.length > 0 || done.length > 0 ? (
+        {timeline ? (
+          <>
+            {timeline.blocks.some((b) => b.type === 'event' || b.task.id !== current?.id) ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>{t('hoy.todayRest')}</Text>
+                <View style={styles.list}>
+                  {timeline.blocks
+                    .filter((b) => b.type === 'event' || b.task.id !== current?.id)
+                    .map((b, i, all) => (
+                      <View key={b.type === 'task' ? b.task.id : `e${i}`} style={[styles.timeRow, i === all.length - 1 && styles.rowLast]}>
+                        <Text style={styles.timeCol}>{clock(b.start)}</Text>
+                        {b.type === 'task' ? (
+                          <Pressable style={styles.timeBody} onPress={() => setSheet(b.task)} accessibilityHint={t('task.options')}>
+                            <Check task={b.task} onToggle={() => toggle(b.task)} />
+                            <View style={{ flex: 1, gap: 2 }}>
+                              <Text style={styles.rowTitle}>{b.task.title}</Text>
+                              <Text style={styles.rowMeta}>{durLabel(b.task)}</Text>
+                            </View>
+                          </Pressable>
+                        ) : (
+                          <View style={styles.timeBody}>
+                            <View style={styles.eventDot} />
+                            <Text style={styles.eventTitle} numberOfLines={1}>
+                              {b.title}
+                            </Text>
+                            <Text style={styles.rowMeta}>{clock(b.end)}</Text>
+                          </View>
+                        )}
+                      </View>
+                    ))}
+                </View>
+              </View>
+            ) : null}
+            {timeline.overflow.length > 0 ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>{t('cal.noRoom')}</Text>
+                <View style={styles.list}>{timeline.overflow.map((task, i, all) => row(task, i, all))}</View>
+              </View>
+            ) : null}
+            {done.length > 0 ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>{t('hoy.doneSection')}</Text>
+                <View style={styles.list}>{done.map((task, i, all) => row(task, i, all))}</View>
+              </View>
+            ) : null}
+          </>
+        ) : rest.length > 0 || done.length > 0 ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t('hoy.todayRest')}</Text>
             <View style={styles.list}>{[...rest, ...done].map((task, i, all) => row(task, i, all))}</View>
           </View>
+        ) : null}
+
+        {agenda !== 'on' ? (
+          <Pressable accessibilityRole="button" onPress={() => void connect()} style={styles.connect}>
+            <Text style={styles.connectTitle}>{t(agenda === 'denied' ? 'cal.deniedTitle' : 'cal.connectTitle')}</Text>
+            <Text style={type.muted}>{t(agenda === 'denied' ? 'cal.deniedBody' : 'cal.connectBody')}</Text>
+            <Text style={styles.connectCta}>{t('cal.connect')}</Text>
+          </Pressable>
         ) : null}
 
         {groups.map(([label, list]) => (
@@ -293,6 +374,15 @@ const styles = StyleSheet.create({
   checkOff: { borderWidth: 2, borderColor: '#D9CCF5', backgroundColor: colors.white },
 
   capital: { textTransform: 'capitalize' },
+  rowMeta: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted },
+  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, borderBottomWidth: 1, borderBottomColor: 'rgba(31,26,61,0.06)' },
+  timeCol: { width: 46, fontFamily: fonts.medium, fontSize: 13, color: colors.muted, fontVariant: ['tabular-nums'] },
+  timeBody: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  eventDot: { width: 10, height: 10, borderRadius: 5, marginHorizontal: 8, backgroundColor: '#C9BEE8' },
+  eventTitle: { flex: 1, fontFamily: fonts.regular, fontSize: 15, color: colors.muted },
+  connect: { backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 24, padding: 18, gap: 6 },
+  connectTitle: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
+  connectCta: { fontFamily: fonts.semibold, fontSize: 15, color: colors.accentDark, marginTop: 6 },
   toast: {
     position: 'absolute',
     left: 24,

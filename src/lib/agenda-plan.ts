@@ -1,0 +1,74 @@
+/**
+ * Turns today's ordered tasks + the calendar's events into a real day with hours.
+ * Pure (no native calls) so it is easy to test.
+ */
+export type Busy = { title: string; start: Date; end: Date };
+export type Block<T> =
+  | { type: 'event'; title: string; start: Date; end: Date }
+  | { type: 'task'; task: T; start: Date; end: Date };
+
+export type DayWindow = { start: Date; end: Date };
+
+const MIN = 60_000;
+const BUFFER = 10; // minutes of breathing room between blocks
+
+const hm = (d: Date, hhmm: string) => {
+  const [h, m] = hhmm.split(':').map(Number);
+  const x = new Date(d);
+  x.setHours(h || 0, m || 0, 0, 0);
+  return x;
+};
+const ceil5 = (d: Date) => new Date(Math.ceil(d.getTime() / (5 * MIN)) * 5 * MIN);
+
+/** The usable part of a day: from dayStart (or now, if later) to dayEnd. */
+export function dayWindow(day: Date, dayStart: string, dayEnd: string, now = new Date()): DayWindow {
+  const start = hm(day, dayStart);
+  const end = hm(day, dayEnd);
+  const sameDay = now.toDateString() === day.toDateString();
+  return { start: sameDay && now > start ? ceil5(now) : start, end };
+}
+
+/** Free intervals inside the window once events are taken out. */
+export function freeSlots(win: DayWindow, busy: Busy[]): { start: Date; end: Date }[] {
+  const sorted = busy
+    .filter((b) => b.end > win.start && b.start < win.end)
+    .sort((a, b) => a.start.getTime() - b.start.getTime());
+  const slots: { start: Date; end: Date }[] = [];
+  let cursor = win.start;
+  for (const b of sorted) {
+    if (b.start > cursor) slots.push({ start: cursor, end: b.start });
+    if (b.end > cursor) cursor = b.end;
+  }
+  if (cursor < win.end) slots.push({ start: cursor, end: win.end });
+  return slots.filter((s) => s.end.getTime() - s.start.getTime() >= 5 * MIN);
+}
+
+export const freeMinutes = (win: DayWindow, busy: Busy[]) =>
+  freeSlots(win, busy).reduce((sum, s) => sum + (s.end.getTime() - s.start.getTime()) / MIN, 0);
+
+/**
+ * Places tasks, in order, into the first free gap where they fit (with a short buffer).
+ * Returns the day as a timeline (events + task blocks) and the tasks that did not fit today.
+ */
+export function placeTasks<T>(tasks: T[], minutesOf: (t: T) => number, win: DayWindow, busy: Busy[]) {
+  const slots = freeSlots(win, busy).map((s) => ({ ...s }));
+  const blocks: Block<T>[] = busy
+    .filter((b) => b.end > win.start && b.start < win.end)
+    .map((b) => ({ type: 'event' as const, title: b.title, start: b.start, end: b.end }));
+  const overflow: T[] = [];
+
+  for (const task of tasks) {
+    const need = minutesOf(task) * MIN;
+    const slot = slots.find((s) => s.end.getTime() - s.start.getTime() >= need);
+    if (!slot) {
+      overflow.push(task);
+      continue;
+    }
+    const start = slot.start;
+    const end = new Date(start.getTime() + need);
+    blocks.push({ type: 'task', task, start, end });
+    slot.start = new Date(end.getTime() + BUFFER * MIN);
+  }
+  blocks.sort((a, b) => a.start.getTime() - b.start.getTime());
+  return { blocks, overflow };
+}

@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { capacityFor, writePlanToCalendar } from '@/lib/calendario';
+import { estimate, learn, type Learned } from '@/lib/duraciones';
 import { addDays, schedule } from '@/lib/planner';
 import { countToday, isoDay, START_FREEZES } from '@/lib/streak';
 import { syncDay } from '@/lib/sync';
@@ -33,6 +35,10 @@ type DayState = {
   history: Record<string, 'done' | 'freeze'>;
   /** Account the local data belongs to. A different account on this phone starts from its own data. */
   owner: string | null;
+  /** How long this person really takes, per kind of task (see lib/duraciones). */
+  learned: Learned;
+  /** Task in focus mode and when it was started, to measure real durations. */
+  focus: { id: string; startedAt: number } | null;
 
   setDraft: (text: string) => void;
   /** New tasks from voice / text / screenshot: GetGo places them on the right days. */
@@ -44,22 +50,41 @@ type DayState = {
   moveTo: (id: string, day: string) => void;
   shrink: (id: string) => void;
   rename: (id: string, title: string) => void;
+  /** The person sets how long a task takes; it also teaches GetGo for next time. */
+  setMinutes: (id: string, minutes: number) => void;
+  startFocus: (id: string) => void;
+  /** Re-plan with the latest calendar and durations. */
+  replan: () => void;
+  setSettings: (patch: Partial<Settings>) => void;
   remove: (id: string) => void;
   reset: () => void;
   /** Called after sign-in: wipes another account's local data and loads this account's copy from the server. */
   adoptUser: (userId: string, remote: RemoteSnapshot | null) => void;
 };
 
-export type RemoteSnapshot = Partial<Pick<DayState, 'settings' | 'streak' | 'tasks' | 'history'>>;
+export type RemoteSnapshot = Partial<Pick<DayState, 'settings' | 'streak' | 'tasks' | 'history' | 'learned'>>;
+
+export const DEFAULT_SETTINGS: Settings = {
+  level: 'equilibrado',
+  freeMinutes: 120,
+  notifyAt: '08:00',
+  calendar: 'off',
+  dayStart: '08:00',
+  dayEnd: '22:00',
+};
+/** Settings saved by older versions miss the newer fields. */
+export const withDefaults = (s?: Partial<Settings> | null): Settings => ({ ...DEFAULT_SETTINGS, ...(s ?? {}) });
 
 const initial = {
-  settings: { level: 'equilibrado', freeMinutes: 120, notifyAt: '08:00' } as Settings,
+  settings: DEFAULT_SETTINGS,
   streak: { current: 0, best: 0, freezes: START_FREEZES.equilibrado, lastCountedDate: null } as Streak,
   tasks: [] as Task[],
   lastDay: null as string | null,
   draft: '',
   history: {} as Record<string, 'done' | 'freeze'>,
   owner: null as string | null,
+  learned: {} as Learned,
+  focus: null as { id: string; startedAt: number } | null,
 };
 
 const fromRaw = (r: RawTask, day: string): Task => {
@@ -79,9 +104,14 @@ const fromRaw = (r: RawTask, day: string): Task => {
 export const useDay = create<DayState>()(
   persist(
     (set, get) => {
+      const minutesOf = (t: Task) => estimate(t, get().learned).minutes;
       const commit = (tasks: Task[]) => {
-        set({ tasks: schedule(tasks, { level: get().settings.level, today: today() }) });
+        const settings = withDefaults(get().settings);
+        set({
+          tasks: schedule(tasks, { level: settings.level, today: today(), minutesOf, capacity: capacityFor(settings) }),
+        });
         syncDay(get());
+        writePlanToCalendar(todayList(get().tasks).filter((t) => t.status === 'pendiente'), minutesOf, settings);
       };
       const patch = (id: string, fn: (t: Task) => Task) => commit(get().tasks.map((t) => (t.id === id ? fn(t) : t)));
 
@@ -132,6 +162,12 @@ export const useDay = create<DayState>()(
 
         markDone: (id) => {
           const day = today();
+          // Finished in focus mode: the real time spent teaches GetGo how long this takes for you.
+          const focus = get().focus;
+          const task = get().tasks.find((t) => t.id === id);
+          if (focus && focus.id === id && task) {
+            set({ learned: learn(get().learned, task, (Date.now() - focus.startedAt) / 60_000), focus: null });
+          }
           patch(id, (t) => ({ ...t, status: 'hecha', doneOn: day }));
           // The streak counts when today's list is finished.
           const leftToday = get().tasks.some((t) => t.status === 'pendiente' && t.day <= day);
@@ -164,6 +200,23 @@ export const useDay = create<DayState>()(
 
         rename: (id, title) => patch(id, (t) => ({ ...t, title })),
 
+        setMinutes: (id, minutes) => {
+          const task = get().tasks.find((t) => t.id === id);
+          if (task) set({ learned: learn(get().learned, task, minutes) });
+          patch(id, (t) => ({ ...t, minutes }));
+        },
+
+        startFocus: (id) => {
+          if (get().focus?.id !== id) set({ focus: { id, startedAt: Date.now() } });
+        },
+
+        replan: () => commit(get().tasks),
+
+        setSettings: (patch) => {
+          set({ settings: withDefaults({ ...get().settings, ...patch }) });
+          commit(get().tasks);
+        },
+
         remove: (id) => commit(get().tasks.filter((t) => t.id !== id)),
 
         reset: () => set({ ...initial }),
@@ -176,7 +229,8 @@ export const useDay = create<DayState>()(
             const local = sameOwner ? get().tasks : [];
             const ids = new Set(local.map((t) => t.id));
             set({
-              settings: { ...get().settings, ...remote.settings },
+              settings: withDefaults({ ...get().settings, ...remote.settings }),
+              learned: { ...remote.learned, ...get().learned },
               streak: remote.streak ?? get().streak,
               history: { ...remote.history, ...get().history },
               tasks: [...local, ...(remote.tasks ?? []).filter((t) => !ids.has(t.id))],
@@ -189,13 +243,22 @@ export const useDay = create<DayState>()(
     },
     {
       name: 'getgo-day',
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: ({ settings, streak, tasks, lastDay, history, owner }) => ({ settings, streak, tasks, lastDay, history, owner }),
+      partialize: ({ settings, streak, tasks, lastDay, history, owner, learned, focus }) => ({
+        settings,
+        streak,
+        tasks,
+        lastDay,
+        history,
+        owner,
+        learned,
+        focus,
+      }),
       // v1 kept "plan" (today) and "later" (waiting list) apart: fold both into the single list.
       migrate: (persisted, version) => {
         const s = (persisted ?? {}) as Record<string, unknown>;
-        if (version >= 2) return s as never;
+        if (version >= 2) return { ...s, settings: withDefaults(s.settings as Partial<Settings>), learned: s.learned ?? {} } as never;
         const day = (s.planDate as string | null) ?? today();
         type Old = Omit<RawTask, 'dueInDays'> & { id: string; dueInDays: number | null; postponed?: number; status?: string };
         const conv = (t: Old): Task => ({
@@ -217,7 +280,7 @@ export const useDay = create<DayState>()(
         const plan = ((s.plan as Old[]) ?? []).filter((t) => t.status !== 'quitada').map(conv);
         const later = ((s.later as Old[]) ?? []).map(conv);
         return {
-          settings: s.settings ?? initial.settings,
+          settings: withDefaults(s.settings as Partial<Settings>),
           streak: s.streak ?? initial.streak,
           history: s.history ?? {},
           owner: s.owner ?? null,

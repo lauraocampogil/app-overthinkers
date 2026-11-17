@@ -18,11 +18,11 @@ import { Degradado } from '@/components/Degradado';
 import { Mascota } from '@/components/Mascota';
 import { Ondas } from '@/components/Ondas';
 import { PrimaryButton, Screen } from '@/components/ui';
-import { locale, t } from '@/i18n';
+import { lang, locale, t } from '@/i18n';
 import { lastVoiceError, transcribe } from '@/lib/ai';
 import { useMascot } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
-import { liveSpeechAvailable, requestLivePermission, startLive, type LiveSession } from '@/lib/voz';
+import { liveSpeechAvailable, pickLocale, requestLivePermission, startLive, type LiveSession } from '@/lib/voz';
 import { useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
@@ -73,8 +73,9 @@ export default function Escuchando() {
           if (!cancelled) setPhase('denied');
           return;
         }
+        const speechLocale = await pickLocale(locale, lang);
         if (cancelled) return;
-        session.current = startLive(locale, {
+        session.current = startLive(speechLocale, {
           onText: setHeard,
           onLevel: setLiveLevel,
           onError: (code) => {

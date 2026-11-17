@@ -24,6 +24,31 @@ export async function requestLivePermission(): Promise<boolean> {
   return res.granted;
 }
 
+const DEFAULT_REGION: Record<string, string> = {
+  es: 'es-ES', en: 'en-US', fr: 'fr-FR', nl: 'nl-NL', de: 'de-DE', pt: 'pt-PT', it: 'it-IT',
+};
+
+/**
+ * The phone's language tag (e.g. "es-BE") is not always one the recogniser supports.
+ * Pick the exact tag if supported, else the usual variant of the same language, else any variant of it.
+ */
+export async function pickLocale(locale: string, lang: string): Promise<string> {
+  const fallback = DEFAULT_REGION[lang] ?? locale;
+  if (!native) return fallback;
+  try {
+    const { locales } = await native.getSupportedLocales({});
+    const list = locales.map((l) => l.replace('_', '-'));
+    if (!list.length) return fallback;
+    const exact = list.find((l) => l.toLowerCase() === locale.toLowerCase());
+    if (exact) return exact;
+    const usual = list.find((l) => l.toLowerCase() === fallback.toLowerCase());
+    if (usual) return usual;
+    return list.find((l) => l.toLowerCase().startsWith(`${lang}-`)) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 type Handlers = {
   onText: (text: string) => void;
   /** 0..1 */

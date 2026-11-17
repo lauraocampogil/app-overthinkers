@@ -6,6 +6,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { Ondas } from '@/components/Ondas';
 import { BackIcon, ChevronIcon, IconCircle, PrimaryButton, Screen, TextButton } from '@/components/ui';
 import { minutesLabel, t, whyText } from '@/i18n';
+import { estimate } from '@/lib/duraciones';
 import { todayList, useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
@@ -19,6 +20,8 @@ const Clock = () => (
 export default function Ahora() {
   const tasks = useDay((s) => s.tasks);
   const markDone = useDay((s) => s.markDone);
+  const startFocus = useDay((s) => s.startFocus);
+  const learned = useDay((s) => s.learned);
   const [showWhy, setShowWhy] = useState(true);
 
   // Today's list in order: done ones keep their place in the progress bar.
@@ -29,6 +32,11 @@ export default function Ahora() {
   useEffect(() => {
     if (!current && visible.length) router.replace('/hecho');
   }, [current, visible.length]);
+
+  // The clock starts when a task is on screen in focus mode; "Hecho" stops it and GetGo learns your real time.
+  useEffect(() => {
+    if (current) startFocus(current.id);
+  }, [current?.id, startFocus]);
 
   if (!current) return <Screen>{null}</Screen>;
 
@@ -60,12 +68,19 @@ export default function Ahora() {
         <Text style={[type.title, { fontSize: 36, lineHeight: 40 }]} accessibilityRole="header">
           {current.title}
         </Text>
-        {current.minutes !== null && (
-          <View style={styles.time}>
-            <Clock />
-            <Text style={type.muted}>{minutesLabel(current.minutes)}</Text>
-          </View>
-        )}
+        {(() => {
+          const est = estimate(current, learned);
+          return (
+            <View style={styles.time}>
+              <Clock />
+              <Text style={type.muted}>
+                {est.source === 'guess' ? '~' : ''}
+                {minutesLabel(est.minutes)}
+                {est.source === 'learned' ? ` · ${t('dur.yourAverage')}` : ''}
+              </Text>
+            </View>
+          );
+        })()}
         <View style={styles.why}>
           <Pressable
             accessibilityRole="button"
