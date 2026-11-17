@@ -9,8 +9,8 @@ import {
 import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { type ComponentRef, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
@@ -18,10 +18,11 @@ import { Degradado } from '@/components/Degradado';
 import { Mascota } from '@/components/Mascota';
 import { Ondas } from '@/components/Ondas';
 import { PrimaryButton, Screen } from '@/components/ui';
-import { t } from '@/i18n';
+import { locale, t } from '@/i18n';
 import { transcribe } from '@/lib/ai';
 import { useMascot } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import { liveSpeechAvailable, requestLivePermission, startLive, type LiveSession } from '@/lib/voz';
 import { useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
@@ -29,11 +30,6 @@ type Phase = 'starting' | 'recording' | 'transcribing' | 'denied' | 'failed' | '
 
 const RECORDING = { ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true };
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-const mmss = (ms: number) => {
-  const s = Math.floor(ms / 1000);
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-};
 
 /** iOS needs a play-and-record session that does not mix with other apps before preparing. */
 async function enableRecordingSession() {
@@ -54,17 +50,40 @@ export default function Escuchando() {
   const state = useAudioRecorderState(recorder, 100);
   const setDraft = useDay((s) => s.setDraft);
   const mascot = useMascot();
-  // Without a server there is no real transcription: say so instead of inventing text.
-  const [phase, setPhase] = useState<Phase>(supabase ? 'starting' : 'noServer');
+  // Live mode: the phone's recogniser writes the words while you talk (development / store build).
+  // Fallback (Expo Go): record, then transcribe on the server. Without either, say so instead of inventing text.
+  const [live] = useState(() => liveSpeechAvailable());
+  const [phase, setPhase] = useState<Phase>(live || supabase ? 'starting' : 'noServer');
+  const [heard, setHeard] = useState('');
+  const [liveLevel, setLiveLevel] = useState(0);
+  const session = useRef<LiveSession | null>(null);
   const started = useRef(false);
   const stopping = useRef(false);
+  const scroller = useRef<ComponentRef<typeof ScrollView>>(null);
 
   useEffect(() => {
-    if (!supabase || started.current) return; // guard against the effect running twice
+    if (started.current || (!live && !supabase)) return; // guard against the effect running twice
     started.current = true;
     let cancelled = false;
 
     (async () => {
+      if (live) {
+        if (!(await requestLivePermission())) {
+          if (!cancelled) setPhase('denied');
+          return;
+        }
+        if (cancelled) return;
+        session.current = startLive(locale, {
+          onText: setHeard,
+          onLevel: setLiveLevel,
+          onError: (code) => {
+            console.warn('[voz]', code);
+            if (!stopping.current) setPhase('failed');
+          },
+        });
+        setPhase('recording');
+        return;
+      }
       const perm = await requestRecordingPermissionsAsync();
       if (!perm.granted) {
         if (!cancelled) setPhase('denied');
@@ -90,23 +109,32 @@ export default function Escuchando() {
 
     return () => {
       cancelled = true;
+      session.current?.cancel();
       if (recorder.isRecording) void recorder.stop().catch(() => {});
-      void disableRecordingSession();
+      if (!live) void disableRecordingSession();
     };
-  }, [recorder]);
+  }, [recorder, live]);
 
-  // Metering is in dBFS (about -60 silence .. 0 loud) -> 0..1 for the waves.
-  const level = state.metering === undefined ? 0 : Math.min(1, Math.max(0, (state.metering + 55) / 50));
+  // Metering is in dBFS (about -60 silence .. 0 loud) -> 0..1 for the animation.
+  const meter = state.metering === undefined ? 0 : Math.min(1, Math.max(0, (state.metering + 55) / 50));
+  const level = live ? liveLevel : meter;
 
   const finish = async () => {
     if (stopping.current) return;
     stopping.current = true;
     setPhase('transcribing');
     try {
-      await recorder.stop();
-      await disableRecordingSession();
-      const uri = recorder.uri;
-      const text = uri ? await transcribe(uri) : null;
+      let text: string | null;
+      if (live && session.current) {
+        text = (await session.current.finish()) || null;
+        session.current = null;
+      } else {
+        await recorder.stop();
+        await disableRecordingSession();
+        const uri = recorder.uri;
+        text = uri ? await transcribe(uri) : null;
+        if (text) setHeard(text);
+      }
       if (!text) {
         setPhase('failed');
         stopping.current = false;
@@ -122,6 +150,8 @@ export default function Escuchando() {
   };
 
   const cancel = () => {
+    session.current?.cancel();
+    session.current = null;
     if (recorder.isRecording) void recorder.stop().catch(() => {});
     router.back();
   };
@@ -143,27 +173,36 @@ export default function Escuchando() {
     );
   }
 
-  const live = phase === 'recording' ? level : 0.15;
+  const shown = phase === 'recording' ? level : 0.15;
 
   return (
     <View style={{ flex: 1 }}>
       <StatusBar style="light" />
-      <Degradado level={live} />
+      <Degradado level={shown} />
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-        <View style={styles.timer} accessibilityLabel={t('listen.recording', { time: mmss(state.durationMillis) })}>
-          <View style={styles.dot} />
-          <Text style={styles.timerText}>{mmss(state.durationMillis)}</Text>
-        </View>
-
         <View style={styles.center}>
           {mascot.unlocked ? (
-            <Mascota seed={mascot.seed} size={220} mood="escucha" level={live} />
+            <Mascota seed={mascot.seed} size={220} mood="escucha" level={shown} />
           ) : (
-            <Ondas mode="habla" height={220} level={live} fadeTo="transparent" />
+            <Ondas mode="habla" height={220} level={shown} fadeTo="transparent" />
           )}
-          <Text style={styles.prompt} accessibilityLiveRegion="polite">
-            {t(phase === 'transcribing' ? 'listen.wait' : 'listen.prompt')}
-          </Text>
+          {heard ? (
+            <ScrollView
+              ref={scroller}
+              style={styles.heardBox}
+              contentContainerStyle={styles.heardContent}
+              onContentSizeChange={() => scroller.current?.scrollToEnd({ animated: true })}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.heard} accessibilityLiveRegion="polite">
+                {heard}
+              </Text>
+            </ScrollView>
+          ) : (
+            <Text style={styles.prompt}>
+              {t(phase === 'transcribing' ? 'listen.wait' : live ? 'listen.prompt' : 'listen.promptLater')}
+            </Text>
+          )}
         </View>
 
         <View style={styles.footer}>
@@ -177,7 +216,7 @@ export default function Escuchando() {
           <Text style={styles.hint}>{t(phase === 'recording' ? 'listen.tapToFinish' : 'listen.transcribing')}</Text>
           {phase === 'recording' ? (
             <Pressable accessibilityRole="button" accessibilityLabel={t('listen.finish')} onPress={finish} style={styles.done} hitSlop={8}>
-              <Svg width={30} height={30} viewBox="0 0 24 24" fill="none">
+              <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
                 <Path d="M5 12.5l4.5 4.5L19 7.5" stroke={colors.accentDark} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
               </Svg>
             </Pressable>
@@ -194,10 +233,10 @@ export default function Escuchando() {
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: 24, paddingBottom: 12 },
-  timer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 44, marginTop: 8 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF' },
-  timerText: { fontFamily: fonts.medium, fontSize: 15, color: '#FFFFFF', fontVariant: ['tabular-nums'] },
-  center: { flex: 1, justifyContent: 'center', gap: 28 },
+  center: { flex: 1, justifyContent: 'center', gap: 28, paddingTop: 24 },
+  heardBox: { maxHeight: 260, flexGrow: 0 },
+  heardContent: { paddingHorizontal: 28 },
+  heard: { fontFamily: fonts.semibold, fontSize: 28, lineHeight: 35, letterSpacing: -0.6, color: '#FFFFFF', textAlign: 'center' },
   prompt: {
     fontFamily: fonts.semibold,
     fontSize: 32,
@@ -209,9 +248,9 @@ const styles = StyleSheet.create({
   },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 12 },
   cancel: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
@@ -219,7 +258,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.45)',
     backgroundColor: 'rgba(255,255,255,0.18)',
   },
-  done: { width: 88, height: 88, borderRadius: 44, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  done: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
   hint: { fontFamily: fonts.medium, fontSize: 14, color: 'rgba(255,255,255,0.8)' },
   secondary: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   secondaryText: { fontFamily: fonts.regular, fontSize: 15, color: colors.muted },

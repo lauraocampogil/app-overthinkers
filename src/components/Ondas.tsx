@@ -63,7 +63,7 @@ function Wave({ width, height, amp, phase, speed, stroke, opacity }: {
   );
 }
 
-export function Ondas({ mode, height = 300, level = 0, fadeTo = colors.bgTop }: Props) {
+export function Ondas({ mode, height = 300, level = 0, fadeTo = 'transparent' }: Props) {
   const { width } = useWindowDimensions();
   const cfg = CONFIG[mode];
   const boost = 1 + Math.min(1, Math.max(0, level)) * 1.4;

@@ -1,21 +1,26 @@
+/** Palette: soft pink → lilac → purple, with a peach glow (same family as the voice screen). */
 export const colors = {
-  bgTop: '#FAF9FF',
-  bgBottom: '#F0EDFF',
+  bgTop: '#FCE9F5',
+  bgMid: '#F4E8FF',
+  bgBottom: '#E8DCFF',
+  pink: '#F49AC9',
+  peach: '#FFB997',
+  lilac: '#C77DFF',
   ink: '#1F1A3D',
   muted: '#6B6790',
   faint: '#A7A3C4',
   line: '#E4E0F5',
-  soft: '#F2F0FF',
-  accent: '#6E5BFF',
-  accentDark: '#5A44F2',
-  accentLight: '#8B7BFF',
+  soft: '#F5ECFF',
+  accent: '#8A5CFF',
+  accentDark: '#6A3FEF',
+  accentLight: '#C27CFF',
   white: '#FFFFFF',
 } as const;
 
 export const gradients = {
-  background: [colors.bgTop, colors.bgBottom] as const,
+  background: [colors.bgTop, colors.bgMid, colors.bgBottom] as const,
   action: [colors.accentLight, colors.accentDark] as const,
-  mic: ['#A98BFF', '#7C4DFF', '#5B2FE6'] as const,
+  mic: ['#F59ACB', '#B47CFF', '#7C4DFF'] as const,
 };
 
 export const fonts = {

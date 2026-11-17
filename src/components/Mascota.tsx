@@ -32,13 +32,20 @@ type Props = {
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
-const PALETTES = [
-  { rim: '#D4CBFF', a: '#5B6CFF', b: '#FF9F7A' }, // lavender · blue · peach
-  { rim: '#E4D8FF', a: '#8F5BFF', b: '#FF7AC8' }, // lilac · violet · pink
-  { rim: '#D2E2FF', a: '#4C8DFF', b: '#B98BFF' }, // ice · blue · purple
-  { rim: '#FFE3D2', a: '#7C4DFF', b: '#FFB15C' }, // cream · purple · amber
-  { rim: '#D8F0FF', a: '#6E5BFF', b: '#5FD3C6' }, // sky · indigo · mint
-];
+/** HSL → hex, so every mascot can get its own exact colour family (not just one of a few presets). */
+function hsl(h: number, s: number, l: number) {
+  const hh = ((h % 360) + 360) % 360;
+  const a = (s / 100) * Math.min(l / 100, 1 - l / 100);
+  const f = (n: number) => {
+    const k = (n + hh / 30) % 12;
+    const c = l / 100 - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(c * 255).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+/** Base hues for the colour families: violet, lilac, magenta, berry, indigo, blue. */
+const HUES = [258, 272, 292, 318, 238, 222];
 
 /** Small deterministic PRNG so a seed always gives the same mascot. */
 function rng(seed: string) {
@@ -58,8 +65,18 @@ function rng(seed: string) {
 export function mascotTraits(seed: string) {
   const r = rng(seed || 'getgo');
   const pick = <T,>(xs: T[]) => xs[Math.floor(r() * xs.length)];
+  // Family + a personal shift of up to ±14° → practically no two people share the exact colours.
+  const hue = pick(HUES) + (r() - 0.5) * 28;
+  const palette = {
+    core: hsl(hue, 55, 40),
+    mid: hsl(hue, 70, 58),
+    edge: hsl(hue, 85, 76),
+    rim: hsl(hue + 18, 95, 92),
+    a: hsl(hue - 45, 90, 66),
+    b: hsl(hue + 65, 95, 74),
+  };
   return {
-    palette: pick(PALETTES),
+    palette,
     lobes: pick([5, 6, 6, 7]),
     wobble: 0.032 + r() * 0.02,
     twist: r() * Math.PI * 2,
@@ -183,7 +200,7 @@ export function Mascota({ seed, size = 260, mood = 'calma', level = 0 }: Props) 
   return (
     <View style={{ width: size, height: size, alignSelf: 'center' }} accessible accessibilityRole="image" accessibilityLabel="GetGo">
       {PARTICLES.map((p, i) => (
-        <Particle key={i} {...p} size={size} color={palette.a} />
+        <Particle key={i} {...p} size={size} color={palette.edge} />
       ))}
       <Animated.View style={[StyleSheet.absoluteFill, float]}>
         <Svg width={size} height={size} viewBox={`0 0 ${VB} ${VB}`}>
@@ -193,10 +210,10 @@ export function Mascota({ seed, size = 260, mood = 'calma', level = 0 }: Props) 
               <Stop offset="1" stopColor="#7C4DFF" stopOpacity="0" />
             </RadialGradient>
             <RadialGradient id={`${id}b`} cx="52%" cy="56%" r="54%">
-              <Stop offset="0" stopColor="#07051A" />
-              <Stop offset="0.55" stopColor="#120E2B" />
-              <Stop offset="0.82" stopColor="#2B2457" />
-              <Stop offset="0.97" stopColor={palette.rim} />
+              <Stop offset="0" stopColor={palette.core} />
+              <Stop offset="0.5" stopColor={palette.mid} />
+              <Stop offset="0.82" stopColor={palette.edge} />
+              <Stop offset="0.98" stopColor={palette.rim} />
             </RadialGradient>
             <SvgLinear id={`${id}a`} x1="0" y1="0" x2="1" y2="1">
               <Stop offset="0" stopColor={palette.a} stopOpacity="0.75" />
@@ -211,7 +228,7 @@ export function Mascota({ seed, size = 260, mood = 'calma', level = 0 }: Props) 
               <Stop offset="1" stopColor="#FFFFFF" stopOpacity="0.35" />
             </SvgLinear>
             <RadialGradient id={`${id}s`} cx="36%" cy="28%" r="30%">
-              <Stop offset="0" stopColor="#FFFFFF" stopOpacity="0.55" />
+              <Stop offset="0" stopColor="#FFFFFF" stopOpacity="0.7" />
               <Stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
             </RadialGradient>
           </Defs>
@@ -235,10 +252,18 @@ export function Mascota({ seed, size = 260, mood = 'calma', level = 0 }: Props) 
             {[0, 1].map((i) => (
               <LinearGradient
                 key={i}
-                colors={['#FFFFFF', '#DCD8EE']}
+                colors={['#FFFFFF', '#EEEAFB']}
                 start={{ x: 0.3, y: 0 }}
                 end={{ x: 0.7, y: 1 }}
-                style={{ width: eyeW, height: eyeH, borderRadius: eyeW / 2 }}
+                style={{
+                  width: eyeW,
+                  height: eyeH,
+                  borderRadius: eyeW / 2,
+                  shadowColor: palette.core,
+                  shadowOpacity: 0.5,
+                  shadowRadius: 4,
+                  shadowOffset: { width: 0, height: 1 },
+                }}
               />
             ))}
           </Animated.View>

@@ -43,6 +43,13 @@
           "cameraPermission": false,
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Usamos el micrófono para que puedas soltar lo que tienes en la cabeza hablando.",
+          "speechRecognitionPermission": "GetGo escribe lo que dices mientras hablas para poder ordenar tus tareas."
+        }
       ]
     ],
     "experiments": {

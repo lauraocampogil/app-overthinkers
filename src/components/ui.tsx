@@ -4,18 +4,46 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path, Rect } from 'react-native-svg';
+import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { t } from '@/i18n';
 import { colors, fonts, gradients } from '@/theme';
 
 export function Screen({ children, style }: { children: ReactNode; style?: ViewStyle }) {
   return (
-    <LinearGradient colors={gradients.background} style={{ flex: 1 }}>
+    <LinearGradient colors={gradients.background} locations={[0, 0.45, 1]} style={{ flex: 1 }}>
+      <Glows />
       <SafeAreaView style={[{ flex: 1 }, style]} edges={['top', 'bottom']}>
         {children}
       </SafeAreaView>
     </LinearGradient>
+  );
+}
+
+/** Two soft, static colour glows (peach and pink) at the top, like the voice screen but calmer. */
+function Glows() {
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Svg width="100%" height="100%">
+        <Defs>
+          <RadialGradient id="glowPeach" cx="85%" cy="4%" r="55%">
+            <Stop offset="0" stopColor={colors.peach} stopOpacity="0.45" />
+            <Stop offset="1" stopColor={colors.peach} stopOpacity="0" />
+          </RadialGradient>
+          <RadialGradient id="glowPink" cx="5%" cy="18%" r="60%">
+            <Stop offset="0" stopColor={colors.pink} stopOpacity="0.32" />
+            <Stop offset="1" stopColor={colors.pink} stopOpacity="0" />
+          </RadialGradient>
+          <RadialGradient id="glowLilac" cx="60%" cy="100%" r="65%">
+            <Stop offset="0" stopColor={colors.lilac} stopOpacity="0.28" />
+            <Stop offset="1" stopColor={colors.lilac} stopOpacity="0" />
+          </RadialGradient>
+        </Defs>
+        <Rect width="100%" height="100%" fill="url(#glowPeach)" />
+        <Rect width="100%" height="100%" fill="url(#glowPink)" />
+        <Rect width="100%" height="100%" fill="url(#glowLilac)" />
+      </Svg>
+    </View>
   );
 }
 
