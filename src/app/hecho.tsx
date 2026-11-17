@@ -1,7 +1,9 @@
 import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Mascota } from '@/components/Mascota';
 import { Ondas } from '@/components/Ondas';
+import { useMascot } from '@/lib/auth';
 import { PrimaryButton, Screen } from '@/components/ui';
 import { t, weekdayLetter } from '@/i18n';
 import { isoDay } from '@/lib/streak';
@@ -23,10 +25,12 @@ export default function Hecho() {
     return { letter: weekdayLetter(d), filled: back >= 0 && back < streak.current, today: i === 6 };
   });
 
+  const mascot = useMascot();
+
   return (
     <Screen>
       <View style={{ marginTop: 48 }}>
-        <Ondas mode="hecho" height={300} />
+        {mascot.unlocked ? <Mascota seed={mascot.seed} size={240} mood="feliz" /> : <Ondas mode="hecho" height={300} />}
       </View>
       <View style={styles.text}>
         <Text style={[type.title, { textAlign: 'center' }]} accessibilityRole="header">{t('finished.title')}</Text>

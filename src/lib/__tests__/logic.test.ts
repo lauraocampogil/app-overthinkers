@@ -26,6 +26,11 @@ describe('parseLocal', () => {
     expect(tasks.find((t) => t.title.startsWith('Examen'))?.dueInDays).toBe(3);
   });
 
+  it('never invents durations, only keeps the ones the person says', () => {
+    const { tasks } = parseLocal('ir al gym, 1 hora de estudio, cardio 20 min, media hora de lectura', MONDAY);
+    expect(tasks.map((t) => t.minutes)).toEqual([null, 60, 20, 30]);
+  });
+
   it('reads relative deadlines', () => {
     expect(dueInDaysFrom('entregar hoy', MONDAY)).toBe(0);
     expect(dueInDaysFrom('llamar mañana', MONDAY)).toBe(1);
@@ -36,10 +41,10 @@ describe('parseLocal', () => {
 
 describe('planDay', () => {
   it('starts with a quick win, studies before sport and puts strength before cardio', () => {
-    const { tasks, tired } = toTasks('cardio, gym, estudiar mates, contestar a mi jefe');
+    const { tasks, tired } = toTasks('cardio, gym, estudiar mates, contestar a mi jefe 5 min');
     const { planned } = planDay(tasks, { level: 'equilibrado', freeMinutes: 180, tired });
     const titles = planned.map((t) => t.title);
-    expect(titles[0]).toBe('Contestar a mi jefe');
+    expect(titles[0]).toBe('Contestar a mi jefe 5 min');
     expect(titles.indexOf('Estudiar mates')).toBeLessThan(titles.indexOf('Gym'));
     expect(titles.indexOf('Gym')).toBeLessThan(titles.indexOf('Cardio'));
     expect(planned[0].why).toContain('why.quick');
@@ -57,7 +62,7 @@ describe('planDay', () => {
     expect(planned[0].why).toContain('why.important');
   });
 
-  it('respects capacity and the per-level maximum, but urgent always goes in', () => {
+  it('respects the per-level maximum, but urgent always goes in', () => {
     const base: Omit<Task, 'id' | 'title'> = { minutes: 30, dueInDays: null, energy: 'baja', kind: 'otro', importance: 1, postponed: 0 };
     const tasks: Task[] = Array.from({ length: 6 }, (_, i) => ({ ...base, id: `x${i}`, title: `Tarea ${i}` }));
     tasks.push({ ...base, id: 'urgent', title: 'Entregar hoy', dueInDays: 0, minutes: 40 });

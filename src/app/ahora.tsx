@@ -59,10 +59,12 @@ export default function Ahora() {
         <Text style={[type.title, { fontSize: 36, lineHeight: 40 }]} accessibilityRole="header">
           {current.title}
         </Text>
-        <View style={styles.time}>
-          <Clock />
-          <Text style={type.muted}>{minutesLabel(current.minutes)}</Text>
-        </View>
+        {current.minutes !== null && (
+          <View style={styles.time}>
+            <Clock />
+            <Text style={type.muted}>{minutesLabel(current.minutes)}</Text>
+          </View>
+        )}
         <View style={styles.why}>
           <Pressable
             accessibilityRole="button"

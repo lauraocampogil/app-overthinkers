@@ -1,4 +1,5 @@
 import * as Clipboard from 'expo-clipboard';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -78,11 +79,22 @@ export default function Escribir() {
       setNotice(t('write.needServer'));
       return;
     }
-    const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 0.6 });
+    const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
     const asset = picked.canceled ? null : picked.assets[0];
-    if (!asset?.base64) return;
+    if (!asset?.uri) return;
     setReading(true);
-    const tasks = await tasksFromImage(asset.base64, asset.mimeType ?? 'image/jpeg');
+    let tasks = null;
+    try {
+      // Full-size PNG screenshots (or HEIC photos) are too big / not accepted by the AI:
+      // send a 1080 px wide JPEG instead, which keeps message text readable.
+      const ctx = ImageManipulator.manipulate(asset.uri);
+      if ((asset.width ?? 0) > 1080) ctx.resize({ width: 1080 });
+      const image = await ctx.renderAsync();
+      const out = await image.saveAsync({ format: SaveFormat.JPEG, compress: 0.75, base64: true });
+      if (out.base64) tasks = await tasksFromImage(out.base64, 'image/jpeg');
+    } catch (e) {
+      console.warn('[write] screenshot', e);
+    }
     setReading(false);
     if (!tasks || !tasks.length) {
       setNotice(t('write.importFailed'));

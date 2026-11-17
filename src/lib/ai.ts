@@ -11,7 +11,9 @@ function sanitize(raw: unknown): RawTask | null {
   const r = raw as Record<string, unknown>;
   const title = typeof r.title === 'string' ? r.title.trim() : '';
   if (!title) return null;
-  const minutes = Math.min(240, Math.max(5, Math.round(Number(r.minutes) || 20)));
+  // Only a duration the person actually gave; anything else stays unknown.
+  const n = Math.round(Number(r.minutes));
+  const minutes = r.minutes === null || r.minutes === undefined || !Number.isFinite(n) || n <= 0 ? null : Math.min(480, Math.max(1, n));
   const due = r.dueInDays === null || r.dueInDays === undefined ? null : Math.max(0, Math.round(Number(r.dueInDays)));
   const energy: Energy = r.energy === 'alta' ? 'alta' : 'baja';
   const kind: Kind = KINDS.includes(r.kind as Kind) ? (r.kind as Kind) : 'otro';
@@ -21,7 +23,7 @@ function sanitize(raw: unknown): RawTask | null {
   return { title, minutes, dueInDays: Number.isNaN(due) ? null : due, energy, kind, sport, importance };
 }
 
-/** Brain dump -> tasks. Uses the plan-day Edge Function (Claude) and falls back to the local parser. */
+/** Brain dump -> tasks. Uses the plan-day Edge Function (Groq or Claude) and falls back to the local parser. */
 export async function parseBrainDump(text: string): Promise<ParseResult & { source: 'ia' | 'local' }> {
   if (supabase) {
     try {
@@ -52,7 +54,9 @@ export async function tasksFromImage(base64: string, mediaType = 'image/jpeg'): 
     if (error) throw error;
     return ((Array.isArray(data?.tasks) ? data.tasks : []).map(sanitize).filter(Boolean) as RawTask[]);
   } catch (e) {
-    console.warn('[ai] image failed', e);
+    const ctx = (e as { context?: Response }).context;
+    const detail = ctx && typeof ctx.text === 'function' ? await ctx.text().catch(() => '') : '';
+    console.warn('[ai] image failed', e, detail);
     return null;
   }
 }

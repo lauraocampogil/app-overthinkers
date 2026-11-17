@@ -2,7 +2,8 @@ import type { Energy, Kind, ParseResult, RawTask } from './types';
 
 /**
  * Offline fallback when the AI is not configured: splits the brain dump into tasks
- * and guesses duration, type, energy and deadline from common Spanish words.
+ * and guesses type, energy and deadline from common Spanish words. A duration is only kept
+ * when the person says it ("1 hora de gym", "20 min"); GetGo never invents one.
  */
 const TIRED = /\b(cansad[oa]s?|agotad[oa]s?|sin energ[ií]a|reventad[oa]s?|con sueño)\b/i;
 
@@ -13,14 +14,15 @@ const KIND_WORDS: Array<[Kind, RegExp]> = [
   ['casa', /\b(lavar|ropa|limpiar|compra|comprar|cocinar|basura|ordenar|recoger|banco|farmacia|recado)\b/i],
 ];
 
-const MINUTES: Array<[RegExp, number]> = [
-  [/\b(contestar|responder|llamar|mandar|enviar|pagar|reservar)\b/i, 10],
-  [/\b(examen|estudi\w*|informe|presentaci[oó]n|propuesta)\b/i, 45],
-  [/\b(gym|gimnasio|fuerza|pesas|entren\w*)\b/i, 45],
-  [/\b(cardio|correr|bici)\b/i, 20],
-  [/\b(lavar|ropa|basura|recoger)\b/i, 15],
-  [/\b(compra|comprar|cocinar|limpiar)\b/i, 30],
-];
+export function minutesFrom(text: string): number | null {
+  if (/\bmedia hora\b/i.test(text)) return 30;
+  if (/\bhora y media\b/i.test(text)) return 90;
+  if (/\b(una|1) hora\b/i.test(text)) return 60;
+  const h = text.match(/\b(\d+(?:[.,]\d+)?)\s*(h|hs|horas?)\b/i);
+  if (h) return Math.round(parseFloat(h[1].replace(',', '.')) * 60);
+  const m = text.match(/\b(\d+)\s*(m|min|mins|minutos?)\b/i);
+  return m ? Number(m[1]) : null;
+}
 
 const WEEKDAYS = ['domingo', 'lunes', 'martes', 'mi[eé]rcoles', 'jueves', 'viernes', 's[aá]bado'];
 
@@ -56,8 +58,8 @@ export function parseLocal(text: string, today: Date = new Date()): ParseResult 
   // "gym y cardio" is split on " y " too, so the planner can order strength before cardio.
   for (const p of pieces) {
     const kind = KIND_WORDS.find(([, re]) => re.test(p))?.[0] ?? 'otro';
-    const minutes = MINUTES.find(([re]) => re.test(p))?.[1] ?? 20;
-    const energy: Energy = minutes >= 30 || kind === 'estudio' ? 'alta' : 'baja';
+    const minutes = minutesFrom(p);
+    const energy: Energy = kind === 'estudio' || kind === 'deporte' || (minutes ?? 0) >= 30 ? 'alta' : 'baja';
     const sport = /\b(cardio|correr|bici)\b/i.test(p) ? 'cardio' : /\b(gym|gimnasio|fuerza|pesas)\b/i.test(p) ? 'fuerza' : null;
     const dueInDays = dueInDaysFrom(p, today);
     const importance: 1 | 2 | 3 =

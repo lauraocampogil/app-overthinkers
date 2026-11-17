@@ -86,3 +86,21 @@ export async function deleteAccount(): Promise<boolean> {
   await supabase.auth.signOut();
   return true;
 }
+
+const MASCOT_AFTER_DAYS = 7;
+
+/**
+ * The halo turns into the person's own mascot one week after the account was created.
+ * EXPO_PUBLIC_MASCOT_PREVIEW=1 in .env shows it straight away (for design reviews).
+ */
+export function useMascot() {
+  const user = useAuth((s) => s.session?.user);
+  const created = user?.created_at ? new Date(user.created_at).getTime() : Date.now();
+  const days = Math.floor((Date.now() - created) / 86_400_000);
+  const preview = process.env.EXPO_PUBLIC_MASCOT_PREVIEW === '1';
+  return {
+    seed: user?.id ?? 'getgo',
+    unlocked: preview || days >= MASCOT_AFTER_DAYS,
+    daysLeft: Math.max(0, MASCOT_AFTER_DAYS - days),
+  };
+}

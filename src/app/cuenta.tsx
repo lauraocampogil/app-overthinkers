@@ -4,7 +4,8 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'rea
 
 import { BackIcon, IconCircle, Screen } from '@/components/ui';
 import { t } from '@/i18n';
-import { deleteAccount, signOut, useAuth } from '@/lib/auth';
+import { Mascota } from '@/components/Mascota';
+import { deleteAccount, signOut, useAuth, useMascot } from '@/lib/auth';
 import { useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
@@ -12,6 +13,7 @@ export default function Cuenta() {
   const user = useAuth((s) => s.session?.user);
   const reset = useDay((s) => s.reset);
   const [deleting, setDeleting] = useState(false);
+  const mascot = useMascot();
 
   const name = (user?.user_metadata?.full_name as string | undefined) ?? (user?.user_metadata?.name as string | undefined);
   const email = user?.email ?? '';
@@ -47,6 +49,17 @@ export default function Cuenta() {
           {name ? <Text style={styles.name}>{name}</Text> : null}
           {email ? <Text style={styles.email}>{email}</Text> : null}
           <Text style={styles.provider}>{t('account.via', { provider })}</Text>
+        </View>
+
+        <View style={[styles.card, { alignItems: 'center' }]}>
+          {mascot.unlocked ? (
+            <>
+              <Mascota seed={mascot.seed} size={140} />
+              <Text style={[type.muted, { textAlign: 'center' }]}>{t('mascot.yours')}</Text>
+            </>
+          ) : (
+            <Text style={type.muted}>{t('mascot.soon', { n: mascot.daysLeft })}</Text>
+          )}
         </View>
 
         <Pressable accessibilityRole="button" onPress={() => void signOut()} style={styles.row}>

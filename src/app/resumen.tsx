@@ -4,7 +4,6 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import Svg, { Path } from 'react-native-svg';
 
 import { BackIcon, CheckIcon, IconCircle, PlusIcon, PrimaryButton, Screen } from '@/components/ui';
-import { CAPACITY_SHARE } from '@/lib/planner';
 import { minutesLabel, t } from '@/i18n';
 import { totalMinutes, useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
@@ -18,13 +17,14 @@ const Arrow = ({ up }: { up: boolean }) => (
 export default function Resumen() {
   const plan = useDay((s) => s.plan);
   const later = useDay((s) => s.later);
-  const freeMinutes = useDay((s) => s.settings.freeMinutes);
-  const { rename, remove, add, move } = useDay.getState();
+  const { rename, remove, add, move, markDone, undoDone } = useDay.getState();
   const [editing, setEditing] = useState(false);
 
   const visible = plan.filter((t) => t.status !== 'quitada');
+  // Time is only shown when the person gave a duration for every task: GetGo never guesses.
+  const allTimed = visible.length > 0 && visible.every((t) => t.minutes !== null);
   const total = totalMinutes(visible);
-  const fits = total <= freeMinutes * CAPACITY_SHARE;
+  const doneCount = visible.filter((t) => t.status === 'hecha').length;
 
   return (
     <Screen>
@@ -45,13 +45,11 @@ export default function Resumen() {
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <View style={{ gap: 8 }}>
           <Text style={type.title} accessibilityRole="header">{t('summary.title')}</Text>
-          <Text style={type.muted}>{t('summary.count', { n: visible.length, time: minutesLabel(total) })}</Text>
-          <View style={styles.fit}>
-            <CheckIcon color={fits ? colors.accentDark : colors.muted} size={16} />
-            <Text style={[styles.fitText, !fits && { color: colors.muted }]}>
-              {t(fits ? 'summary.fits' : 'summary.tooMuch')}
-            </Text>
-          </View>
+          <Text style={type.muted}>
+            {t('summary.tasks', { n: visible.length })}
+            {allTimed ? ` · ${minutesLabel(total)}` : ''}
+            {doneCount ? ` · ${t('summary.doneCount', { n: doneCount })}` : ''}
+          </Text>
         </View>
 
         <View style={styles.list}>
@@ -68,9 +66,16 @@ export default function Resumen() {
                   <Text style={[styles.badgeText, { fontSize: 18, lineHeight: 20 }]}>−</Text>
                 </Pressable>
               ) : (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{i + 1}</Text>
-                </View>
+                <Pressable
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: task.status === 'hecha' }}
+                  accessibilityLabel={task.title}
+                  onPress={() => (task.status === 'hecha' ? undoDone(task.id) : markDone(task.id))}
+                  style={[styles.check, task.status === 'hecha' && styles.checkOn]}
+                  hitSlop={10}
+                >
+                  {task.status === 'hecha' ? <CheckIcon color={colors.white} size={14} /> : null}
+                </Pressable>
               )}
               <View style={{ flex: 1, gap: 2 }}>
                 {editing ? (
@@ -81,16 +86,13 @@ export default function Resumen() {
                     style={styles.input}
                   />
                 ) : (
-                  <Text style={styles.title}>{task.title}</Text>
+                  <Text style={[styles.title, task.status === 'hecha' && styles.titleDone]}>{task.title}</Text>
                 )}
                 <View style={styles.meta}>
                   <View style={[styles.imp, task.importance === 3 && styles.impHigh, task.importance === 1 && styles.impLow]}>
                     <Text style={[styles.impText, task.importance === 3 && { color: colors.white }]}>{t(`imp.${task.importance}`)}</Text>
                   </View>
-                  <Text style={styles.time}>
-                    {minutesLabel(task.minutes)}
-                    {task.status === 'hecha' ? t('summary.doneSuffix') : ''}
-                  </Text>
+                  {task.minutes !== null ? <Text style={styles.time}>{minutesLabel(task.minutes)}</Text> : null}
                 </View>
               </View>
               {editing && (
@@ -124,7 +126,11 @@ export default function Resumen() {
         {editing ? (
           <PrimaryButton dark label={t('summary.save')} onPress={() => setEditing(false)} />
         ) : (
-          <PrimaryButton label={t('summary.start')} onPress={() => router.push('/ahora')} disabled={!visible.length} />
+          <PrimaryButton
+            label={t(doneCount === visible.length && visible.length ? 'summary.allDone' : doneCount ? 'summary.continue' : 'summary.start')}
+            onPress={() => router.push(doneCount === visible.length ? '/hecho' : '/ahora')}
+            disabled={!visible.length}
+          />
         )}
       </View>
     </Screen>
@@ -136,11 +142,12 @@ const styles = StyleSheet.create({
   editBtn: { height: 40, paddingHorizontal: 18, borderRadius: 20, borderWidth: 1, borderColor: '#DEDAF0', backgroundColor: colors.white, justifyContent: 'center' },
   editText: { fontFamily: fonts.medium, fontSize: 15, color: colors.ink },
   body: { paddingHorizontal: 24, paddingTop: 22, paddingBottom: 24, gap: 22 },
-  fit: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  fitText: { fontFamily: fonts.regular, fontSize: 14, color: colors.accentDark },
   list: { borderRadius: 24, backgroundColor: colors.white, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 68, paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F0EDFA' },
   badge: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.soft, alignItems: 'center', justifyContent: 'center' },
+  check: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: '#CFC8F0', alignItems: 'center', justifyContent: 'center' },
+  checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+  titleDone: { color: colors.muted, textDecorationLine: 'line-through' },
   badgeText: { fontFamily: fonts.medium, fontSize: 13, color: colors.accentDark },
   title: { fontFamily: fonts.medium, fontSize: 16, color: colors.ink },
   time: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted },

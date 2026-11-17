@@ -22,7 +22,8 @@ export default function NoPuedo() {
     router.back();
   };
 
-  const half = task ? Math.max(10, Math.round(task.minutes / 2 / 5) * 5) : 10;
+  const full = task?.minutes ?? null;
+  const half = full !== null ? Math.max(5, Math.round(full / 2 / 5) * 5) : null;
 
   return (
     <View style={styles.overlay}>
@@ -52,7 +53,7 @@ export default function NoPuedo() {
         </View>
 
         <View>
-          <Option title={t('cant.smaller')} subtitle={task ? t('cant.smallerSub', { half, full: task.minutes }) : undefined} onPress={() => act(shrink)} />
+          <Option title={t('cant.smaller')} subtitle={full !== null && half !== null ? t('cant.smallerSub', { half, full }) : t('cant.smallerStep')} onPress={() => act(shrink)} />
           <Option title={t('cant.tomorrow')} subtitle={t('cant.tomorrowSub')} onPress={() => act(postpone)} />
           <Option title={t('cant.notNeeded')} onPress={() => act(drop)} last />
         </View>

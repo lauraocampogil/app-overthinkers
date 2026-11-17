@@ -5,7 +5,8 @@ export type Kind = 'trabajo' | 'estudio' | 'deporte' | 'casa' | 'otro';
 /** A task as understood from the brain dump (by the AI or the local parser). */
 export type RawTask = {
   title: string;
-  minutes: number;
+  /** Only when the person said how long it takes ("1 h de gym"). GetGo never invents durations. */
+  minutes: number | null;
   /** Days until it is due (0 = today). null when there is no deadline. */
   dueInDays: number | null;
   energy: Energy;
@@ -30,7 +31,7 @@ export type PlannedTask = Task & {
 
 export type Settings = {
   level: Level;
-  /** Free minutes per day the person said they have. */
+  /** Free minutes per day (kept for the server schema; the planner no longer fills by time). */
   freeMinutes: number;
   notifyAt: string;
 };

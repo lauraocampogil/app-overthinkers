@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Ondas } from '@/components/Ondas';
@@ -12,7 +12,9 @@ import { colors, fonts, type } from '@/theme';
 const MIN_MS = 1800; // long enough to feel the app is thinking for you, short enough not to wait
 
 export default function Ordenando() {
-  const draft = useDay((s) => s.draft);
+  // Read the brain dump once: buildPlan() clears the draft, and re-running on that change
+  // used to parse an empty text and flash "no he entendido" before the real result.
+  const draftRef = useRef(useDay.getState().draft);
   const buildPlan = useDay((s) => s.buildPlan);
   const [steps, setSteps] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
@@ -22,7 +24,12 @@ export default function Ordenando() {
     let alive = true;
     const started = Date.now();
     (async () => {
-      const result = await parseBrainDump(draft);
+      const text = draftRef.current.trim();
+      if (!text) {
+        setEmpty(true);
+        return;
+      }
+      const result = await parseBrainDump(text);
       if (!alive) return;
       if (!result.tasks.length) {
         setEmpty(true);
@@ -42,7 +49,7 @@ export default function Ordenando() {
     return () => {
       alive = false;
     };
-  }, [draft, buildPlan]);
+  }, [buildPlan]);
 
   if (empty) {
     return (

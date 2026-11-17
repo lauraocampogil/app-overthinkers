@@ -1,18 +1,16 @@
 import type { Level, PlannedTask, Task } from './types';
 
 export const MAX_TASKS: Record<Level, number> = { suave: 3, equilibrado: 5, duro: 7 };
-/** Share of the free time we fill, leaving a margin in case something runs long. */
-export const CAPACITY_SHARE = 0.8;
 export const QUICK_MINUTES = 10;
 export const SPLIT_OVER = 60;
 export const BLOCK_MINUTES = 45;
 
-type PlanOptions = { level: Level; freeMinutes: number; tired: boolean };
+type PlanOptions = { level: Level; freeMinutes?: number; tired: boolean };
 export type PlanResult = { planned: PlannedTask[]; later: Task[] };
 
 const round5 = (n: number) => Math.max(5, Math.round(n / 5) * 5);
 const isUrgent = (t: Task) => t.dueInDays !== null && t.dueInDays <= 2;
-const isQuick = (t: Task) => t.minutes <= QUICK_MINUTES;
+const isQuick = (t: Task) => t.minutes !== null && t.minutes <= QUICK_MINUTES;
 
 function score(t: Task): number {
   let s = t.importance * 30;
@@ -28,45 +26,41 @@ function byImportance(a: Task, b: Task): number {
   return (
     b.importance - a.importance ||
     (a.dueInDays ?? 99) - (b.dueInDays ?? 99) ||
-    a.minutes - b.minutes ||
+    (a.minutes ?? 999) - (b.minutes ?? 999) ||
     score(b) - score(a)
   );
 }
 
-/** Turns a messy list into a short, ordered plan that fits the day. Pure and deterministic. */
+/**
+ * Turns a messy list into a short, ordered to-do list for today. Pure and deterministic.
+ * Durations are only used when the person gave them; how many tasks go in depends on the level.
+ */
 export function planDay(input: Task[], opts: PlanOptions): PlanResult {
   const later: Task[] = [];
   const shrunk = new Set<string>();
 
-  // 1. Low energy: make the heavy tasks shorter instead of dropping them.
-  // 2. Anything longer than an hour is split; only the first block goes in today.
+  // 1. Low energy: make the heavy tasks shorter instead of dropping them (only if we know how long they are).
+  // 2. Anything the person said takes over an hour is split; only the first block goes in today.
   const tasks = input.flatMap((t): Task[] => {
     let task = t;
-    if (opts.tired && task.energy === 'alta' && task.minutes > 15) {
+    if (opts.tired && task.energy === 'alta' && task.minutes !== null && task.minutes > 15) {
       task = { ...task, minutes: Math.max(10, round5(task.minutes * 0.7)) };
       shrunk.add(task.id);
     }
-    if (task.minutes > SPLIT_OVER) {
+    if (task.minutes !== null && task.minutes > SPLIT_OVER) {
       later.push({ ...task, id: `${task.id}-b`, title: `${task.title} (continuación)`, minutes: task.minutes - BLOCK_MINUTES });
       return [{ ...task, title: `${task.title} (parte 1)`, minutes: BLOCK_MINUTES }];
     }
     return [task];
   });
 
-  // 3. Choose what fits: urgent always goes in, the rest while there is time and room.
-  const capacity = Math.floor(opts.freeMinutes * CAPACITY_SHARE);
+  // 3. Choose: urgent always goes in, the rest by importance up to the level's maximum.
   const maxCount = MAX_TASKS[opts.level];
   const byScore = [...tasks].sort((a, b) => score(b) - score(a));
   const chosen: Task[] = [];
-  let used = 0;
   for (const t of byScore) {
-    const fits = used + t.minutes <= capacity && chosen.length < maxCount;
-    if (isUrgent(t) || fits) {
-      chosen.push(t);
-      used += t.minutes;
-    } else {
-      later.push(t);
-    }
+    if (isUrgent(t) || chosen.length < maxCount) chosen.push(t);
+    else later.push(t);
   }
 
   // 4. Order from most to least important; then common-sense rules (study before sport,

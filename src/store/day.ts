@@ -30,6 +30,8 @@ type DayState = {
   buildPlan: (raw: RawTask[], tired: boolean) => void;
   rollOverIfNewDay: () => void;
   markDone: (id: string) => void;
+  /** Untick a task in the list (the day's streak stays counted). */
+  undoDone: (id: string) => void;
   shrink: (id: string) => void;
   postpone: (id: string) => void;
   drop: (id: string) => void;
@@ -74,7 +76,7 @@ export const useDay = create<DayState>()(
           // Carried-over tasks join today's dump; duplicates by title are skipped.
           const titles = new Set(fresh.map((t) => t.title.toLowerCase()));
           const carried = later.filter((t) => !titles.has(t.title.toLowerCase()));
-          const result = planDay([...fresh, ...carried], { level: settings.level, freeMinutes: settings.freeMinutes, tired });
+          const result = planDay([...fresh, ...carried], { level: settings.level, tired });
           set({ plan: result.planned, later: result.later, planDate: isoDay(new Date()), draft: '' });
           syncDay(get());
         },
@@ -107,10 +109,12 @@ export const useDay = create<DayState>()(
           syncDay(get());
         },
 
+        undoDone: (id) => patchTask(id, (t) => ({ ...t, status: 'pendiente' })),
+
         shrink: (id) =>
           patchTask(id, (t) => ({
             ...t,
-            minutes: Math.max(10, round5(t.minutes / 2)),
+            minutes: t.minutes === null ? null : Math.max(5, round5(t.minutes / 2)),
             why: ['why.smaller'],
           })),
 
@@ -136,7 +140,7 @@ export const useDay = create<DayState>()(
           const task: PlannedTask = {
             id: newId(),
             title,
-            minutes: 15,
+            minutes: null,
             dueInDays: null,
             energy: 'baja',
             kind: 'otro',
@@ -193,4 +197,4 @@ export const useDay = create<DayState>()(
 export const pendingTasks = (plan: PlannedTask[]) => plan.filter((t) => t.status === 'pendiente');
 export const doneTasks = (plan: PlannedTask[]) => plan.filter((t) => t.status === 'hecha');
 export const totalMinutes = (plan: PlannedTask[]) =>
-  plan.filter((t) => t.status !== 'quitada').reduce((s, t) => s + t.minutes, 0);
+  plan.filter((t) => t.status !== 'quitada').reduce((s, t) => s + (t.minutes ?? 0), 0);

@@ -16,7 +16,7 @@ Recibes lo que la persona tiene en la cabeza, dicho sin orden. Tu trabajo es SOL
 Reglas:
 - Una tarea por cosa que hay que hacer. Une duplicados. Ignora frases que no son tareas.
 - "title": corto, en infinitivo, EN EL MISMO IDIOMA en que escribe la persona, empezando en mayúscula. Máximo 6 palabras.
-- "minutes": estimación realista (5-240). Contestar un mensaje ≈ 10, estudiar ≈ 45, gym ≈ 45, cardio ≈ 20.
+- "minutes": SOLO si la persona dice cuánto dura ("1 hora de gym", "20 min de cardio"), en minutos. Si no lo dice, null. NUNCA estimes ni inventes una duración.
 - "dueInDays": días hasta la fecha límite (0 = hoy). null si no hay fecha.
 - "energy": "alta" si exige concentración o esfuerzo físico, si no "baja".
 - "kind": "trabajo" | "estudio" | "deporte" | "casa" | "otro".
@@ -72,8 +72,9 @@ Deno.serve(async (req) => {
         }),
       });
       if (!res.ok) {
-        console.error('anthropic error', res.status, await res.text());
-        return Response.json({ error: 'ai_failed' }, { status: 502, headers: cors });
+        const detail = await res.text();
+        console.error('anthropic error', res.status, detail);
+        return Response.json({ error: 'ai_failed', status: res.status, detail: detail.slice(0, 300) }, { status: 502, headers: cors });
       }
       const data = await res.json();
       raw = data?.content?.find((c: { type: string }) => c.type === 'text')?.text ?? '{}';
@@ -100,8 +101,9 @@ Deno.serve(async (req) => {
         }),
       });
       if (!res.ok) {
-        console.error('groq error', res.status, await res.text());
-        return Response.json({ error: 'ai_failed' }, { status: 502, headers: cors });
+        const detail = await res.text();
+        console.error('groq error', res.status, detail);
+        return Response.json({ error: 'ai_failed', status: res.status, detail: detail.slice(0, 300) }, { status: 502, headers: cors });
       }
       const data = await res.json();
       raw = data?.choices?.[0]?.message?.content ?? '{}';
@@ -110,6 +112,6 @@ Deno.serve(async (req) => {
     return Response.json({ tasks: Array.isArray(json.tasks) ? json.tasks : [], tired: Boolean(json.tired) }, { headers: cors });
   } catch (e) {
     console.error(e);
-    return Response.json({ error: 'bad_request' }, { status: 400, headers: cors });
+    return Response.json({ error: 'bad_request', detail: String(e).slice(0, 300) }, { status: 400, headers: cors });
   }
 });
