@@ -12,8 +12,10 @@ const MONDAY = new Date('2026-11-16T09:00:00');
 const TODAY = '2026-11-16';
 
 const toTasks = (text: string): Task[] =>
-  parseLocal(text, MONDAY).tasks.map(({ dueInDays, ...t }, i) => ({
+  parseLocal(text, MONDAY).tasks.map(({ dueInDays, checklist: _c, goal: _g, ...t }, i) => ({
     ...t,
+    checklist: [],
+    goalId: null,
     id: `t${i}`,
     due: dueInDays === null ? null : addDays(TODAY, dueInDays),
     day: TODAY,
@@ -34,6 +36,8 @@ const base: Omit<Task, 'id' | 'title'> = {
   postponed: 0,
   status: 'pendiente',
   why: [],
+  checklist: [],
+  goalId: null,
 };
 
 describe('parseLocal', () => {

@@ -15,11 +15,49 @@ export type RawTask = {
   importance: 1 | 2 | 3;
   /** Sport-specific hint so the planner can apply "strength before cardio". */
   sport?: 'fuerza' | 'cardio' | null;
+  /** Things to tick inside the task: shopping items, exercises, steps… */
+  checklist?: string[];
+  /** Where it happens, if said ("Basic-Fit Ixelles"). */
+  where?: string | null;
+  /** Fixed time of day, if said ("a las 18:00" → "18:00"). */
+  at?: string | null;
+  /** Title of the goal this task belongs to, if any (matched to a Goal when added). */
+  goal?: string | null;
+};
+
+/** A goal the person wants to reach. GetGo breaks it into tasks and keeps them on the calendar. */
+export type Goal = {
+  id: string;
+  title: string;
+  /** pronto = has a deadline, semanal = repeats every week, largo = long term without a near date. */
+  type: 'pronto' | 'semanal' | 'largo';
+  /** Deadline (ISO date) for "pronto" / "largo" goals. */
+  due: string | null;
+  /** For weekly goals: how many times per week ("gym 3 veces"). */
+  perWeek: number | null;
+  /** Details for the tasks a weekly goal creates (minutes, where, at, kind…). */
+  template?: Partial<Pick<RawTask, 'minutes' | 'kind' | 'energy' | 'sport' | 'where' | 'at' | 'checklist'>> & { title?: string };
+  createdOn: string;
+  archived?: boolean;
+};
+
+export type RawGoal = {
+  title: string;
+  type: Goal['type'];
+  dueInDays: number | null;
+  perWeek: number | null;
+  /** Concrete steps to get there (for pronto / largo goals). */
+  steps: RawTask[];
+  template?: Goal['template'];
 };
 
 /** A task in the list. GetGo assigns it a day; the person can pin it to another one. */
-export type Task = Omit<RawTask, 'dueInDays'> & {
+export type ChecklistItem = { id: string; text: string; done: boolean };
+
+export type Task = Omit<RawTask, 'dueInDays' | 'checklist' | 'goal'> & {
   id: string;
+  checklist: ChecklistItem[];
+  goalId: string | null;
   /** Deadline as an ISO date (yyyy-mm-dd), or null. */
   due: string | null;
   /** Day it is planned for (ISO date). */
@@ -45,6 +83,8 @@ export type Settings = {
   notifyAt: string;
   /** Calendar connection: off, read your events, or read + write GetGo's blocks. */
   calendar: 'off' | 'read' | 'write';
+  /** Calendar id GetGo writes its blocks into (any calendar on the phone: iCloud, Google, Outlook…). */
+  calendarTarget: string | null;
   /** The part of the day GetGo may plan in (HH:MM). */
   dayStart: string;
   dayEnd: string;
@@ -58,4 +98,4 @@ export type Streak = {
   lastCountedDate: string | null;
 };
 
-export type ParseResult = { tasks: RawTask[]; tired: boolean };
+export type ParseResult = { tasks: RawTask[]; tired: boolean; goals?: RawGoal[] };

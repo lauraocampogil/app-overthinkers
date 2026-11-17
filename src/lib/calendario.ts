@@ -14,7 +14,28 @@ import type { Settings, Task } from './types';
 
 const GETGO_TITLE = 'GetGo';
 const DAYS_AHEAD = 14;
+const WRITE_DAYS = 7;
 const MARK = 'getgo:';
+
+export type WritableCalendar = { id: string; title: string; source: string; color: string };
+
+/** Calendars GetGo can write into: iCloud, Google, Outlook, work… whatever accounts are on the phone. */
+export async function writableCalendars(): Promise<WritableCalendar[]> {
+  const cals = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+  return cals
+    .filter((c) => c.allowsModifications)
+    .map((c) => ({ id: c.id, title: c.title, source: c.source?.name ?? '', color: c.color ?? '#8A5CFF' }));
+}
+
+/** The phone's default calendar, used when the person has not picked one. */
+export async function defaultCalendarId(): Promise<string | null> {
+  try {
+    if (Platform.OS === 'ios') return (await Calendar.getDefaultCalendarAsync()).id;
+    return (await writableCalendars())[0]?.id ?? null;
+  } catch {
+    return (await writableCalendars())[0]?.id ?? null;
+  }
+}
 
 type AgendaState = {
   status: 'off' | 'denied' | 'on';
@@ -64,14 +85,15 @@ export async function refreshAgenda(settings: Settings): Promise<void> {
       return;
     }
     const cals = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
-    const ids = cals.filter((c) => c.title !== GETGO_TITLE).map((c) => c.id);
+    const ids = cals.map((c) => c.id);
     const from = new Date();
     from.setHours(0, 0, 0, 0);
     const to = new Date(from.getTime() + DAYS_AHEAD * 86_400_000);
     const events = ids.length ? await Calendar.getEventsAsync(ids, from, to) : [];
     const busy: Record<string, Busy[]> = {};
     for (const e of events) {
-      if (e.allDay || e.availability === 'free') continue;
+      // All-day events, "free" events and GetGo's own blocks don't take time away.
+      if (e.allDay || e.availability === 'free' || (e.notes ?? '').startsWith(MARK)) continue;
       const start = new Date(e.startDate);
       const end = new Date(e.endDate);
       const day = isoDay(start);
@@ -92,41 +114,57 @@ export function capacityFor(settings: Settings) {
   return (day: string) => freeMinutes(dayWindow(dateOf(day), settings.dayStart, settings.dayEnd), busy[day] ?? []);
 }
 
+const fixedStart = (day: string) => (t: Task) => (t.at ? new Date(`${day}T${t.at}:00`) : null);
+
+/** One day as a timeline with hours (events + task blocks) and what does not fit. */
+export function dayTimeline(day: string, tasks: Task[], minutesOf: (t: Task) => number, settings: Settings) {
+  const win = dayWindow(dateOf(day), settings.dayStart, settings.dayEnd);
+  return placeTasks(tasks, minutesOf, win, useAgenda.getState().busy[day] ?? [], fixedStart(day));
+}
+
 /** Today as a timeline with hours. */
 export function todayTimeline(tasks: Task[], minutesOf: (t: Task) => number, settings: Settings) {
-  const day = isoDay(new Date());
-  const win = dayWindow(new Date(), settings.dayStart, settings.dayEnd);
-  return placeTasks(tasks, minutesOf, win, useAgenda.getState().busy[day] ?? []);
+  return dayTimeline(isoDay(new Date()), tasks, minutesOf, settings);
 }
 
 let writeTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
- * Writes today's task blocks into the "GetGo" calendar (creating it once), replacing the previous ones.
+ * Puts the plan of the next 7 days into the calendar the person chose (or the phone's default one),
+ * replacing GetGo's previous blocks. Each block keeps "getgo:<id>" in its notes so GetGo only ever touches its own events.
  * Debounced: the list can change several times in a row.
  */
-export function writePlanToCalendar(tasks: Task[], minutesOf: (t: Task) => number, settings: Settings) {
+export function writePlanToCalendar(allTasks: Task[], minutesOf: (t: Task) => number, settings: Settings) {
   if (settings.calendar !== 'write' || useAgenda.getState().status !== 'on') return;
   if (writeTimer) clearTimeout(writeTimer);
   writeTimer = setTimeout(async () => {
     try {
-      const calId = await getgoCalendarId(true);
+      const calId = settings.calendarTarget ?? (await defaultCalendarId()) ?? (await getgoCalendarId(true));
       if (!calId) return;
-      const from = new Date();
-      from.setHours(0, 0, 0, 0);
-      const to = new Date(addDays(isoDay(from), 1) + 'T00:00:00');
-      const old = await Calendar.getEventsAsync([calId], from, to);
-      await Promise.all(old.filter((e) => (e.notes ?? '').startsWith(MARK)).map((e) => Calendar.deleteEventAsync(e.id)));
-      const { blocks } = todayTimeline(tasks, minutesOf, settings);
-      for (const b of blocks) {
-        if (b.type !== 'task') continue;
-        await Calendar.createEventAsync(calId, {
-          title: b.task.title,
-          startDate: b.start,
-          endDate: b.end,
-          notes: `${MARK}${b.task.id}`,
-          alarms: [{ relativeOffset: 0 }],
-        });
+      const today = isoDay(new Date());
+      const from = new Date(`${today}T00:00:00`);
+      const to = new Date(`${addDays(today, WRITE_DAYS)}T00:00:00`);
+      // Remove GetGo's previous blocks from every calendar (the person may have switched calendars).
+      const cals = (await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT)).filter((c) => c.allowsModifications).map((c) => c.id);
+      const old = cals.length ? await Calendar.getEventsAsync(cals, from, to) : [];
+      await Promise.all(old.filter((e) => (e.notes ?? '').startsWith(MARK)).map((e) => Calendar.deleteEventAsync(e.id).catch(() => {})));
+      for (let d = 0; d < WRITE_DAYS; d++) {
+        const day = addDays(today, d);
+        const pending = allTasks.filter((t) => t.status === 'pendiente' && (d === 0 ? t.day <= day : t.day === day));
+        if (!pending.length) continue;
+        const { blocks } = dayTimeline(day, pending, minutesOf, settings);
+        for (const b of blocks) {
+          if (b.type !== 'task') continue;
+          const extra = [b.task.where ? `📍 ${b.task.where}` : '', ...b.task.checklist.map((i) => `${i.done ? '☑' : '☐'} ${i.text}`)].filter(Boolean);
+          await Calendar.createEventAsync(calId, {
+            title: b.task.title,
+            startDate: b.start,
+            endDate: b.end,
+            location: b.task.where ?? undefined,
+            notes: [`${MARK}${b.task.id}`, ...extra].join('\n'),
+            alarms: [{ relativeOffset: 0 }],
+          });
+        }
       }
     } catch (e) {
       console.warn('[calendario] write failed', e);

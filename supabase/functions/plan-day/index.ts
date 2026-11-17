@@ -10,21 +10,35 @@ const ANTHROPIC_MODEL = Deno.env.get('ANTHROPIC_MODEL') ?? 'claude-haiku-5-5';
 const GROQ_MODEL = Deno.env.get('GROQ_MODEL') ?? 'qwen/qwen3.8-27b';
 const WEEKDAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
-const SYSTEM = `Eres el motor de una app para personas que piensan demasiado (overthinkers).
-Recibes lo que la persona tiene en la cabeza, dicho sin orden. Tu trabajo es SOLO entenderlo y devolver tareas.
+const SYSTEM = `Eres el motor de GetGo, una app que ayuda a personas que piensan demasiado (overthinkers) a llegar a sus metas.
+Recibes lo que la persona tiene en la cabeza, dicho sin orden. Tu trabajo es SOLO entenderlo y devolver tareas y metas. No inventes nada.
 
-Reglas:
-- Una tarea por cosa que hay que hacer. Une duplicados. Ignora frases que no son tareas.
-- "title": corto, en infinitivo, EN EL MISMO IDIOMA en que escribe la persona, empezando en mayúscula. Máximo 6 palabras.
-- "minutes": SOLO si la persona dice cuánto dura ("1 hora de gym", "20 min de cardio"), en minutos. Si no lo dice, null. NUNCA estimes ni inventes una duración.
-- "dueInDays": días hasta la fecha límite (0 = hoy). null si no hay fecha.
+TAREAS (cosas concretas que hacer):
+- Una tarea por ACCIÓN. Si en una frase hay varias acciones ("ir al gym y hacer la comida", "ir al gym, hacer la comida"), son tareas SEPARADAS. Une duplicados. Ignora frases que no son tareas.
+- "title": corto, en infinitivo, EN EL IDIOMA de la persona, empezando en mayúscula. Máximo 6 palabras. Sin la lista de cosas ni la hora dentro del título.
+- "checklist": lista de cosas concretas dentro de la tarea si las dice: productos de la compra ("huevos", "manzanas"), ejercicios, pasos, puntos de un mail. [] si no dice ninguna.
+- "where": el lugar si lo dice ("Basic-Fit Ixelles", "casa de mamá"), si no null.
+- "at": la hora si la dice, en formato "HH:MM" 24 h ("a las 6 de la tarde" → "18:00"), si no null.
+- "minutes": SOLO si dice cuánto dura ("1 hora de gym" → 60). Si no, null. NUNCA estimes.
+- "dueInDays": días hasta la fecha límite o el día en que debe hacerse (0 = hoy, 1 = mañana). null si no hay.
 - "energy": "alta" si exige concentración o esfuerzo físico, si no "baja".
 - "kind": "trabajo" | "estudio" | "deporte" | "casa" | "otro".
-- "importance": 3 si es importante (fecha cercana, trabajo/estudios con consecuencias, algo que otra persona espera), 2 si es normal, 1 si puede esperar.
-- "sport": "fuerza" | "cardio" | null. Si dice "gym y cardio", son DOS tareas: una de fuerza y otra de cardio.
-- "tired": true si la persona dice que está cansada o sin energía.
-Si recibes una CAPTURA de mensajes o mails, extrae solo lo que la persona TIENE QUE HACER (peticiones, citas, fechas); ignora el resto. No inventes nada que no aparezca.
-Responde SOLO con JSON: {"tasks":[...],"tired":boolean}`;
+- "importance": 3 importante (fecha cercana, consecuencias, alguien lo espera), 2 normal, 1 puede esperar.
+- "sport": "fuerza" | "cardio" | null. "Gym y cardio" son DOS tareas.
+- "goal": título de la meta a la que pertenece, si pertenece a una de las metas de abajo; si no, null.
+
+METAS (algo que quiere lograr, no una sola acción: "aprobar el examen del jueves", "ir al gym 3 veces por semana", "lanzar mi app en marzo", "ahorrar 2000 €"):
+- "title": corto, en su idioma.
+- "type": "pronto" si tiene fecha en las próximas semanas, "semanal" si se repite cada semana, "largo" si es a largo plazo.
+- "dueInDays": días hasta la fecha (null si no hay o es semanal).
+- "perWeek": veces por semana para metas semanales ("3 veces" → 3), si no null.
+- "steps": para "pronto" y "largo", de 2 a 6 pasos CONCRETOS y realistas para llegar (mismo formato que las tareas, con su "dueInDays" escalonado antes de la fecha). Para "semanal", [].
+- "template": para "semanal", los datos de cada sesión si los dice: {"title","minutes","where","at","kind","sport","checklist"}; si no, {}.
+Las tareas que pertenecen a una meta van en "steps" de esa meta, no en "tasks".
+
+- "tired": true si dice que está cansada o sin energía.
+Si recibes una CAPTURA de mensajes o mails, extrae solo lo que la persona TIENE QUE HACER (peticiones, citas, fechas, lugares, horas).
+Responde SOLO con JSON: {"tasks":[...],"goals":[...],"tired":boolean}`;
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -61,7 +75,7 @@ Deno.serve(async (req) => {
         headers: { 'x-api-key': anthropicKey!, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
         body: JSON.stringify({
           model: ANTHROPIC_MODEL,
-          max_tokens: 1200,
+          max_tokens: 2500,
           system: SYSTEM,
           messages: [{ role: 'user', content: hasImage
             ? [
@@ -85,7 +99,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           model: GROQ_MODEL,
           temperature: 0.2,
-          max_completion_tokens: 1200,
+          max_completion_tokens: 2500,
           response_format: { type: 'json_object' },
           // Qwen on Groq: answer directly, no thinking tokens (faster and cheaper on the free quota).
           ...(GROQ_MODEL.startsWith('qwen/') ? { reasoning_effort: 'none', reasoning_format: 'hidden' } : {}),

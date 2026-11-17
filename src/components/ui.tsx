@@ -1,4 +1,3 @@
-import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
@@ -104,8 +103,7 @@ export function IconCircle({ label, onPress, children, size = 44 }: {
 /** The floating glass navbar: write (+) and speak (gradient mic). */
 export function Dock({ onWrite, onSpeak }: { onWrite: () => void; onSpeak: () => void }) {
   return (
-    <View style={styles.dockShadow}>
-      <BlurView intensity={40} tint="light" style={styles.dock}>
+    <View style={styles.dock}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('home.write')}
@@ -130,7 +128,6 @@ export function Dock({ onWrite, onSpeak }: { onWrite: () => void; onSpeak: () =>
             <MicIcon />
           </LinearGradient>
         </Pressable>
-      </BlurView>
     </View>
   );
 }
@@ -185,8 +182,20 @@ const styles = StyleSheet.create({
   textButton: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   textButtonLabel: { fontFamily: fonts.regular, fontSize: 15 },
   dockShadow: { alignSelf: 'center', borderRadius: 40, shadowColor: '#503CC8', shadowOpacity: 0.18, shadowRadius: 17, shadowOffset: { width: 0, height: 14 }, elevation: 8 },
-  dock: { flexDirection: 'row', gap: 6, padding: 6, borderRadius: 40, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.9)', backgroundColor: 'rgba(255,255,255,0.55)' },
-  dockBtn: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
+  // The two buttons float on the background: no box behind them.
+  dock: { flexDirection: 'row', gap: 14, alignSelf: 'center' },
+  dockBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#503CC8',
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
   dockWrite: { backgroundColor: colors.white },
   dockMic: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.55)' },
 });

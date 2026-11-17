@@ -14,7 +14,7 @@ const MIN_MS = 900; // a short beat so it feels sorted, without making anyone wa
 export default function Ordenando() {
   // Read the brain dump once: addTasks() clears the draft.
   const draftRef = useRef(useDay.getState().draft);
-  const addTasks = useDay((s) => s.addTasks);
+  const addParsed = useDay((s) => s.addParsed);
   const [empty, setEmpty] = useState(false);
 
   useEffect(() => {
@@ -22,23 +22,23 @@ export default function Ordenando() {
     const started = Date.now();
     (async () => {
       const text = draftRef.current.trim();
-      const result = text ? await parseBrainDump(text) : { tasks: [] };
+      const result = text ? await parseBrainDump(text) : { tasks: [], goals: [] };
       if (!alive) return;
-      if (!result.tasks.length) {
+      if (!result.tasks.length && !result.goals?.length) {
         setEmpty(true);
         return;
       }
-      const added = addTasks(result.tasks);
+      const added = addParsed(result);
       // A short beat so it feels sorted, then straight to the list with a small confirmation.
       const wait = Math.max(0, MIN_MS - (Date.now() - started));
       setTimeout(() => {
-        if (alive) router.replace({ pathname: '/', params: { added: added.added, today: added.today, later: added.later } });
+        if (alive) router.replace({ pathname: '/', params: { added: added.added, today: added.today, later: added.later, goals: added.goals } });
       }, wait);
     })();
     return () => {
       alive = false;
     };
-  }, [addTasks]);
+  }, [addParsed]);
 
   if (empty) {
     return (

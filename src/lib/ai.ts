@@ -4,7 +4,7 @@ import { parseLocal } from './parse-local';
 import { lang } from '../i18n';
 import { isoDay } from './streak';
 import { ensureSession, supabase } from './supabase';
-import type { Energy, Kind, ParseResult, RawTask } from './types';
+import type { RawGoal, Energy, Kind, ParseResult, RawTask } from './types';
 
 const KINDS: Kind[] = ['trabajo', 'estudio', 'deporte', 'casa', 'otro'];
 
@@ -22,7 +22,33 @@ function sanitize(raw: unknown): RawTask | null {
   const sport = r.sport === 'fuerza' || r.sport === 'cardio' ? r.sport : null;
   const imp = Math.round(Number(r.importance));
   const importance: 1 | 2 | 3 = imp >= 3 ? 3 : imp <= 1 ? 1 : 2;
-  return { title, minutes, dueInDays: Number.isNaN(due) ? null : due, energy, kind, sport, importance };
+  const checklist = Array.isArray(r.checklist)
+    ? r.checklist.filter((x): x is string => typeof x === 'string' && x.trim().length > 0).slice(0, 30)
+    : [];
+  const where = typeof r.where === 'string' && r.where.trim() ? r.where.trim().slice(0, 80) : null;
+  const at = typeof r.at === 'string' && /^([01]?\d|2[0-3]):[0-5]\d$/.test(r.at.trim()) ? r.at.trim().padStart(5, '0') : null;
+  const goal = typeof r.goal === 'string' && r.goal.trim() ? r.goal.trim() : null;
+  return { title, minutes, dueInDays: Number.isNaN(due) ? null : due, energy, kind, sport, importance, checklist, where, at, goal };
+}
+
+function sanitizeGoal(raw: unknown): RawGoal | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const title = typeof r.title === 'string' ? r.title.trim() : '';
+  if (!title) return null;
+  const type: RawGoal['type'] = r.type === 'semanal' || r.type === 'largo' ? r.type : 'pronto';
+  const due = r.dueInDays === null || r.dueInDays === undefined ? null : Math.max(0, Math.round(Number(r.dueInDays)));
+  const per = Math.round(Number(r.perWeek));
+  const steps = (Array.isArray(r.steps) ? r.steps : []).map(sanitize).filter(Boolean).slice(0, 8) as RawTask[];
+  const tpl = r.template && typeof r.template === 'object' ? sanitize({ title, ...(r.template as object) }) : null;
+  return {
+    title,
+    type,
+    dueInDays: due === null || Number.isNaN(due) ? null : due,
+    perWeek: type === 'semanal' && per > 0 ? Math.min(14, per) : null,
+    steps,
+    template: tpl ? { title: tpl.title, minutes: tpl.minutes, where: tpl.where, at: tpl.at, kind: tpl.kind, sport: tpl.sport, checklist: tpl.checklist, energy: tpl.energy } : undefined,
+  };
 }
 
 /** Brain dump -> tasks. Uses the plan-day Edge Function (Groq or Claude) and falls back to the local parser. */
@@ -36,7 +62,8 @@ export async function parseBrainDump(text: string): Promise<ParseResult & { sour
       });
       if (error) throw error;
       const tasks = (Array.isArray(data?.tasks) ? data.tasks : []).map(sanitize).filter(Boolean) as RawTask[];
-      if (tasks.length) return { tasks, tired: Boolean(data?.tired), source: 'ia' };
+      const goals = (Array.isArray(data?.goals) ? data.goals : []).map(sanitizeGoal).filter(Boolean) as RawGoal[];
+      if (tasks.length || goals.length) return { tasks, goals, tired: Boolean(data?.tired), source: 'ia' };
     } catch (e) {
       console.warn('[ai] plan-day failed, using local parser', e);
     }

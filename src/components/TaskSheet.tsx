@@ -11,18 +11,36 @@ import { colors, fonts, type } from '@/theme';
 
 /** Bottom sheet with what you can do with one task: tick, today, tomorrow, rename, delete. */
 export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () => void }) {
-  const { markDone, undoDone, moveTo, rename, remove, setMinutes } = useDay.getState();
+  const { markDone, undoDone, moveTo, rename, remove, setMinutes, toggleItem, addItem, setDetails } = useDay.getState();
   const learned = useDay((s) => s.learned);
+  const goals = useDay((s) => s.goals);
+  // Read the live task so checklist ticks show up while the sheet is open.
+  const live = useDay((s) => (task ? s.tasks.find((x) => x.id === task.id) : undefined));
+  const [item, setItem] = useState('');
+  const [where, setWhere] = useState('');
   const insets = useSafeAreaInsets();
   const [title, setTitle] = useState('');
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     setTitle(task?.title ?? '');
+    setWhere(task?.where ?? '');
+    setItem('');
     setEditing(false);
   }, [task]);
 
   if (!task) return null;
+  const cur = live ?? task;
+  const goal = cur.goalId ? goals.find((g) => g.id === cur.goalId) : undefined;
+  const addOne = () => {
+    const v = item.trim();
+    if (v) addItem(cur.id, v);
+    setItem('');
+  };
+  const saveWhere = () => {
+    const v = where.trim();
+    if (v !== (cur.where ?? '')) setDetails(cur.id, { where: v || undefined });
+  };
   const today = todayIso();
   const tomorrow = addDays(today, 1);
   const act = (fn: () => void) => {
@@ -59,6 +77,52 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
               <Text style={[type.title, styles.title]} numberOfLines={3}>
                 {task.title}
               </Text>
+              {goal || cur.at ? (
+                <Text style={styles.meta}>
+                  {[goal ? t('sheet.goal', { title: goal.title }) : '', cur.at ? t('sheet.at', { time: cur.at }) : ''].filter(Boolean).join(' · ')}
+                </Text>
+              ) : null}
+              {cur.status === 'pendiente' ? (
+                <TextInput
+                  accessibilityLabel={t('sheet.where')}
+                  value={where}
+                  onChangeText={setWhere}
+                  onEndEditing={saveWhere}
+                  placeholder={t('sheet.wherePh')}
+                  placeholderTextColor={colors.faint}
+                  returnKeyType="done"
+                  style={styles.field}
+                />
+              ) : null}
+              {cur.checklist.length || cur.status === 'pendiente' ? (
+                <View style={{ gap: 6 }}>
+                  {cur.checklist.map((c) => (
+                    <Pressable
+                      key={c.id}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: c.done }}
+                      onPress={() => toggleItem(cur.id, c.id)}
+                      style={styles.item}
+                    >
+                      <View style={[styles.box, c.done && styles.boxOn]} />
+                      <Text style={[styles.itemText, c.done && styles.itemDone]}>{c.text}</Text>
+                    </Pressable>
+                  ))}
+                  {cur.status === 'pendiente' ? (
+                    <TextInput
+                      accessibilityLabel={t('sheet.addItem')}
+                      value={item}
+                      onChangeText={setItem}
+                      onSubmitEditing={addOne}
+                      blurOnSubmit={false}
+                      placeholder={t('sheet.addItem')}
+                      placeholderTextColor={colors.faint}
+                      returnKeyType="done"
+                      style={styles.field}
+                    />
+                  ) : null}
+                </View>
+              ) : null}
               {task.status === 'pendiente' ? (
                 <View style={{ gap: 8 }}>
                   <Text style={type.muted}>
@@ -121,6 +185,13 @@ function Option({ label, onPress, strong, danger, last }: { label: string; onPre
 const DURATIONS = [15, 30, 45, 60, 90, 120, 180];
 
 const styles = StyleSheet.create({
+  meta: { fontFamily: fonts.medium, fontSize: 14, color: colors.accentDark, marginTop: -6 },
+  field: { minHeight: 44, paddingHorizontal: 14, borderRadius: 14, backgroundColor: colors.soft, fontFamily: fonts.regular, fontSize: 15, color: colors.ink },
+  item: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 36 },
+  box: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: '#D9CCF5' },
+  boxOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+  itemText: { flex: 1, fontFamily: fonts.regular, fontSize: 15, color: colors.ink },
+  itemDone: { color: colors.muted, textDecorationLine: 'line-through' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { minHeight: 40, paddingHorizontal: 14, borderRadius: 20, backgroundColor: colors.soft, justifyContent: 'center' },
   chipOn: { backgroundColor: colors.accentDark },

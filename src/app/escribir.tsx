@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -41,6 +41,8 @@ const join = (current: string, extra: string) => (current.trim() ? `${current.tr
 
 export default function Escribir() {
   const setDraft = useDay((s) => s.setDraft);
+  const { meta } = useLocalSearchParams<{ meta?: string }>();
+  const goalMode = meta === '1';
   // Always start empty: the previous dump was already turned into tasks.
   const [text, setText] = useState('');
   const [keyboard, setKeyboard] = useState(false);
@@ -100,7 +102,13 @@ export default function Escribir() {
       setNotice(t('write.importFailed'));
       return;
     }
-    setText((cur) => join(cur, tasks.map((x) => x.title).join(', ')));
+    // Keep what the screenshot says (time, place, items) so it ends up inside each task.
+    const lines = tasks.map((x) =>
+      [x.title, x.at ? `${t('write.at')} ${x.at}` : '', x.where ? `${t('write.in')} ${x.where}` : '', x.checklist?.length ? `(${x.checklist.join(', ')})` : '']
+        .filter(Boolean)
+        .join(' '),
+    );
+    setText((cur) => join(cur, lines.join('. ')));
   };
 
   return (
@@ -122,8 +130,8 @@ export default function Escribir() {
             <View style={styles.body}>
               {!keyboard && (
                 <>
-                  <Text style={type.title} accessibilityRole="header">{t('write.title')}</Text>
-                  <Text style={type.muted}>{t('write.hint')}</Text>
+                  <Text style={type.title} accessibilityRole="header">{t(goalMode ? 'write.goalTitle' : 'write.title')}</Text>
+                  <Text style={type.muted}>{t(goalMode ? 'write.goalHint' : 'write.hint')}</Text>
                 </>
               )}
 
@@ -145,7 +153,7 @@ export default function Escribir() {
                 onChangeText={setText}
                 autoFocus
                 multiline
-                placeholder={t('write.placeholder')}
+                placeholder={t(goalMode ? 'write.goalPlaceholder' : 'write.placeholder')}
                 placeholderTextColor={colors.faint}
                 style={styles.input}
                 textAlignVertical="top"

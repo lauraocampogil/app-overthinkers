@@ -94,7 +94,8 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' }, animation: 'fade' }}>
         {/* An account is required: without a session only the sign-in screen exists. */}
         <Stack.Protected guard={signedIn}>
-          <Stack.Screen name="index" />
+          <Stack.Screen name="index" options={{ animation: 'fade' }} />
+          <Stack.Screen name="metas" options={{ animation: 'fade' }} />
           <Stack.Screen name="escuchando" options={{ gestureEnabled: false }} />
           <Stack.Screen name="escribir" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="ordenando" options={{ gestureEnabled: false }} />

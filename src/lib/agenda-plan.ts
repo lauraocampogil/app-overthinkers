@@ -50,14 +50,31 @@ export const freeMinutes = (win: DayWindow, busy: Busy[]) =>
  * Places tasks, in order, into the first free gap where they fit (with a short buffer).
  * Returns the day as a timeline (events + task blocks) and the tasks that did not fit today.
  */
-export function placeTasks<T>(tasks: T[], minutesOf: (t: T) => number, win: DayWindow, busy: Busy[]) {
-  const slots = freeSlots(win, busy).map((s) => ({ ...s }));
-  const blocks: Block<T>[] = busy
+export function placeTasks<T>(
+  tasks: T[],
+  minutesOf: (t: T) => number,
+  win: DayWindow,
+  busy: Busy[],
+  /** A fixed start time for tasks the person gave an hour to ("a las 18:00"). */
+  fixedStart?: (t: T) => Date | null,
+) {
+  // Tasks with a fixed hour go first, exactly at that hour, and then count as busy time.
+  const fixed: Block<T>[] = [];
+  const flexible: T[] = [];
+  for (const task of tasks) {
+    const at = fixedStart?.(task) ?? null;
+    if (at) fixed.push({ type: 'task', task, start: at, end: new Date(at.getTime() + minutesOf(task) * MIN) });
+    else flexible.push(task);
+  }
+  const taken = [...busy, ...fixed.map((b) => ({ title: '', start: b.start, end: new Date(b.end.getTime() + BUFFER * MIN) }))];
+  const slots = freeSlots(win, taken).map((s) => ({ ...s }));
+  const blocks: Block<T>[] = [...fixed];
+  blocks.push(...busy
     .filter((b) => b.end > win.start && b.start < win.end)
-    .map((b) => ({ type: 'event' as const, title: b.title, start: b.start, end: b.end }));
+    .map((b) => ({ type: 'event' as const, title: b.title, start: b.start, end: b.end })));
   const overflow: T[] = [];
 
-  for (const task of tasks) {
+  for (const task of flexible) {
     const need = minutesOf(task) * MIN;
     const slot = slots.find((s) => s.end.getTime() - s.start.getTime() >= need);
     if (!slot) {

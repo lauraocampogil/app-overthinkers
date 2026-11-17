@@ -1,13 +1,13 @@
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BackIcon, IconCircle, Screen } from '@/components/ui';
 import { t } from '@/i18n';
 import { Mascota } from '@/components/Mascota';
 import { deleteAccount, signOut, useAuth, useMascot } from '@/lib/auth';
-import { connectCalendar, refreshAgenda } from '@/lib/calendario';
+import { connectCalendar, defaultCalendarId, refreshAgenda, writableCalendars, type WritableCalendar } from '@/lib/calendario';
 import { useDay, withDefaults } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
@@ -23,8 +23,18 @@ export default function Cuenta() {
       Alert.alert(t('cal.deniedTitle'), t('cal.deniedBody'));
       return;
     }
-    setSettings({ calendar: mode });
+    const target = mode === 'write' ? settings.calendarTarget ?? (await defaultCalendarId()) : settings.calendarTarget;
+    setSettings({ calendar: mode, calendarTarget: target });
     await refreshAgenda({ ...settings, calendar: mode });
+    useDay.getState().replan();
+    if (mode === 'write') setCals(await writableCalendars());
+  };
+  const [cals, setCals] = useState<WritableCalendar[]>([]);
+  useEffect(() => {
+    if (settings.calendar === 'write') void writableCalendars().then(setCals);
+  }, [settings.calendar]);
+  const pickTarget = (id: string) => {
+    setSettings({ calendarTarget: id });
     useDay.getState().replan();
   };
   const [copied, setCopied] = useState(false);
@@ -97,6 +107,30 @@ export default function Cuenta() {
               </Pressable>
             ))}
           </View>
+          {settings.calendar === 'write' && cals.length ? (
+            <>
+              <Text style={[type.muted, { marginTop: 4 }]}>{t('cal.target')}</Text>
+              <View style={styles.chips}>
+                {cals.map((c) => {
+                  const on = settings.calendarTarget === c.id;
+                  return (
+                    <Pressable
+                      key={c.id}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: on }}
+                      onPress={() => pickTarget(c.id)}
+                      style={[styles.chip, styles.calChip, on && styles.chipOn]}
+                    >
+                      <View style={[styles.calDot, { backgroundColor: c.color || colors.accent }]} />
+                      <Text style={[styles.chipText, on && { color: colors.white }]} numberOfLines={1}>
+                        {c.title}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          ) : null}
           <Text style={[type.muted, { marginTop: 4 }]}>{t('cal.hours')}</Text>
           <View style={styles.chips}>
             {['06:00', '07:00', '08:00', '09:00', '10:00'].map((h) => (
@@ -149,6 +183,8 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { minHeight: 38, paddingHorizontal: 14, borderRadius: 19, backgroundColor: colors.soft, justifyContent: 'center' },
   chipOn: { backgroundColor: colors.accentDark },
+  calChip: { flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: '100%' },
+  calDot: { width: 8, height: 8, borderRadius: 4 },
   chipText: { fontFamily: fonts.medium, fontSize: 14, color: colors.accentDark },
   copy: { alignSelf: 'flex-start', minHeight: 40, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 20, backgroundColor: colors.soft },
   copyText: { fontFamily: fonts.medium, fontSize: 14, color: colors.accentDark },
