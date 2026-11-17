@@ -29,7 +29,7 @@ type Props = {
   height?: number;
   /** Live voice level 0..1 (from the recorder's metering) to make the waves react. */
   level?: number;
-  /** Colour behind the component, used to fade the waves at the edges. */
+  /** Colour behind the component, used to fade the waves at the edges. 'transparent' = no fade (on a gradient). */
   fadeTo?: string;
 };
 
@@ -146,8 +146,12 @@ export function Ondas({ mode, height = 300, level = 0, fadeTo = colors.bgTop }: 
         </View>
       )}
 
-      <LinearGradient colors={[fadeTo, `${fadeTo}00`]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.fade, { left: 0 }]} />
-      <LinearGradient colors={[`${fadeTo}00`, fadeTo]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.fade, { right: 0 }]} />
+      {fadeTo !== 'transparent' && (
+        <>
+          <LinearGradient colors={[fadeTo, `${fadeTo}00`]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.fade, { left: 0 }]} />
+          <LinearGradient colors={[`${fadeTo}00`, fadeTo]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.fade, { right: 0 }]} />
+        </>
+      )}
     </View>
   );
 }

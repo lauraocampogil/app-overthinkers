@@ -6,14 +6,21 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio';
+import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 
+import { Degradado } from '@/components/Degradado';
+import { Mascota } from '@/components/Mascota';
 import { Ondas } from '@/components/Ondas';
-import { CloseIcon, IconCircle, PrimaryButton, Screen } from '@/components/ui';
+import { PrimaryButton, Screen } from '@/components/ui';
 import { t } from '@/i18n';
 import { transcribe } from '@/lib/ai';
+import { useMascot } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
@@ -46,6 +53,7 @@ export default function Escuchando() {
   const recorder = useAudioRecorder(RECORDING);
   const state = useAudioRecorderState(recorder, 100);
   const setDraft = useDay((s) => s.setDraft);
+  const mascot = useMascot();
   // Without a server there is no real transcription: say so instead of inventing text.
   const [phase, setPhase] = useState<Phase>(supabase ? 'starting' : 'noServer');
   const started = useRef(false);
@@ -135,52 +143,84 @@ export default function Escuchando() {
     );
   }
 
+  const live = phase === 'recording' ? level : 0.15;
+
   return (
-    <Screen>
-      <View style={styles.header}>
-        <IconCircle label={t('common.cancel')} onPress={cancel}>
-          <CloseIcon />
-        </IconCircle>
+    <View style={{ flex: 1 }}>
+      <StatusBar style="light" />
+      <Degradado level={live} />
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         <View style={styles.timer} accessibilityLabel={t('listen.recording', { time: mmss(state.durationMillis) })}>
           <View style={styles.dot} />
           <Text style={styles.timerText}>{mmss(state.durationMillis)}</Text>
         </View>
-        <View style={{ width: 44 }} />
-      </View>
 
-      <Text style={styles.prompt}>{t(phase === 'transcribing' ? 'listen.wait' : 'listen.prompt')}</Text>
+        <View style={styles.center}>
+          {mascot.unlocked ? (
+            <Mascota seed={mascot.seed} size={220} mood="escucha" level={live} />
+          ) : (
+            <Ondas mode="habla" height={220} level={live} fadeTo="transparent" />
+          )}
+          <Text style={styles.prompt} accessibilityLiveRegion="polite">
+            {t(phase === 'transcribing' ? 'listen.wait' : 'listen.prompt')}
+          </Text>
+        </View>
 
-      <View style={{ flex: 1, justifyContent: 'center' }}>
-        <Ondas mode="habla" height={320} level={phase === 'recording' ? level : 0.2} />
-      </View>
-
-      <View style={styles.footer}>
-        {phase === 'recording' ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={t('listen.finish')} onPress={finish} style={styles.stop}>
-            <View style={styles.stopSquare} />
+        <View style={styles.footer}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('common.cancel')} onPress={cancel} hitSlop={8}>
+            <BlurView intensity={30} tint="light" style={styles.cancel}>
+              <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+                <Path d="M6 6l12 12M18 6L6 18" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" />
+              </Svg>
+            </BlurView>
           </Pressable>
-        ) : (
-          <View style={styles.stop}>
-            <ActivityIndicator color={colors.white} />
-          </View>
-        )}
-        <Text style={styles.hint}>{t(phase === 'recording' ? 'listen.tapToFinish' : 'listen.transcribing')}</Text>
-      </View>
-    </Screen>
+          <Text style={styles.hint}>{t(phase === 'recording' ? 'listen.tapToFinish' : 'listen.transcribing')}</Text>
+          {phase === 'recording' ? (
+            <Pressable accessibilityRole="button" accessibilityLabel={t('listen.finish')} onPress={finish} style={styles.done} hitSlop={8}>
+              <Svg width={30} height={30} viewBox="0 0 24 24" fill="none">
+                <Path d="M5 12.5l4.5 4.5L19 7.5" stroke={colors.accentDark} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+              </Svg>
+            </Pressable>
+          ) : (
+            <View style={styles.done}>
+              <ActivityIndicator color={colors.accentDark} />
+            </View>
+          )}
+        </View>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: 24, paddingBottom: 12 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, height: 44, marginTop: 8 },
-  timer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent },
-  timerText: { fontFamily: fonts.medium, fontSize: 15, color: colors.ink, fontVariant: ['tabular-nums'] },
-  prompt: { fontFamily: fonts.regular, fontSize: 24, lineHeight: 31, letterSpacing: -0.5, color: colors.ink, paddingHorizontal: 24, marginTop: 32 },
-  footer: { alignItems: 'center', gap: 12, paddingBottom: 16 },
-  stop: { width: 76, height: 76, borderRadius: 38, backgroundColor: colors.ink, alignItems: 'center', justifyContent: 'center' },
-  stopSquare: { width: 22, height: 22, borderRadius: 6, backgroundColor: colors.white },
-  hint: { fontFamily: fonts.regular, fontSize: 14, color: colors.muted },
+  timer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 44, marginTop: 8 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF' },
+  timerText: { fontFamily: fonts.medium, fontSize: 15, color: '#FFFFFF', fontVariant: ['tabular-nums'] },
+  center: { flex: 1, justifyContent: 'center', gap: 28 },
+  prompt: {
+    fontFamily: fonts.semibold,
+    fontSize: 32,
+    lineHeight: 38,
+    letterSpacing: -0.8,
+    color: 'rgba(255,255,255,0.72)',
+    textAlign: 'center',
+    paddingHorizontal: 32,
+  },
+  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 12 },
+  cancel: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.45)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  done: { width: 88, height: 88, borderRadius: 44, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  hint: { fontFamily: fonts.medium, fontSize: 14, color: 'rgba(255,255,255,0.8)' },
   secondary: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   secondaryText: { fontFamily: fonts.regular, fontSize: 15, color: colors.muted },
 });
