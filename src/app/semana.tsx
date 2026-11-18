@@ -183,7 +183,7 @@ export default function Semana() {
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', gap: 32, paddingHorizontal: 24 },
   header: { paddingHorizontal: 20, height: 52, justifyContent: 'center', marginTop: 4 },
-  body: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40, gap: 12 },
+  body: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 150, gap: 12 },
   input: { minHeight: 180, padding: 16, borderRadius: 20, backgroundColor: colors.card, fontFamily: fonts.regular, fontSize: 16, lineHeight: 22, color: colors.ink, marginTop: 8 },
   voice: { flexDirection: 'row', alignItems: 'center', gap: 12, alignSelf: 'flex-start', marginTop: 4 },
   mic: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
@@ -203,7 +203,8 @@ const styles = StyleSheet.create({
   prio: { paddingHorizontal: 8, height: 22, borderRadius: 11, backgroundColor: colors.ink, justifyContent: 'center' },
   prioText: { fontFamily: fonts.semibold, fontSize: 10, color: colors.white, letterSpacing: 0.3 },
   remove: { fontFamily: fonts.regular, fontSize: 22, color: colors.faint, paddingHorizontal: 4 },
-  footer: { paddingHorizontal: 20, paddingBottom: 6, gap: 4 },
-  again: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  // Floats over the list with nothing behind it, so the days stay visible under the button.
+  footer: { position: 'absolute', left: 0, right: 0, bottom: 6, paddingHorizontal: 20, gap: 4 },
+  again: { minHeight: 44, alignSelf: 'center', paddingHorizontal: 18, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center' },
   againText: { fontFamily: fonts.medium, fontSize: 15, color: colors.muted },
 });

@@ -2,8 +2,10 @@ import { Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold, us
 import * as Notifications from 'expo-notifications';
 import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+
+import { SplashAnimado } from '@/components/SplashAnimado';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -160,9 +162,8 @@ export default function RootLayout() {
     return () => sub.remove();
   }, [signedIn, calendarMode]);
 
-  useEffect(() => {
-    if (loaded && ready) void SplashScreen.hideAsync().catch(() => {});
-  }, [loaded, ready]);
+  // The native splash stays until the animated one is on screen; that one hides it and plays its intro.
+  const [intro, setIntro] = useState(true);
 
   if (!loaded || !ready) return null;
 
@@ -189,6 +190,7 @@ export default function RootLayout() {
           <Stack.Screen name="compra" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="meta" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="semana" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="pro" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
           <Stack.Screen name="no-puedo" options={{ presentation: 'transparentModal', animation: 'fade' }} />
           <Stack.Screen name="hecho" options={{ gestureEnabled: false }} />
           <Stack.Screen name="racha" options={{ animation: 'slide_from_right' }} />
@@ -200,6 +202,7 @@ export default function RootLayout() {
           <Stack.Screen name="entrar" />
         </Stack.Protected>
       </Stack>
+      {intro ? <SplashAnimado onDone={() => setIntro(false)} /> : null}
     </SafeAreaProvider>
     </GestureHandlerRootView>
   );

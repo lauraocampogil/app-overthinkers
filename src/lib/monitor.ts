@@ -91,3 +91,66 @@ export async function hasPro(): Promise<boolean> {
     return false;
   }
 }
+
+/** A plan as the paywall shows it. Prices come from the store via RevenueCat. */
+export type Plan = {
+  id: string;
+  kind: 'annual' | 'monthly';
+  price: string;
+  /** Monthly equivalent, for the annual plan ("3,33 €/mes"). */
+  perMonth: string | null;
+  /** Free trial length in days, if the store offers one. */
+  trialDays: number | null;
+  /** Monthly price as a number, to show how much the annual plan saves. */
+  amount: number;
+};
+
+/** The current offering's annual and monthly plans. Empty when RevenueCat is not set up or offline. */
+export async function getPlans(): Promise<Plan[]> {
+  if (!purchases) return [];
+  try {
+    const offerings = await purchases.getOfferings();
+    const pkgs = offerings.current?.availablePackages ?? [];
+    return pkgs
+      .filter((p) => p.packageType === 'ANNUAL' || p.packageType === 'MONTHLY')
+      .map((p) => {
+        const intro = p.product.introPrice;
+        const unitDays: Record<string, number> = { DAY: 1, WEEK: 7, MONTH: 30, YEAR: 365 };
+        const trialDays = intro && intro.price === 0 ? (unitDays[intro.periodUnit] ?? 0) * (intro.periodNumberOfUnits ?? 1) * (intro.cycles || 1) : null;
+        const annual = p.packageType === 'ANNUAL';
+        return { id: p.identifier, kind: annual ? 'annual' : 'monthly', price: p.product.priceString, perMonth: annual ? p.product.pricePerMonthString : null, trialDays, amount: annual ? p.product.price / 12 : p.product.price } as Plan;
+      })
+      .sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'annual' ? -1 : 1));
+  } catch (e) {
+    console.warn('[monitor] offerings', e);
+    return [];
+  }
+}
+
+/** Buy a plan. true when "pro" is active afterwards; false when cancelled or failed. */
+export async function buyPlan(id: string): Promise<boolean> {
+  if (!purchases) return false;
+  try {
+    const offerings = await purchases.getOfferings();
+    const pkg = offerings.current?.availablePackages.find((p) => p.identifier === id);
+    if (!pkg) return false;
+    const { customerInfo } = await purchases.purchasePackage(pkg);
+    return Boolean(customerInfo.entitlements.active.pro);
+  } catch (e) {
+    const cancelled = (e as { userCancelled?: boolean }).userCancelled;
+    if (!cancelled) reportError(e, { where: 'buyPlan' });
+    return false;
+  }
+}
+
+export async function restorePlan(): Promise<boolean> {
+  if (!purchases) return false;
+  try {
+    const info = await purchases.restorePurchases();
+    return Boolean(info.entitlements.active.pro);
+  } catch {
+    return false;
+  }
+}
+
+export const purchasesReady = () => purchases !== null;

@@ -9,6 +9,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
+  withSequence,
   withSpring,
   withTiming,
   ZoomIn,
@@ -59,10 +60,11 @@ export function Celebracion({ visible, done, streak, onClose }: { visible: boole
     burst.value = 0;
     burst.value = withDelay(250, withTiming(1, { duration: 1400, easing: Easing.out(Easing.cubic) }));
     glow.value = 0;
-    glow.value = withDelay(150, withSpring(1, { damping: 9, stiffness: 90 }));
+    // The coloured circle pops behind the mascot, then fades away and leaves the mascot alone.
+    glow.value = withSequence(withDelay(150, withSpring(1, { damping: 9, stiffness: 90 })), withDelay(500, withTiming(0, { duration: 700 })));
   }, [visible, burst, glow]);
 
-  const glowStyle = useAnimatedStyle(() => ({ opacity: glow.value * 0.55, transform: [{ scale: 0.6 + glow.value * 0.5 }] }));
+  const glowStyle = useAnimatedStyle(() => ({ opacity: glow.value * 0.55, transform: [{ scale: 0.6 + Math.max(glow.value, 0.4) * 0.5 }] }));
   const palette = [voz.mic[0], voz.mic[1], voz.mic[2], colors.ink, '#BDBDBD'];
 
   return (

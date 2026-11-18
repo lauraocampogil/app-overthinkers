@@ -5,6 +5,7 @@ import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Text, View
 import Svg, { Path } from 'react-native-svg';
 
 import { Intro } from '@/components/Intro';
+import { Logo } from '@/components/Logo';
 import { Ondas } from '@/components/Ondas';
 import { Screen } from '@/components/ui';
 import { t } from '@/i18n';
@@ -57,7 +58,7 @@ export default function Entrar() {
   return (
     <Screen>
       <View style={styles.top}>
-        <Text style={styles.brand}>GetGo</Text>
+        <Logo height={24} style={{ marginBottom: 6 }} />
         <Text style={type.title} accessibilityRole="header">{t('auth.title')}</Text>
         <Text style={type.muted}>{t('auth.subtitle')}</Text>
       </View>

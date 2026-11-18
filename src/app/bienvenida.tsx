@@ -170,7 +170,8 @@ export default function Bienvenida() {
       return;
     }
     store.setDraft(dump);
-    router.replace('/ordenando');
+    // First time: the paywall once, then GetGo sorts the answers. Editing the profile later skips it.
+    router.replace(editing ? '/ordenando' : { pathname: '/pro', params: { next: 'ordenando' } });
   }
 
   const header = (

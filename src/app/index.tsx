@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Redirect, router, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
 
 import { Anillo } from '@/components/Anillo';
 import { ArrowRightIcon, CalendarIcon, CameraIcon, ChartIcon, ClockIcon, StarIcon, MoonIcon, PinIcon, PlayIcon, SunIcon, TargetIcon } from '@/components/Iconos';
@@ -124,10 +125,14 @@ export default function Inicio() {
     if (Number(params.goals)) parts.push(t('hoy.addedGoals', { n: Number(params.goals) }));
     else if (Number(params.later)) parts.push(t('hoy.addedSplit', { today: Number(params.today), later: Number(params.later) }));
     setToast(parts.join(' · '));
-    const id = setTimeout(() => setToast(null), 3500);
     router.setParams({ added: undefined, today: undefined, later: undefined, goals: undefined });
-    return () => clearTimeout(id);
   }, [params.added, params.today, params.later, params.goals]);
+  // Its own timer: clearing the params above re-runs that effect, which used to cancel the hide.
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(id);
+  }, [toast]);
 
   // One challenge on offer at a time, matched to the person's areas and goals.
   useEffect(() => {
@@ -268,12 +273,13 @@ export default function Inicio() {
       {(['manana', 'noche'] as const).map((rk) => {
         const r = routineOf(routines, rk);
         return r.enabled && r.steps.length ? (
-          <View key={rk} style={styles.dayRoutineRow}>
+          <Pressable key={rk} onPress={() => router.push({ pathname: '/rutina', params: { kind: rk } })} style={styles.dayRoutineRow} accessibilityRole="button">
             {rk === 'manana' ? <SunIcon size={16} color={colors.muted} /> : <MoonIcon size={16} color={colors.muted} />}
             <Text style={[styles.rowMeta, { flex: 1 }]}>
               {t(`routine.${rk}`)} · {r.at} · {t('routine.stepsShort', { n: r.steps.length })}
             </Text>
-          </View>
+            <ArrowRightIcon size={14} color={colors.faint} />
+          </Pressable>
         ) : null;
       })}
       {selTasks.map((task) => (
@@ -415,13 +421,14 @@ export default function Inicio() {
             </Pressable>
           ) : (
             <View style={styles.routine}>
-              <View style={styles.routineHead}>
+              <Pressable onPress={() => router.push({ pathname: '/rutina', params: { kind } })} style={styles.routineHead} accessibilityRole="button">
                 {kind === 'manana' ? <SunIcon /> : <MoonIcon />}
                 <Text style={[styles.routineTitle, { flex: 1 }]}>{t(`routine.${kind}`)}</Text>
                 <Text style={styles.routineCount}>
                   {routineDone}/{routine.steps.length}
                 </Text>
-              </View>
+                <ArrowRightIcon size={14} color={colors.faint} />
+              </Pressable>
               <View style={styles.routineBar}>
                 <View style={[styles.routineFill, { width: `${(routineDone / routine.steps.length) * 100}%`, backgroundColor: voz.mic[1] }]} />
               </View>
@@ -502,14 +509,36 @@ export default function Inicio() {
           </View>
         ) : null}
 
+        {(['manana', 'noche'] as const).some((rk) => rk !== kind && routineOf(routines, rk).enabled && routineOf(routines, rk).steps.length) ? (
+          <View style={styles.section}>
+            {(['manana', 'noche'] as const).map((rk) => {
+              const r = routineOf(routines, rk);
+              if (rk === kind || !r.enabled || !r.steps.length) return null;
+              const n = (routineLog[today]?.[rk] ?? []).length;
+              return (
+                <Pressable key={rk} onPress={() => router.push({ pathname: '/rutina', params: { kind: rk } })} style={styles.routineLine} accessibilityRole="button">
+                  {rk === 'manana' ? <SunIcon size={18} /> : <MoonIcon size={18} />}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.routineTitle}>{t(`routine.${rk}`)}</Text>
+                    <Text style={styles.rowMeta}>
+                      {r.at} · {t('routine.stepsShort', { n: r.steps.length })}
+                    </Text>
+                  </View>
+                  {n >= r.steps.length ? <CheckIcon color={colors.ink} size={16} /> : <Text style={styles.rowMeta}>{n}/{r.steps.length}</Text>}
+                  <ArrowRightIcon size={14} color={colors.faint} />
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
         </>)}
       </ScrollView>
 
       {toast ? (
-        <View style={styles.toast} accessibilityLiveRegion="polite">
+        <Animated.View entering={FadeInDown.duration(260)} exiting={FadeOutDown.duration(260)} style={styles.toast} accessibilityLiveRegion="polite">
           <CheckIcon color={colors.white} size={16} />
           <Text style={styles.toastText}>{toast}</Text>
-        </View>
+        </Animated.View>
       ) : null}
       {dock}
       <TaskSheet task={sheet} onClose={() => setSheet(null)} />
@@ -527,6 +556,7 @@ const styles = StyleSheet.create({
   stripNum: { fontFamily: fonts.semibold, fontSize: 17, color: colors.ink, fontVariant: ['tabular-nums'] },
   stripDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.ink, marginTop: 2 },
   dayTitle: { fontFamily: fonts.semibold, fontSize: 24, letterSpacing: -0.7, color: colors.ink, textTransform: 'capitalize', marginTop: 8 },
+  routineLine: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 62, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.line, marginBottom: 8 },
   dayRoutineRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 40 },
   dayPlan: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 56, paddingHorizontal: 16, borderRadius: 20, backgroundColor: colors.card, marginTop: 14 },
   focusBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 8, marginTop: 6, marginBottom: 8, borderRadius: 28, backgroundColor: '#1E1E1E' },
