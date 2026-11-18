@@ -9,6 +9,8 @@ import { Mascota } from '@/components/Mascota';
 import { deleteAccount, signOut, useAuth, useMascot } from '@/lib/auth';
 import { openPage, SITE_URL } from '@/lib/legal';
 import { connectCalendar, defaultCalendarId, readableCalendars, refreshAgenda, writableCalendars, type ReadableCalendar, type WritableCalendar } from '@/lib/calendario';
+import { connectHealth, disconnectHealth, healthAvailable, useSalud } from '@/lib/salud';
+import { connectStrava, disconnectStrava, stravaAvailable, useStrava } from '@/lib/strava';
 import { useDay, withDefaults } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
@@ -51,7 +53,7 @@ export default function Cuenta() {
   };
   const [copied, setCopied] = useState(false);
   const copyLink = async () => {
-    await Clipboard.setStringAsync('getgo://hablar');
+    await Clipboard.setStringAsync('okio://hablar');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -205,6 +207,12 @@ export default function Cuenta() {
           <Text style={styles.rowText}>{t('pro.account')}</Text>
         </Pressable>
 
+        <Pressable accessibilityRole="button" onPress={() => router.push('/mentor')} style={styles.row}>
+          <Text style={styles.rowText}>{t('read.talk')}</Text>
+        </Pressable>
+
+        <Conexiones />
+
         <Pressable accessibilityRole="button" onPress={() => router.push('/bloqueo')} style={styles.row}>
           <Text style={styles.rowText}>{t('block.title')}</Text>
         </Pressable>
@@ -245,7 +253,50 @@ export default function Cuenta() {
   );
 }
 
+/** Apple Health and Strava: connect once, sport tasks tick themselves afterwards. */
+function Conexiones() {
+  const health = useSalud();
+  const strava = useStrava();
+  const [busy, setBusy] = useState<'h' | 's' | null>(null);
+  const canHealth = healthAvailable();
+  const canStrava = stravaAvailable();
+
+  const toggleHealth = async () => {
+    if (health.on) return disconnectHealth();
+    setBusy('h');
+    const ok = await connectHealth();
+    setBusy(null);
+    if (!ok) Alert.alert(t('conn.failTitle'), t('conn.healthFail'));
+  };
+  const toggleStrava = async () => {
+    if (strava.on) return void disconnectStrava();
+    setBusy('s');
+    const ok = await connectStrava();
+    setBusy(null);
+    if (!ok) Alert.alert(t('conn.failTitle'), t('conn.stravaFail'));
+  };
+
+  return (
+    <View style={styles.card}>
+      <Text style={styles.name}>{t('conn.title')}</Text>
+      <Text style={styles.calHelp}>{t('conn.body')}</Text>
+      <Pressable onPress={canHealth ? () => void toggleHealth() : undefined} style={styles.calRow} accessibilityRole="switch" accessibilityState={{ checked: health.on, disabled: !canHealth }}>
+        <Text style={styles.calRowText}>Apple Health</Text>
+        {busy === 'h' ? <ActivityIndicator /> : canHealth ? <Text style={styles.connState}>{health.on ? t('conn.on') : t('conn.connect')}</Text> : <Text style={styles.connSoon}>{t('conn.healthLater')}</Text>}
+      </Pressable>
+      {health.on ? <Text style={styles.calHelp}>{t('conn.steps', { n: health.steps.toLocaleString() })}</Text> : null}
+      <Pressable onPress={canStrava ? () => void toggleStrava() : undefined} style={styles.calRow} accessibilityRole="switch" accessibilityState={{ checked: strava.on, disabled: !canStrava }}>
+        <Text style={styles.calRowText}>Strava</Text>
+        {busy === 's' ? <ActivityIndicator /> : canStrava ? <Text style={styles.connState}>{strava.on ? t('conn.on') : t('conn.connect')}</Text> : <Text style={styles.connSoon}>{t('conn.soon')}</Text>}
+      </Pressable>
+      {strava.on && strava.last ? <Text style={styles.calHelp}>{t('conn.lastRun', { name: strava.last })}</Text> : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  connState: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink, textDecorationLine: 'underline' },
+  connSoon: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted },
   account: { fontFamily: fonts.semibold, fontSize: 12, letterSpacing: 0.5, color: colors.muted, textTransform: 'uppercase', marginTop: 6 },
   calRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 40 },
   calRowText: { flex: 1, fontFamily: fonts.medium, fontSize: 15, color: colors.ink },

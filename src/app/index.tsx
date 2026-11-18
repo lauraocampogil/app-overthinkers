@@ -11,6 +11,7 @@ import { Ondas } from '@/components/Ondas';
 import { Barra } from '@/components/Barra';
 import { Celebracion } from '@/components/Celebracion';
 import { Deslizar } from '@/components/Deslizar';
+import { LecturaHoy } from '@/components/LecturaHoy';
 import { TaskSheet } from '@/components/TaskSheet';
 import { CheckIcon, FlameIcon, IconCircle, PersonIcon, Screen } from '@/components/ui';
 import { locale, minutesLabel, t } from '@/i18n';
@@ -394,6 +395,7 @@ export default function Inicio() {
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         {sel !== today ? dayView : (<>
         <View style={styles.hero}>
+          <Pressable onPress={() => router.push('/mentor')} accessibilityRole="button" accessibilityLabel={t('read.talk')} hitSlop={6}>
           <Anillo progress={active.length ? done.length / active.length : 0} size={84} stroke={6} color={voz.mic[1]}>
             {mascot.unlocked ? (
               <Mascota seed={mascot.seed} size={74} mood={active.length && !pending.length ? 'feliz' : 'calma'} />
@@ -401,6 +403,7 @@ export default function Inicio() {
               <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.halo} />
             )}
           </Anillo>
+          </Pressable>
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={styles.heroTitle} accessibilityRole="header">
               {!active.length ? t('hoy.freeToday') : !pending.length ? t('hoy.doneTitle') : t('hoy.progressTitle', { done: done.length, total: active.length })}
@@ -410,6 +413,8 @@ export default function Inicio() {
             </Text>
           </View>
         </View>
+
+        <LecturaHoy ready={focused} />
 
         {showPlanWeek ? (
           <Pressable onPress={() => router.push('/semana')} style={({ pressed }) => [styles.planWeek, pressed && { opacity: 0.85 }]} accessibilityRole="button">

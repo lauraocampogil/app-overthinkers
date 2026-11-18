@@ -150,7 +150,17 @@ export function areaWeight(task: { title: string; kind: Kind }, areas: Area[]): 
   return best;
 }
 
-const AREA_ES: Record<AreaId, string> = {
+/** Which of the person's areas a task belongs to (index in `areas`), or -1. */
+export function areaIndex(task: { title: string; kind: Kind }, areas: Area[]): number {
+  const title = task.title.toLowerCase();
+  return areas.slice(0, 3).findIndex((a) => {
+    const def = AREAS[a.id];
+    const label = (a.label ?? '').toLowerCase();
+    return def.words.some((w) => title.includes(w)) || (label && title.includes(label)) || (def.kinds.includes(task.kind) && task.kind !== 'otro');
+  });
+}
+
+export const AREA_ES: Record<AreaId, string> = {
   trabajo: 'Trabajo', estudios: 'Estudios', gimnasio: 'Gimnasio', deporte: 'Deporte', comer_bien: 'Comer bien',
   musculo: 'Coger músculo', bajar_peso: 'Bajar de peso', dormir: 'Dormir mejor', casa_compras: 'Casa y compras',
   dinero: 'Dinero', familia: 'Familia y pareja', amigos: 'Amigos', salud_mental: 'Salud mental',

@@ -1,5 +1,5 @@
 /*
- * GetGo mascot for the web: the same generator as the app (src/components/Mascota.tsx).
+ * Okio mascot for the web: the same generator as the app (src/components/Mascota.tsx).
  * One seed → one mascot: colours, shape, eyes and rhythm. Usage: <div data-seed="laura"></div>.
  */
 (function () {
@@ -81,7 +81,7 @@
     const eyes = el.dataset.mood === 'feliz'
       ? `<g class="eyes"><path d="M${100 - tr.eyeGap / 2 - tr.eyeW * 1.6} 104 q${tr.eyeW * 0.8} -12 ${tr.eyeW * 1.6} 0" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M${100 + tr.eyeGap / 2} 104 q${tr.eyeW * 0.8} -12 ${tr.eyeW * 1.6} 0" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none"/></g>`
       : `<g class="eyes"><rect x="${100 - tr.eyeGap / 2 - tr.eyeW}" y="${100 - tr.eyeH / 2}" width="${tr.eyeW}" height="${tr.eyeH}" rx="${tr.eyeW / 2}" fill="url(#${id}e)"/><rect x="${100 + tr.eyeGap / 2}" y="${100 - tr.eyeH / 2}" width="${tr.eyeW}" height="${tr.eyeH}" rx="${tr.eyeW / 2}" fill="url(#${id}e)"/></g>`;
-    el.innerHTML = `<svg viewBox="28 28 144 144" width="100%" height="100%" role="img" aria-label="Mascota de GetGo" style="overflow:visible">
+    el.innerHTML = `<svg viewBox="28 28 144 144" width="100%" height="100%" role="img" aria-label="Mascota de Okio" style="overflow:visible">
       <defs>
         <radialGradient id="${id}h" cx="50%" cy="50%" r="50%"><stop offset="0.55" stop-color="${p.mid}" stop-opacity="0.22"/><stop offset="1" stop-color="${p.mid}" stop-opacity="0"/></radialGradient>
         <radialGradient id="${id}b" cx="52%" cy="56%" r="54%"><stop offset="0" stop-color="${p.core}"/><stop offset="0.5" stop-color="${p.mid}"/><stop offset="0.82" stop-color="${p.edge}"/><stop offset="0.98" stop-color="${p.rim}"/></radialGradient>

@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "GetGo",
+    "name": "Okio",
     "slug": "getgo",
-    "scheme": "getgo",
+    "scheme": ["getgo", "okio"],
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -39,8 +39,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "GetGo lee la foto o la captura que eliges para sacar tus tareas o comprobar que has terminado una.",
-          "cameraPermission": "GetGo usa la cámara solo cuando haces una foto para demostrar que has terminado una tarea.",
+          "photosPermission": "Okio lee la foto o la captura que eliges para sacar tus tareas o comprobar que has terminado una.",
+          "cameraPermission": "Okio usa la cámara solo cuando haces una foto para demostrar que has terminado una tarea.",
           "microphonePermission": false
         }
       ],
@@ -48,7 +48,7 @@
         "expo-speech-recognition",
         {
           "microphonePermission": "Usamos el micrófono para que puedas soltar lo que tienes en la cabeza hablando.",
-          "speechRecognitionPermission": "GetGo escribe lo que dices mientras hablas para poder ordenar tus tareas."
+          "speechRecognitionPermission": "Okio escribe lo que dices mientras hablas para poder ordenar tus tareas."
         }
       ],
       [
@@ -65,7 +65,7 @@
           "widgets": [
             {
               "name": "GetGoWidget",
-              "displayName": "GetGo",
+              "displayName": "Okio",
               "description": "Tu mascota y lo más importante de hoy.",
               "ios": {
                 "supportedFamilies": [
@@ -85,7 +85,7 @@
       [
         "expo-calendar",
         {
-          "calendarPermission": "GetGo lee tu calendario para saber cuándo estás libre y, si lo activas, añade tu plan como bloques."
+          "calendarPermission": "Okio lee tu calendario para saber cuándo estás libre y, si lo activas, añade tu plan como bloques."
         }
       ],
       [

@@ -45,8 +45,31 @@ function withBlocking(cfg: ExpoConfig): ExpoConfig {
   };
 }
 
+/**
+ * Apple Health (steps, workouts) to tick sport tasks by themselves. Needs the HealthKit capability,
+ * so it is left out of free-signing builds.
+ */
+function withHealth(cfg: ExpoConfig): ExpoConfig {
+  if (process.env.GETGO_FREE_SIGNING === '1') return cfg;
+  return {
+    ...cfg,
+    extra: { ...cfg.extra, health: true },
+    plugins: [
+      ...(cfg.plugins ?? []),
+      [
+        '@kingstinct/react-native-healthkit',
+        {
+          NSHealthShareUsageDescription: 'Okio lee tus pasos y entrenos para marcar solas tus tareas de deporte.',
+          NSHealthUpdateUsageDescription: false,
+          background: false,
+        },
+      ],
+    ],
+  };
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => {
-  const base = withBlocking(withGoogle(config as ExpoConfig));
+  const base = withHealth(withBlocking(withGoogle(config as ExpoConfig)));
   if (process.env.GETGO_FREE_SIGNING !== '1') return base;
 
   const skip = new Set(['expo-notifications', 'expo-widgets', 'expo-apple-authentication']);

@@ -29,10 +29,12 @@ type Session = {
   colorSoft: string;
 };
 
-type FocoState = { session: Session | null };
+/** Per day: focus sessions run and times the person left the app during them (for the Focus Score). */
+export type LivesLog = Record<string, { s: number; l: number }>;
+type FocoState = { session: Session | null; lives: LivesLog };
 
 export const useFoco = create<FocoState>()(
-  persist(() => ({ session: null as Session | null }), {
+  persist(() => ({ session: null as Session | null, lives: {} as LivesLog }), {
     name: 'getgo-foco',
     storage: createJSONStorage(() => AsyncStorage),
   }),
@@ -133,6 +135,13 @@ export function addMinutes(n: number) {
 /** Ends the session (done or given up). Returns the focused minutes. */
 export function endFocus(): number {
   const s = useFoco.getState().session;
+  if (s) {
+    const d = new Date();
+    const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const lives = useFoco.getState().lives ?? {};
+    const cur = lives[day] ?? { s: 0, l: 0 };
+    useFoco.setState({ lives: { ...lives, [day]: { s: cur.s + 1, l: cur.l + Math.min(s.leaves ?? 0, MAX_LEAVES) } } });
+  }
   useFoco.setState({ session: null });
   unblockAll();
   try {

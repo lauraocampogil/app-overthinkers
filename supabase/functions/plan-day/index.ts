@@ -10,7 +10,7 @@ const ANTHROPIC_MODEL = Deno.env.get('ANTHROPIC_MODEL') ?? 'claude-haiku-5-5';
 const GROQ_MODEL = Deno.env.get('GROQ_MODEL') ?? 'qwen/qwen3.8-27b';
 const WEEKDAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
-const SYSTEM = `Eres el motor de GetGo, una app que ayuda a personas que piensan demasiado (overthinkers) a llegar a sus metas.
+const SYSTEM = `Eres el motor de Okio, una app que ayuda a personas que piensan demasiado (overthinkers) a llegar a sus metas.
 Recibes lo que la persona tiene en la cabeza, dicho sin orden. Tu trabajo es SOLO entenderlo y devolver tareas y metas. No inventes nada.
 
 TAREAS (cosas concretas que hacer):

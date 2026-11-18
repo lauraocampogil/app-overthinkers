@@ -3,11 +3,11 @@ import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { colors, fonts } from '@/theme';
 
-/** The GetGo wordmark: just "getgo" in Geist Bold, tight. The mascot lives in the app icon and the splash. */
+/** The Okio wordmark: just "okio" in Geist Bold, tight. The mascot lives in the app icon and the splash. */
 export function Logo({ height = 32, color = colors.ink, style }: { height?: number; color?: string; style?: TextStyle }) {
   return (
     <Text accessibilityRole="header" accessibilityLabel="GetGo" style={[{ fontFamily: fonts.bold, fontSize: height, letterSpacing: -height * 0.05, color }, style]}>
-      getgo
+      okio
     </Text>
   );
 }

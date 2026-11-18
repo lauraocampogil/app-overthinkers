@@ -13,7 +13,7 @@ const K = NATIVE / 1024;
 
 /**
  * After the static native splash (the grey mascot): it squishes and bounces, blinks, moves up a little,
- * "getgo" appears under it, then everything fades into the app. About 3 s.
+ * "okio" appears under it, then everything fades into the app. About 3 s.
  */
 export function SplashAnimado({ onDone }: { onDone: () => void }) {
   const squish = useSharedValue(1);
@@ -63,7 +63,7 @@ export function SplashAnimado({ onDone }: { onDone: () => void }) {
           ))}
         </Animated.View>
       </Animated.View>
-      <Animated.Text style={[styles.word, wordStyle]}>getgo</Animated.Text>
+      <Animated.Text style={[styles.word, wordStyle]}>okio</Animated.Text>
     </Animated.View>
   );
 }

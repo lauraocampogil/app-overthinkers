@@ -1,4 +1,4 @@
-# GetGo
+# Okio
 
 Sueltas lo que tienes en la cabeza (voz o texto), la app lo ordena y te enseña **una sola tarea a la vez**.
 
@@ -71,7 +71,7 @@ npm test            # tests de la lógica (planificador, parser, racha)
 
 ## Antes de publicar
 
-- **Compartir desde WhatsApp/Mail directamente a GetGo** (extensión de compartir): necesita un development build; ahora mismo se hace pegando el mensaje o con una captura.
+- **Compartir desde WhatsApp/Mail directamente a Okio** (extensión de compartir): necesita un development build; ahora mismo se hace pegando el mensaje o con una captura.
 - Development build con EAS y prueba en dispositivos reales (iOS y Android).
 
 ## Siguiente

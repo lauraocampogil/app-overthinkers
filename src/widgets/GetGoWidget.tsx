@@ -292,5 +292,5 @@ export default createWidget<WidgetProps>('GetGoWidget', GetGoWidget, {
   top: [],
   tasks: [],
   mascot: { core: '#2E2E2E', mid: '#6E6E6E', edge: '#BDBDBD', eyeW: 12, eyeH: 20, gap: 10 },
-  text: { left: '', none: '', allDone: '', empty: 'GetGo', top: 'Lo más importante', then: 'Después' },
+  text: { left: '', none: '', allDone: '', empty: 'Okio', top: 'Lo más importante', then: 'Después' },
 });

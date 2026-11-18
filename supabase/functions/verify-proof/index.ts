@@ -7,7 +7,7 @@ const ANTHROPIC_MODEL = Deno.env.get('ANTHROPIC_MODEL') ?? 'claude-haiku-5-5';
 // Groq vision models change: try the configured one, then the current ones in Groq's vision docs.
 const GROQ_VISION_MODELS = [Deno.env.get('GROQ_VISION_MODEL'), 'qwen/qwen3.8-27b', 'meta-models/muse-spark-open'].filter(Boolean) as string[];
 
-const SYSTEM = `Eres el verificador de GetGo. La persona dice que ha hecho una tarea y manda una foto como prueba.
+const SYSTEM = `Eres el verificador de Okio. La persona dice que ha hecho una tarea y manda una foto como prueba.
 Decide si la foto muestra que ESTA tarea concreta está hecha. Sé estricto: el objetivo es que la persona se comprometa de verdad.
 - La foto tiene que mostrar algo directamente relacionado con la tarea (si la tarea es de deporte: ropa o lugar de deporte, la actividad o el reloj/app con la sesión; si es la compra: productos comprados o el ticket; si es estudiar: apuntes o libro abiertos).
 - Si la tarea dice un lugar o tienda (por ejemplo Lidl), vale una bolsa, ticket o productos de esa tienda, o la compra en casa.

@@ -7,7 +7,9 @@ import { Barra } from '@/components/Barra';
 import { ArrowRightIcon, ClockIcon, MoonIcon, SunIcon, TargetIcon } from '@/components/Iconos';
 import { FlameIcon, IconCircle, PersonIcon, Screen } from '@/components/ui';
 import { locale, minutesLabel, t } from '@/i18n';
+import { useFoco } from '@/lib/foco';
 import { useVoz } from '@/lib/paleta';
+import { areaRings, focusScore } from '@/lib/puntuacion';
 import { addDays, daysBetween } from '@/lib/planner';
 import { goalProgress, todayIso, useDay, weekStart } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
@@ -24,6 +26,8 @@ export default function Progreso() {
   const focusLog = useDay((s) => s.focusLog ?? {});
   const routineLog = useDay((s) => s.routineLog);
   const voz = useVoz();
+  const areas = useDay((s) => s.profile.areas);
+  const lives = useFoco((s) => s.lives ?? {});
 
   const today = todayIso();
   const start = weekStart(today);
@@ -36,6 +40,9 @@ export default function Progreso() {
   const fullDays = week.filter((d) => history[d] === 'done').length;
   const routineDays = (kind: 'manana' | 'noche') => week.filter((d) => (routineLog[d]?.[kind] ?? []).length > 0).length;
   const live = goals.filter((g) => !g.archived);
+  const rings = areaRings(tasks, areas, week);
+  const score = focusScore({ tasks, week, today, focusLog, lives });
+  const areaName = (a: (typeof areas)[number]) => (a.id === 'otra' ? a.label || t('area.otra') : t(`area.${a.id}`));
 
   // Memories: a month calendar with the photo of each day (task proofs and progress photos).
   const [month, setMonth] = useState(0);
@@ -71,6 +78,34 @@ export default function Progreso() {
           </View>
           <ArrowRightIcon color={colors.muted} />
         </Pressable>
+
+        <View style={styles.scoreCard}>
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={styles.scoreLabel}>{t('score.title')}</Text>
+            <Text style={styles.scoreNum} accessibilityLabel={t('score.a11y', { n: score.score })}>
+              {score.score}
+              <Text style={styles.scoreOf}>/100</Text>
+            </Text>
+            <Text style={styles.scoreSub}>{t('score.body', { focus: minutesLabel(score.minutes), stay: score.stay, done: score.done })}</Text>
+          </View>
+          <Anillo progress={score.score / 100} size={74} stroke={7} color={voz.mic[1]} />
+        </View>
+
+        {rings.length ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>{t('rings.title')}</Text>
+            <View style={styles.rings}>
+              {rings.map((r, i) => (
+                <View key={r.area.id + i} style={styles.ringCol}>
+                  <Anillo progress={r.pct} size={78} stroke={7} color={voz.mic[i % voz.mic.length]} label={r.total ? `${r.done}/${r.total}` : '–'} />
+                  <Text style={styles.ringName} numberOfLines={2}>
+                    {areaName(r.area)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
 
         <View style={styles.card}>
           <View style={styles.cardHead}>
@@ -205,6 +240,14 @@ const styles = StyleSheet.create({
   cellNum: { position: 'absolute', top: 5, left: 7, fontFamily: fonts.semibold, fontSize: 11, color: colors.muted },
   cellNumOn: { color: colors.white, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 3 },
   cellToday: { color: colors.ink, textDecorationLine: 'underline' },
+  scoreCard: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 20, borderRadius: 24, backgroundColor: colors.ink },
+  scoreLabel: { fontFamily: fonts.medium, fontSize: 13, letterSpacing: 0.4, color: '#9A9A9A', textTransform: 'uppercase' },
+  scoreNum: { fontFamily: fonts.bold, fontSize: 44, letterSpacing: -1.6, color: colors.white },
+  scoreOf: { fontFamily: fonts.medium, fontSize: 18, color: '#7A7A7A', letterSpacing: 0 },
+  scoreSub: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: '#BDBDBD' },
+  rings: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 14 },
+  ringCol: { alignItems: 'center', gap: 8, width: '31%' },
+  ringName: { fontFamily: fonts.medium, fontSize: 13, color: colors.ink, textAlign: 'center' },
   goal: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderRadius: 22, backgroundColor: colors.card },
   goalTitle: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink },
 });

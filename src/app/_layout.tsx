@@ -20,6 +20,8 @@ initMonitoring();
 initPurchases();
 import { clearTaskReminders, refreshReminders, snoozeTask, type TaskAlarm } from '@/lib/avisos';
 import { dayTimeline, refreshAgenda, useAgenda } from '@/lib/calendario';
+import { syncHealth } from '@/lib/salud';
+import { syncStrava } from '@/lib/strava';
 import { estimate } from '@/lib/duraciones';
 import { requiresProof, topThree } from '@/lib/prioridad';
 import { routineOf } from '@/lib/rutinas';
@@ -41,6 +43,17 @@ export default function RootLayout() {
     const sub = AppState.addEventListener('change', (s) => s === 'active' && rollOver());
     return () => sub.remove();
   }, [rollOver]);
+
+  // Apple Health and Strava: today's workouts and steps tick sport tasks by themselves (on launch and on return).
+  useEffect(() => {
+    const sync = () => {
+      void syncHealth();
+      void syncStrava();
+    };
+    sync();
+    const sub = AppState.addEventListener('change', (s) => s === 'active' && sync());
+    return () => sub.remove();
+  }, []);
 
   // After sign-in: this account's data (from the server if it exists) replaces anyone else's on this phone.
   useEffect(() => identifyUser(userId), [userId]);
@@ -197,6 +210,7 @@ export default function RootLayout() {
           <Stack.Screen name="compra" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="meta" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="semana" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="mentor" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="agenda" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="bloqueo" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="pro" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
