@@ -4,6 +4,9 @@
  * Plurals: keys ending in `_one` / `_other` are picked automatically from `{n}`.
  */
 const es = {
+  'order.howLong': "¿Cuánto tiempo?",
+  'order.howLongBody': "No lo dijiste, así que te pregunto en vez de inventarlo. Si no lo sabes, déjalo vacío.",
+  'order.howLongDone': "Listo",
   'routine.setUp': "Toca para crearla",
   'account.replayOnboarding': "Ver el onboarding otra vez",
   'block.title': "Bloquear apps en el foco",
@@ -646,6 +649,9 @@ export type Key = keyof typeof es;
 type Dict = Record<Key, string>;
 
 const en: Dict = {
+  'order.howLong': "How long?",
+  'order.howLongBody': "You didn't say, so I'm asking instead of guessing. If you don't know, leave it empty.",
+  'order.howLongDone': "Done",
   'routine.setUp': "Tap to set it up",
   'account.replayOnboarding': "Watch the onboarding again",
   'block.title': "Block apps during focus",
@@ -1275,6 +1281,9 @@ const en: Dict = {
 };
 
 const fr: Dict = {
+  'order.howLong': "Combien de temps ?",
+  'order.howLongBody': "Tu ne l'as pas dit, alors je te demande au lieu d'inventer. Si tu ne sais pas, laisse vide.",
+  'order.howLongDone': "OK",
   'routine.setUp': "Touche pour la créer",
   'account.replayOnboarding': "Revoir l'onboarding",
   'block.title': "Bloquer les apps pendant le focus",
@@ -1904,6 +1913,9 @@ const fr: Dict = {
 };
 
 const nl: Dict = {
+  'order.howLong': "Hoe lang?",
+  'order.howLongBody': "Je zei het niet, dus ik vraag het in plaats van te gokken. Weet je het niet, laat het leeg.",
+  'order.howLongDone': "Klaar",
   'routine.setUp': "Tik om in te stellen",
   'account.replayOnboarding': "Onboarding opnieuw bekijken",
   'block.title': "Apps blokkeren tijdens focus",
@@ -2533,6 +2545,9 @@ const nl: Dict = {
 };
 
 const de: Dict = {
+  'order.howLong': "Wie lange?",
+  'order.howLongBody': "Du hast es nicht gesagt, also frage ich statt zu raten. Wenn du es nicht weißt, lass es leer.",
+  'order.howLongDone': "Fertig",
   'routine.setUp': "Tippen zum Einrichten",
   'account.replayOnboarding': "Onboarding erneut ansehen",
   'block.title': "Apps im Fokus sperren",
@@ -3162,6 +3177,9 @@ const de: Dict = {
 };
 
 const pt: Dict = {
+  'order.howLong': "Quanto tempo?",
+  'order.howLongBody': "Não disseste, por isso pergunto em vez de inventar. Se não souberes, deixa vazio.",
+  'order.howLongDone': "Pronto",
   'routine.setUp': "Toca para a criar",
   'account.replayOnboarding': "Ver o onboarding outra vez",
   'block.title': "Bloquear apps no foco",
@@ -3791,6 +3809,9 @@ const pt: Dict = {
 };
 
 const it: Dict = {
+  'order.howLong': "Quanto tempo?",
+  'order.howLongBody': "Non l'hai detto, quindi te lo chiedo invece di inventarlo. Se non lo sai, lascia vuoto.",
+  'order.howLongDone': "Fatto",
   'routine.setUp': "Tocca per crearla",
   'account.replayOnboarding': "Rivedi l'onboarding",
   'block.title': "Bloccare le app nel focus",

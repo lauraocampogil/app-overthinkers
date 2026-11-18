@@ -31,7 +31,8 @@ function sanitize(raw: unknown): RawTask | null {
   const at = typeof r.at === 'string' && /^([01]?\d|2[0-3]):[0-5]\d$/.test(r.at.trim()) ? r.at.trim().padStart(5, '0') : null;
   const goal = typeof r.goal === 'string' && r.goal.trim() ? r.goal.trim() : null;
   const proof = typeof r.proof === 'string' && r.proof.trim() ? r.proof.trim().slice(0, 60) : null;
-  return { title, minutes, dueInDays: Number.isNaN(due) ? null : due, energy, kind, sport, importance, checklist, where, at, goal, proof };
+  const askMinutes = minutes === null && (r.askMinutes === true || kind === 'deporte' || kind === 'estudio');
+  return { title, minutes, dueInDays: Number.isNaN(due) ? null : due, energy, kind, sport, importance, checklist, where, at, goal, proof, askMinutes };
 }
 
 function sanitizeGoal(raw: unknown): RawGoal | null {

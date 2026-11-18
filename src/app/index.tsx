@@ -111,7 +111,8 @@ export default function Inicio() {
   const minutesOf = (task: Task) => estimate(task, learned).minutes;
   const durLabel = (task: Task) => {
     const e = estimate(task, learned);
-    return `${e.source === 'guess' ? '~' : ''}${minutesLabel(e.minutes)}`;
+    // Only a duration the person gave (or GetGo learned from them): never show an invented one.
+    return e.source === 'guess' ? '' : minutesLabel(e.minutes);
   };
   const toggle = (task: Task) => (task.status === 'hecha' ? undoDone(task.id) : markDone(task.id));
 

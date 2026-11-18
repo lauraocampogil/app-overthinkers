@@ -61,6 +61,7 @@ export default function Semana() {
     useDay.setState({ weekPlannedOn: today });
     router.replace({ pathname: '/', params: { added: added.added, today: added.today, later: added.later, goals: added.goals } });
   };
+  const setMinutes = (task: RawTask, m: number) => setPlan((p) => (p ? { ...p, tasks: p.tasks.map((x) => (x === task ? { ...x, minutes: m, askMinutes: false } : x)) } : p));
   const removeTask = (task: RawTask) => setPlan((p) => (p ? { ...p, tasks: p.tasks.filter((x) => x !== task) } : p));
 
   if (phase === 'thinking') {
@@ -118,6 +119,16 @@ export default function Semana() {
                       <View style={{ flex: 1 }}>
                         <Text style={styles.rowTitle}>{task.title}</Text>
                         <Text style={styles.meta}>{[task.minutes ? minutesLabel(task.minutes) : '', task.where ?? ''].filter(Boolean).join(' · ')}</Text>
+                        {!task.minutes && task.askMinutes ? (
+                          <View style={styles.timeChips}>
+                            <Text style={styles.meta}>{t('order.howLong')}</Text>
+                            {[15, 30, 45, 60, 90].map((m) => (
+                              <Pressable key={m} onPress={() => setMinutes(task, m)} style={styles.timeChip} hitSlop={4} accessibilityRole="button">
+                                <Text style={styles.timeChipText}>{minutesLabel(m)}</Text>
+                              </Pressable>
+                            ))}
+                          </View>
+                        ) : null}
                       </View>
                       {task.importance === 3 ? <View style={styles.prio}><Text style={styles.prioText}>{t('week.priority')}</Text></View> : null}
                       <Pressable onPress={() => removeTask(task)} hitSlop={10} accessibilityRole="button" accessibilityLabel={t('task.delete')}>
@@ -202,6 +213,9 @@ const styles = StyleSheet.create({
   meta: { fontFamily: fonts.regular, fontSize: 12, color: colors.muted },
   prio: { paddingHorizontal: 8, height: 22, borderRadius: 11, backgroundColor: colors.ink, justifyContent: 'center' },
   prioText: { fontFamily: fonts.semibold, fontSize: 10, color: colors.white, letterSpacing: 0.3 },
+  timeChips: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 6 },
+  timeChip: { minHeight: 28, paddingHorizontal: 10, borderRadius: 14, backgroundColor: colors.white, justifyContent: 'center' },
+  timeChipText: { fontFamily: fonts.medium, fontSize: 12, color: colors.ink },
   remove: { fontFamily: fonts.regular, fontSize: 22, color: colors.faint, paddingHorizontal: 4 },
   // Floats over the list with nothing behind it, so the days stay visible under the button.
   footer: { position: 'absolute', left: 0, right: 0, bottom: 6, paddingHorizontal: 20, gap: 4 },

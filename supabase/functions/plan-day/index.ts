@@ -19,8 +19,9 @@ TAREAS (cosas concretas que hacer):
 - "checklist": lista de cosas concretas dentro de la tarea si las dice: productos de la compra ("huevos", "manzanas"), ejercicios, pasos, puntos de un mail. [] si no dice ninguna.
 - "where": el lugar si lo dice ("Basic-Fit Ixelles", "casa de mamá"), si no null.
 - "at": la hora si la dice, en formato "HH:MM" 24 h ("a las 6 de la tarde" → "18:00"), si no null.
-- "minutes": lo que dice ("1 hora de gym" → 60). Si no lo dice y es una actividad que necesita un objetivo claro (correr, gym, estudiar, leer, meditar, caminar, practicar), propón uno realista para una persona normal (correr 30, gym 60, estudiar 50, leer 20, caminar 30). Para el resto, null.
-- Cada tarea tiene que ser CONCRETA y con objetivo claro: no "Hacer deporte" sino "Correr 30 min"; no "Estudiar" sino "Estudiar tema 3 de estadística" si lo dice; si falta el lugar y el PERFIL lo da, ponlo en "where".
+- "minutes": SOLO lo que dice ("1 hora de gym" → 60, "media hora corriendo" → 30). Si no lo dice, null: NUNCA inventes una duración. La app le preguntará cuánto tiempo.
+- "askMinutes": true si "minutes" es null y es una actividad que necesita una duración para ser concreta (correr, gym, entrenar, estudiar, leer, meditar, caminar, practicar, trabajar en algo, ordenar, limpiar). false para el resto (llamar, mandar un mail, comprar, recoger algo).
+- Cada tarea tiene que ser CONCRETA: no "Hacer deporte" sino "Correr"; no "Estudiar" sino "Estudiar tema 3 de estadística" si lo dice. No pongas la duración en el título. Si falta el lugar y el PERFIL lo da, ponlo en "where".
 - LA COMPRA: los productos (huevos, manzanas, pasta…) NUNCA son tareas sueltas: van en "checklist" de UNA tarea "Hacer la compra" (con cantidades si las dice: "Huevos · 12"). Si menciona productos sin decir "compra", crea igualmente esa tarea.
 - Lo que es un RESULTADO (pesar 48 kg, aprobar, ahorrar 2000 €) no es una tarea: es una META.
 - "dueInDays": días hasta la fecha límite o el día en que debe hacerse (0 = hoy, 1 = mañana). null si no hay.

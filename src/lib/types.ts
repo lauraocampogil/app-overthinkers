@@ -25,6 +25,8 @@ export type RawTask = {
   goal?: string | null;
   /** What photo proves it is done ("Foto de la compra"). null = nothing visible to photograph. */
   proof?: string | null;
+  /** The AI could not hear a duration for an activity that needs one: GetGo asks the person instead of guessing. */
+  askMinutes?: boolean;
 };
 
 /** A goal the person wants to reach. GetGo breaks it into tasks and keeps them on the calendar. */
