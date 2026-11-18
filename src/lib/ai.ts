@@ -134,23 +134,26 @@ export async function transcribe(uri: string): Promise<string | null> {
   }
 }
 
-export type ProofCheck = { ok: boolean; reason: string; offline?: boolean };
+export type ProofCheck = { ok: boolean; reason: string; offline?: boolean; failed?: boolean };
 
 /**
  * Photo proof: the AI checks that the picture really shows the task done.
- * Without connection the photo is accepted (marked offline) so nobody gets stuck.
+ * If the check can't run, the photo is NOT accepted: the person can try again (hecho es hecho).
  */
 export async function verifyProof(base64: string, task: string, hint: string | null | undefined): Promise<ProofCheck> {
-  if (!supabase) return { ok: true, reason: '', offline: true };
+  if (!supabase) return { ok: false, reason: '', failed: true };
   try {
     await ensureSession();
     const { data, error } = await supabase.functions.invoke('verify-proof', {
       body: { image: base64, mediaType: 'image/jpeg', task, hint: hint ?? null, lang },
     });
     if (error) throw error;
-    return { ok: Boolean(data?.ok), reason: typeof data?.reason === 'string' ? data.reason : '' };
+    if (typeof data?.ok !== 'boolean') return { ok: false, reason: '', failed: true };
+    return { ok: data.ok, reason: typeof data?.reason === 'string' ? data.reason : '' };
   } catch (e) {
-    console.warn('[ai] proof check failed', e);
-    return { ok: true, reason: '', offline: true };
+    const ctx = (e as { context?: Response }).context;
+    const detail = ctx && typeof ctx.text === 'function' ? await ctx.text().catch(() => '') : '';
+    console.warn('[ai] proof check failed', e, detail);
+    return { ok: false, reason: '', failed: true };
   }
 }

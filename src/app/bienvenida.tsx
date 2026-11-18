@@ -13,7 +13,7 @@ import { askNotificationsNow } from '@/lib/avisos';
 import { connectCalendar, defaultCalendarId, refreshAgenda } from '@/lib/calendario';
 import { AREA_ORDER, AREAS, COUNTRIES, EMPTY_PROFILE, STORES, type Area, type AreaId, type Profile } from '@/lib/perfil';
 import { defaultRoutine } from '@/lib/rutinas';
-import type { RoutineKind } from '@/lib/types';
+import type { RoutineKind, RoutineStep } from '@/lib/types';
 import { useDay, withDefaults } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
@@ -78,10 +78,14 @@ export default function Bienvenida() {
   const [otherStore, setOtherStore] = useState('');
   const [goal, setGoal] = useState('');
   const [perms, setPerms] = useState({ notif: false, cal: false, cam: false });
-  const [steps, setSteps] = useState<Record<RoutineKind, string[]>>(() => ({
-    manana: (routines.manana ?? defaultRoutine('manana')).steps.map((s) => s.id),
-    noche: (routines.noche ?? defaultRoutine('noche')).steps.map((s) => s.id),
-  }));
+  // Routine steps: GetGo's suggestions (based on the areas) + the person's own, minus the ones switched off.
+  const [off, setOff] = useState<string[]>([]);
+  const [extra, setExtra] = useState<Record<RoutineKind, RoutineStep[]>>({ manana: [], noche: [] });
+  const [newStep, setNewStep] = useState<Record<RoutineKind, string>>({ manana: '', noche: '' });
+  const baseRoutine = (kind: RoutineKind) => {
+    const base = routines[kind] ?? defaultRoutine(kind, p.areas.map((a) => a.id));
+    return [...base.steps, ...extra[kind]];
+  };
 
   const set = (patch: Partial<Profile>) => setP((cur) => ({ ...cur, ...patch }));
   const index = STEPS.indexOf(step);
@@ -142,12 +146,11 @@ export default function Bienvenida() {
     // The day window and the routines follow the hours the person gave.
     store.setSettings({ dayStart: p.wake, dayEnd: p.sleep === '00:00' || p.sleep.startsWith('00') || p.sleep.startsWith('01') ? '24:00' : p.sleep });
     for (const kind of ['manana', 'noche'] as const) {
-      const base = routines[kind] ?? defaultRoutine(kind);
+      const kept = baseRoutine(kind).filter((s) => !off.includes(s.id));
       store.setRoutine(kind, {
-        ...base,
+        enabled: kept.length > 0,
         at: kind === 'manana' ? addMinutes(p.wake, 10) : addMinutes(p.sleep, -45),
-        steps: base.steps.filter((s) => steps[kind].includes(s.id)),
-        enabled: steps[kind].length > 0,
+        steps: kept,
       });
     }
     if (editing && !goal.trim()) {
@@ -376,22 +379,28 @@ export default function Bienvenida() {
             <Text style={type.title} accessibilityRole="header">{t('ob.routinesTitle')}</Text>
             <Text style={[type.muted, styles.sub]}>{t('ob.routinesBody')}</Text>
             {(['manana', 'noche'] as const).map((kind) => {
-              const base = routines[kind] ?? defaultRoutine(kind);
+              const list = baseRoutine(kind);
               const at = kind === 'manana' ? addMinutes(p.wake, 10) : addMinutes(p.sleep, -45);
+              const addOwn = () => {
+                const v = newStep[kind].trim();
+                if (!v) return;
+                setExtra((cur) => ({ ...cur, [kind]: [...cur[kind], { id: `${kind}-own-${Date.now().toString(36)}`, text: v, minutes: 5 }] }));
+                setNewStep((cur) => ({ ...cur, [kind]: '' }));
+              };
               return (
                 <View key={kind} style={styles.card}>
                   <View style={styles.cardHead}>
                     <Text style={styles.cardTitle}>{t(`routine.${kind}`)}</Text>
                     <Text style={styles.hint}>{at}</Text>
                   </View>
-                  {base.steps.map((s) => {
-                    const on = steps[kind].includes(s.id);
+                  {list.map((s) => {
+                    const on = !off.includes(s.id);
                     return (
                       <Pressable
                         key={s.id}
                         accessibilityRole="checkbox"
                         accessibilityState={{ checked: on }}
-                        onPress={() => setSteps((cur) => ({ ...cur, [kind]: on ? cur[kind].filter((x) => x !== s.id) : [...cur[kind], s.id] }))}
+                        onPress={() => setOff((cur) => (on ? [...cur, s.id] : cur.filter((x) => x !== s.id)))}
                         style={styles.stepRow}
                       >
                         <View style={[styles.box, on && styles.boxOn]}>{on ? <CheckIcon color={colors.white} size={12} /> : null}</View>
@@ -399,6 +408,16 @@ export default function Bienvenida() {
                       </Pressable>
                     );
                   })}
+                  <TextInput
+                    value={newStep[kind]}
+                    onChangeText={(v) => setNewStep((cur) => ({ ...cur, [kind]: v }))}
+                    onSubmitEditing={addOwn}
+                    blurOnSubmit={false}
+                    returnKeyType="done"
+                    placeholder={t('ob.addStep')}
+                    placeholderTextColor={colors.faint}
+                    style={styles.input}
+                  />
                 </View>
               );
             })}

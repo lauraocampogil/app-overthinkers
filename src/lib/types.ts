@@ -43,7 +43,11 @@ export type Goal = {
   archived?: boolean;
   /** How it will look and feel when it's reached, in the person's words (visualisation). */
   vision?: string;
+  /** Weekly check-ins: a measurement (weight in kg…) and/or a progress photo. */
+  checkins?: Checkin[];
 };
+
+export type Checkin = { date: string; value?: number; photo?: string };
 
 export type RawGoal = {
   title: string;

@@ -5,6 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/lib/auth';
@@ -166,13 +167,16 @@ export default function RootLayout() {
   if (!loaded || !ready) return null;
 
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' }, animation: 'fade' }}>
         {/* An account is required: without a session only the sign-in screen exists. */}
         <Stack.Protected guard={signedIn}>
-          <Stack.Screen name="index" options={{ animation: 'fade' }} />
-          <Stack.Screen name="metas" options={{ animation: 'fade' }} />
+          <Stack.Screen name="index" options={{ animation: 'none' }} />
+          <Stack.Screen name="metas" options={{ animation: 'none' }} />
+          <Stack.Screen name="progreso" options={{ animation: 'none' }} />
+          <Stack.Screen name="dia" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="escuchando" options={{ gestureEnabled: false }} />
           <Stack.Screen name="escribir" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="ordenando" options={{ gestureEnabled: false }} />
@@ -196,5 +200,6 @@ export default function RootLayout() {
         </Stack.Protected>
       </Stack>
     </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

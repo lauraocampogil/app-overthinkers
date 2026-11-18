@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Ondas } from '@/components/Ondas';
+import { Cargador } from '@/components/Cargador';
 import { PrimaryButton, Screen } from '@/components/ui';
 import { t } from '@/i18n';
 import { parseBrainDump } from '@/lib/ai';
@@ -54,9 +54,9 @@ export default function Ordenando() {
 
   return (
     <Screen>
-      <View style={{ flex: 1, justifyContent: 'center', gap: 24 }}>
-        <Ondas mode="orden" height={300} />
-        <Text style={[type.title, { fontSize: 28, textAlign: 'center' }]} accessibilityRole="header" accessibilityLiveRegion="polite">
+      <View style={{ flex: 1, justifyContent: 'center', gap: 32 }}>
+        <Cargador />
+        <Text style={[type.title, { fontSize: 26, textAlign: 'center' }]} accessibilityRole="header" accessibilityLiveRegion="polite">
           {t('order.title')}
         </Text>
       </View>

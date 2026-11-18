@@ -1,15 +1,16 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Anillo } from '@/components/Anillo';
-import { CameraIcon, ClockIcon, MoonIcon, PinIcon, PlayIcon, SunIcon, TargetIcon } from '@/components/Iconos';
+import { CameraIcon, ChartIcon, ClockIcon, StarIcon, MoonIcon, PinIcon, PlayIcon, SunIcon, TargetIcon } from '@/components/Iconos';
 import { Mascota } from '@/components/Mascota';
 import { Ondas } from '@/components/Ondas';
-import { Pestanas } from '@/components/Pestanas';
+import { Barra } from '@/components/Barra';
+import { Deslizar } from '@/components/Deslizar';
 import { TaskSheet } from '@/components/TaskSheet';
-import { CheckIcon, Dock, FlameIcon, IconCircle, PersonIcon, Screen } from '@/components/ui';
+import { CheckIcon, FlameIcon, IconCircle, PersonIcon, Screen } from '@/components/ui';
 import { locale, minutesLabel, t } from '@/i18n';
 import { useAtajos } from '@/lib/atajos';
 import { useAuth, useMascot } from '@/lib/auth';
@@ -19,8 +20,10 @@ import { useVoz } from '@/lib/paleta';
 import { addDays, daysBetween } from '@/lib/planner';
 import { requiresProof, topThree } from '@/lib/prioridad';
 import { routineNow, routineOf } from '@/lib/rutinas';
+import { checkinDue, isWeightGoal, nextReto, RETOS } from '@/lib/retos';
+import { keepPhoto } from '@/lib/fotos';
 import type { Goal, Task } from '@/lib/types';
-import { todayIso, todayList, useDay, withDefaults } from '@/store/day';
+import { retoText, todayIso, todayList, useDay, withDefaults } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
 /** Monochrome: goals get shades of grey (kept for other screens that import it). */
@@ -73,7 +76,7 @@ export default function Inicio() {
   const onboarded = useDay((s) => s.profile.onboarded);
   const owner = useDay((s) => s.owner);
   const settings = withDefaults(useDay((s) => s.settings));
-  const { markDone, undoDone, toggleItem } = useDay.getState();
+  const { markDone, undoDone, toggleItem, moveTo, toggleRoutineStep } = useDay.getState();
   const userId = useAuth((s) => s.session?.user.id ?? null);
   const agenda = useAgenda((s) => s.status);
   useAgenda((s) => s.loadedAt);
@@ -82,6 +85,8 @@ export default function Inicio() {
   useAtajos();
   const [sheet, setSheet] = useState<Task | null>(null);
   const [showDone, setShowDone] = useState(false);
+  const retos = useDay((s) => s.retos);
+  const [weight, setWeight] = useState('');
 
   const minutesOf = (task: Task) => estimate(task, learned).minutes;
   const durLabel = (task: Task) => {
@@ -111,6 +116,13 @@ export default function Inicio() {
     router.setParams({ added: undefined, today: undefined, later: undefined, goals: undefined });
     return () => clearTimeout(id);
   }, [params.added, params.today, params.later, params.goals]);
+
+  // One challenge on offer at a time, matched to the person's areas and goals.
+  useEffect(() => {
+    if (!onboarded || retos.some((r) => r.status === 'offered')) return;
+    const next = nextReto(areas.map((a) => a.id), goals, retos, todayIso());
+    if (next) useDay.getState().offerReto(next.id, next.goalId);
+  }, [onboarded, retos, areas, goals]);
 
   if (userId && owner !== userId) return <Screen>{null}</Screen>;
   if (!onboarded) return <Redirect href="/bienvenida" />;
@@ -144,17 +156,19 @@ export default function Inicio() {
     .sort((a, b) => (a.due ?? '').localeCompare(b.due ?? ''))[0];
   const daysLeft = nextGoal?.due ? daysBetween(today, nextGoal.due) : null;
 
+  const offer = retos.find((r) => r.status === 'offered');
+  const checkinGoal = checkinDue(goals, today);
+  const checkin = checkinGoal && !(checkinGoal.checkins ?? []).some((c) => c.date === today) ? checkinGoal : null;
   const kind = routineNow();
   const routine = kind ? routineOf(routines, kind) : null;
   const routineDone = kind ? (routineLog[today]?.[kind] ?? []).length : 0;
-  const showRoutine = routine && routine.enabled && routine.steps.length > 0 && routineDone < routine.steps.length;
 
   const header = (
     <View style={styles.header}>
-      <Pestanas active="hoy" />
+      <Text style={styles.screenTitle} accessibilityRole="header">{t('tab.today')}</Text>
       <View style={styles.headerRight}>
         {daysLeft !== null ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={`${nextGoal!.title}: ${t('goals.daysLeft', { n: daysLeft })}`} onPress={() => router.push('/metas')} style={styles.pill} hitSlop={6}>
+          <Pressable accessibilityRole="button" accessibilityLabel={`${nextGoal!.title}: ${t('goals.daysLeft', { n: daysLeft })}`} onPress={() => router.push({ pathname: '/meta', params: { id: nextGoal!.id } })} style={styles.pill} hitSlop={6}>
             <TargetIcon size={14} />
             <Text style={styles.pillText}>{t('goals.daysShort', { n: daysLeft })}</Text>
           </Pressable>
@@ -169,11 +183,7 @@ export default function Inicio() {
       </View>
     </View>
   );
-  const dock = (
-    <View style={styles.dock} pointerEvents="box-none">
-      <Dock onWrite={() => router.push('/escribir')} onSpeak={() => router.push('/escuchando')} />
-    </View>
-  );
+  const dock = <Barra active="hoy" />;
 
   if (!tasks.some((x) => x.status === 'pendiente' || x.doneOn === today) && !goals.some((g) => !g.archived)) {
     return (
@@ -225,15 +235,105 @@ export default function Inicio() {
           </View>
         </View>
 
-        {showRoutine && routine && kind ? (
-          <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/rutina', params: { kind } })} style={({ pressed }) => [styles.routine, pressed && { opacity: 0.8 }]}>
-            {kind === 'manana' ? <SunIcon /> : <MoonIcon />}
-            <View style={{ flex: 1 }}>
-              <Text style={styles.routineTitle}>{t(`routine.${kind}`)}</Text>
-              <Text style={styles.rowMeta}>{t('routine.progress', { done: routineDone, total: routine.steps.length })}</Text>
+        {routine && routine.enabled && routine.steps.length && kind ? (
+          routineDone >= routine.steps.length ? (
+            <Pressable onPress={() => router.push({ pathname: '/rutina', params: { kind } })} style={styles.routineDone} accessibilityRole="button">
+              {kind === 'manana' ? <SunIcon size={18} /> : <MoonIcon size={18} />}
+              <Text style={[styles.rowMeta, { flex: 1 }]}>{t('routine.doneLine', { name: t(`routine.${kind}`) })}</Text>
+              <CheckIcon color={colors.ink} size={16} />
+            </Pressable>
+          ) : (
+            <View style={styles.routine}>
+              <View style={styles.routineHead}>
+                {kind === 'manana' ? <SunIcon /> : <MoonIcon />}
+                <Text style={[styles.routineTitle, { flex: 1 }]}>{t(`routine.${kind}`)}</Text>
+                <Text style={styles.routineCount}>
+                  {routineDone}/{routine.steps.length}
+                </Text>
+              </View>
+              <View style={styles.routineBar}>
+                <View style={[styles.routineFill, { width: `${(routineDone / routine.steps.length) * 100}%`, backgroundColor: voz.mic[1] }]} />
+              </View>
+              {routine.steps.map((step) => {
+                const on = (routineLog[today]?.[kind] ?? []).includes(step.id);
+                return (
+                  <Pressable key={step.id} onPress={() => toggleRoutineStep(kind, step.id)} style={styles.routineStep} accessibilityRole="checkbox" accessibilityState={{ checked: on }}>
+                    <View style={[styles.center, styles.routineBox, on && styles.routineBoxOn]}>{on ? <CheckIcon color={colors.white} size={12} /> : null}</View>
+                    <Text style={[styles.routineStepText, on && styles.done]}>{step.text}</Text>
+                    <Text style={styles.rowMeta}>{minutesLabel(step.minutes)}</Text>
+                  </Pressable>
+                );
+              })}
             </View>
-            <Text style={styles.routineCta}>{routineDone ? t('routine.continue') : t('routine.start')}</Text>
-          </Pressable>
+          )
+        ) : null}
+
+        {checkin ? (
+          <View style={styles.offer}>
+            <View style={styles.offerHead}>
+              <ChartIcon size={18} />
+              <Text style={styles.label}>{t('checkin.label').toUpperCase()}</Text>
+            </View>
+            <Text style={styles.offerTitle}>{isWeightGoal(checkin) ? t('checkin.weightTitle') : t('checkin.photoTitle')}</Text>
+            <Text style={styles.rowMeta}>{checkin.title}</Text>
+            {isWeightGoal(checkin) ? (
+              <View style={styles.weightRow}>
+                <TextInput
+                  value={weight}
+                  onChangeText={setWeight}
+                  keyboardType="decimal-pad"
+                  placeholder="62,5"
+                  placeholderTextColor={colors.faint}
+                  style={styles.weightInput}
+                  accessibilityLabel={t('checkin.weightTitle')}
+                />
+                <Text style={styles.unit}>kg</Text>
+                <Pressable
+                  onPress={() => {
+                    const v = Number(weight.replace(',', '.'));
+                    if (v > 20 && v < 400) useDay.getState().addCheckin(checkin.id, { value: v });
+                    setWeight('');
+                  }}
+                  style={styles.offerYes}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.offerYesText}>{t('task.save')}</Text>
+                </Pressable>
+              </View>
+            ) : null}
+            <Pressable
+              onPress={async () => {
+                const uri = await keepPhoto(`progress-${checkin.id}-${today}`);
+                if (uri) useDay.getState().addCheckin(checkin.id, { photo: uri });
+              }}
+              style={styles.offerPhoto}
+              accessibilityRole="button"
+            >
+              <CameraIcon size={18} />
+              <Text style={styles.offerNoText}>{t('checkin.photo')}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {offer ? (
+          <View style={styles.offer}>
+            <View style={styles.offerHead}>
+              <StarIcon size={16} />
+              <Text style={styles.label}>{t('reto.label').toUpperCase()}</Text>
+            </View>
+            <Text style={styles.offerTitle}>{retoText(offer.id, offer.n)}</Text>
+            <Text style={styles.rowMeta}>
+              {offer.goalId ? t('reto.forGoal', { goal: goals.find((g) => g.id === offer.goalId)?.title ?? '' }) : t('reto.body')} · {t(`routine.${RETOS[offer.id].routine}`)}
+            </Text>
+            <View style={styles.offerBtns}>
+              <Pressable onPress={() => useDay.getState().answerReto(offer.id, true)} style={styles.offerYes} accessibilityRole="button">
+                <Text style={styles.offerYesText}>{t('reto.accept')}</Text>
+              </Pressable>
+              <Pressable onPress={() => useDay.getState().answerReto(offer.id, false)} style={styles.offerNo} accessibilityRole="button">
+                <Text style={styles.offerNoText}>{t('reto.decline')}</Text>
+              </Pressable>
+            </View>
+          </View>
         ) : null}
 
         {topRows.length ? (
@@ -313,7 +413,12 @@ export default function Inicio() {
               <Text style={styles.sectionTitle}>{t('hoy.restToday')}</Text>
               <Text style={styles.sectionCount}>{rest.length}</Text>
             </View>
-            {rest.map(row)}
+            {rest.map((task) => (
+              <Deslizar key={task.id} today={today} onMove={(d) => moveTo(task.id, d)}>
+                {row(task)}
+              </Deslizar>
+            ))}
+            {rest.length ? <Text style={styles.swipeHint}>{t('swipe.hint')}</Text> : null}
             {done.filter((x) => !x.top).length ? (
               <Pressable onPress={() => setShowDone((v) => !v)} style={styles.doneToggle} accessibilityRole="button" accessibilityState={{ expanded: showDone }}>
                 <Text style={styles.rowMeta}>{t('hoy.doneCount', { n: done.filter((x) => !x.top).length })}</Text>
@@ -336,6 +441,17 @@ export default function Inicio() {
                     <Text style={[styles.dayName, i === 0 && { color: colors.white }]}>{i === 0 ? t('hoy.tomorrow') : weekday(day)}</Text>
                     <Text style={[styles.dayCount, i === 0 && { color: colors.white }]}>{list.length}</Text>
                   </View>
+                  {(['manana', 'noche'] as const).map((rk) => {
+                    const r = routineOf(routines, rk);
+                    return r.enabled && r.steps.length ? (
+                      <View key={rk} style={styles.dayRoutine}>
+                        {rk === 'manana' ? <SunIcon size={13} color={i === 0 ? '#BDBDBD' : colors.muted} /> : <MoonIcon size={13} color={i === 0 ? '#BDBDBD' : colors.muted} />}
+                        <Text style={[styles.dayRoutineText, i === 0 && { color: '#BDBDBD' }]} numberOfLines={1}>
+                          {r.at} · {t('routine.stepsShort', { n: r.steps.length })}
+                        </Text>
+                      </View>
+                    ) : null;
+                  })}
                   {list.length ? (
                     list.slice(0, 3).map((task) => (
                       <Pressable key={task.id} onPress={() => setSheet(task)} style={styles.dayTask} hitSlop={4}>
@@ -385,6 +501,7 @@ const styles = StyleSheet.create({
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 5, height: 34, paddingHorizontal: 11, borderRadius: 17, backgroundColor: colors.card },
   pillText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
+  screenTitle: { fontFamily: fonts.bold, fontSize: 30, letterSpacing: -1.1, color: colors.ink },
   titleBlock: { paddingHorizontal: 24, marginTop: 28, gap: 10 },
   flexCenter: { flex: 1, justifyContent: 'center' },
   dock: { position: 'absolute', left: 0, right: 0, bottom: 28 },
@@ -395,9 +512,32 @@ const styles = StyleSheet.create({
   heroTitle: { fontFamily: fonts.semibold, fontSize: 26, lineHeight: 30, letterSpacing: -0.9, color: colors.ink },
   label: { fontFamily: fonts.semibold, fontSize: 12, letterSpacing: 0.7, color: colors.muted },
 
-  routine: { marginHorizontal: 20, flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: 22, borderWidth: 1, borderColor: colors.line },
+  routine: { marginHorizontal: 20, padding: 16, borderRadius: 24, borderWidth: 1, borderColor: colors.line, gap: 6 },
+  routineHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   routineTitle: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
-  routineCta: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
+  routineCount: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
+  routineBar: { height: 3, borderRadius: 2, backgroundColor: colors.line, overflow: 'hidden', marginVertical: 6 },
+  routineFill: { height: 3, borderRadius: 2 },
+  routineStep: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
+  routineBox: { width: 22, height: 22, borderRadius: 7, borderWidth: 1.5, borderColor: colors.faint },
+  routineBoxOn: { backgroundColor: colors.ink, borderColor: colors.ink },
+  routineStepText: { flex: 1, fontFamily: fonts.medium, fontSize: 15, color: colors.ink },
+  routineDone: { marginHorizontal: 20, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, minHeight: 44, borderRadius: 22, backgroundColor: colors.card },
+  offer: { marginHorizontal: 20, padding: 18, borderRadius: 24, backgroundColor: colors.card, gap: 6 },
+  offerHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  offerTitle: { fontFamily: fonts.semibold, fontSize: 19, lineHeight: 23, letterSpacing: -0.4, color: colors.ink, marginTop: 4 },
+  offerBtns: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  offerYes: { minHeight: 46, paddingHorizontal: 20, borderRadius: 23, backgroundColor: colors.ink, alignItems: 'center', justifyContent: 'center' },
+  offerYesText: { fontFamily: fonts.semibold, fontSize: 15, color: colors.white },
+  offerNo: { minHeight: 46, paddingHorizontal: 20, borderRadius: 23, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+  offerNoText: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink },
+  offerPhoto: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', minHeight: 44, paddingHorizontal: 16, borderRadius: 22, backgroundColor: colors.white, marginTop: 8 },
+  weightRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
+  weightInput: { width: 110, minHeight: 46, paddingHorizontal: 14, borderRadius: 14, backgroundColor: colors.white, fontFamily: fonts.semibold, fontSize: 20, color: colors.ink },
+  unit: { fontFamily: fonts.semibold, fontSize: 16, color: colors.muted, flex: 1 },
+  swipeHint: { fontFamily: fonts.regular, fontSize: 12, color: colors.faint, marginTop: 6 },
+  dayRoutine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dayRoutineText: { flex: 1, fontFamily: fonts.regular, fontSize: 12, color: colors.muted },
 
   topCard: { marginHorizontal: 20, backgroundColor: colors.ink, borderRadius: 28, paddingHorizontal: 18, paddingTop: 16, paddingBottom: 8 },
   topHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
@@ -412,7 +552,7 @@ const styles = StyleSheet.create({
   nowRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   nowTitle: { fontFamily: fonts.semibold, fontSize: 21, lineHeight: 25, letterSpacing: -0.5, color: colors.ink },
   metaLine: { flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' },
-  playWrap: { borderRadius: 32, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
+  playWrap: { borderRadius: 32, overflow: 'hidden' },
   play: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: { minHeight: 32, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.white, justifyContent: 'center' },

@@ -158,3 +158,22 @@ export function profileContext(p: Profile): string {
   ];
   return lines.filter(Boolean).join(' ');
 }
+
+const STOP = new Set(['para', 'de', 'del', 'la', 'el', 'los', 'las', 'a', 'al', 'en', 'mi', 'mis', 'por', 'con', 'y', 'un', 'una', 'the', 'to', 'by', 'for', 'my', 'of', 'and', 'in', 'pour', 'le', 'les', 'du', 'des', 'et', 'van', 'het', 'een', 'voor', 'und', 'die', 'der', 'das', 'zu', 'bis', 'o', 'do', 'da', 'il', 'per', 'di']);
+const tokens = (s: string) =>
+  s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\d+/g, ' ')
+    .split(/[^a-z]+/)
+    .filter((w) => w.length > 1 && !STOP.has(w));
+
+/** Two goals that mean the same thing ("Bajar 3 kg para diciembre" / "Bajar 5kg para finales de diciembre"). */
+export function sameGoal(a: string, b: string) {
+  const x = new Set(tokens(a));
+  const y = new Set(tokens(b));
+  if (!x.size || !y.size) return a.trim().toLowerCase() === b.trim().toLowerCase();
+  const inter = [...x].filter((w) => y.has(w)).length;
+  return inter / Math.min(x.size, y.size) >= 0.75 && inter / Math.max(x.size, y.size) >= 0.5;
+}

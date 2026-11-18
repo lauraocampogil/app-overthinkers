@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
   itemText: { flex: 1, fontFamily: fonts.medium, fontSize: 16, color: colors.ink },
   itemDone: { color: colors.faint, textDecorationLine: 'line-through' },
   actions: { flexDirection: 'row', gap: 12, alignItems: 'stretch', marginTop: 6 },
-  focusWrap: { flex: 1, borderRadius: 32, shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
+  focusWrap: { flex: 1, borderRadius: 32, overflow: 'hidden' },
   focus: { height: 64, borderRadius: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   focusText: { fontFamily: fonts.semibold, fontSize: 18, color: colors.white },
   photo: { width: 84, height: 64, borderRadius: 32, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center', gap: 2 },

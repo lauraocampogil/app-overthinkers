@@ -1,9 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import Svg, { Circle, Polyline } from 'react-native-svg';
 
 import { Anillo } from '@/components/Anillo';
-import { CalendarIcon, TargetIcon } from '@/components/Iconos';
+import { CalendarIcon, CameraIcon, ChartIcon, TargetIcon } from '@/components/Iconos';
+import { keepPhoto } from '@/lib/fotos';
+import { isWeightGoal } from '@/lib/retos';
 import { BackIcon, IconCircle, PrimaryButton, Screen } from '@/components/ui';
 import { locale, t } from '@/i18n';
 import { useVoz } from '@/lib/paleta';
@@ -72,6 +75,62 @@ export default function Meta() {
               )}
             </View>
           </View>
+
+          {(() => {
+            const list = goal.checkins ?? [];
+            const weights = list.filter((c) => typeof c.value === 'number') as { date: string; value: number }[];
+            const photos = list.filter((c) => c.photo);
+            const W = 300, H = 110;
+            const vals = weights.map((w) => w.value);
+            const lo = Math.min(...vals) - 0.5, hi = Math.max(...vals) + 0.5;
+            const pts = weights.map((w, i) => [weights.length === 1 ? W / 2 : (i / (weights.length - 1)) * (W - 16) + 8, H - 8 - ((w.value - lo) / (hi - lo || 1)) * (H - 16)]);
+            const diff = weights.length > 1 ? weights[weights.length - 1].value - weights[0].value : 0;
+            return (
+              <View style={styles.track}>
+                <View style={styles.labelRow}>
+                  <ChartIcon color={colors.muted} size={15} />
+                  <Text style={[styles.label, { marginTop: 0 }]}>{t('checkin.history')}</Text>
+                </View>
+                {weights.length ? (
+                  <>
+                    <Text style={styles.big}>
+                      {weights[weights.length - 1].value.toLocaleString(locale)} kg
+                      {weights.length > 1 ? <Text style={styles.diff}>{`  ${diff > 0 ? '+' : ''}${diff.toFixed(1).replace('.', ',')} kg`}</Text> : null}
+                    </Text>
+                    <Svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`}>
+                      <Polyline points={pts.map((p) => p.join(',')).join(' ')} fill="none" stroke={voz.mic[1]} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+                      {pts.map((p, i) => (
+                        <Circle key={i} cx={p[0]} cy={p[1]} r={4} fill={colors.white} stroke={voz.mic[2]} strokeWidth={2} />
+                      ))}
+                    </Svg>
+                  </>
+                ) : (
+                  <Text style={type.muted}>{isWeightGoal(goal) ? t('checkin.noWeight') : t('checkin.noPhotos')}</Text>
+                )}
+                {photos.length ? (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                    {photos.map((c) => (
+                      <View key={c.date} style={{ gap: 4 }}>
+                        <Image source={{ uri: c.photo }} style={styles.thumb} accessibilityIgnoresInvertColors />
+                        <Text style={styles.thumbDate}>{new Date(`${c.date}T12:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'short' })}</Text>
+                      </View>
+                    ))}
+                  </ScrollView>
+                ) : null}
+                <Pressable
+                  onPress={async () => {
+                    const uri = await keepPhoto(`progress-${goal.id}-${today}`);
+                    if (uri) useDay.getState().addCheckin(goal.id, { photo: uri });
+                  }}
+                  style={styles.photoBtn}
+                  accessibilityRole="button"
+                >
+                  <CameraIcon size={18} />
+                  <Text style={styles.chipText}>{t('checkin.photo')}</Text>
+                </Pressable>
+              </View>
+            );
+          })()}
 
           <Text style={styles.label}>{t('goal.name')}</Text>
           <TextInput value={title} onChangeText={setTitle} style={styles.input} accessibilityLabel={t('goal.name')} />
@@ -180,6 +239,11 @@ const styles = StyleSheet.create({
   chipOn: { backgroundColor: colors.ink },
   chipText: { fontFamily: fonts.medium, fontSize: 14, color: colors.ink },
   step: { fontFamily: fonts.medium, fontSize: 15, color: colors.ink, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
+  track: { padding: 16, borderRadius: 22, backgroundColor: colors.card, gap: 10, marginBottom: 6 },
+  diff: { fontFamily: fonts.semibold, fontSize: 16, color: colors.muted },
+  thumb: { width: 88, height: 116, borderRadius: 14, backgroundColor: colors.white },
+  thumbDate: { fontFamily: fonts.medium, fontSize: 11, color: colors.muted, textAlign: 'center' },
+  photoBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', minHeight: 42, paddingHorizontal: 14, borderRadius: 21, backgroundColor: colors.white },
   archive: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', marginTop: 16 },
   archiveText: { fontFamily: fonts.medium, fontSize: 15, color: colors.danger },
   footer: { paddingHorizontal: 24, paddingBottom: 6 },

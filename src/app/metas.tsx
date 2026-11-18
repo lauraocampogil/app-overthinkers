@@ -3,9 +3,9 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Anillo } from '@/components/Anillo';
-import { Pestanas } from '@/components/Pestanas';
+import { Barra } from '@/components/Barra';
 import { TaskSheet } from '@/components/TaskSheet';
-import { CheckIcon, Dock, IconCircle, PersonIcon, Screen } from '@/components/ui';
+import { CheckIcon, IconCircle, PersonIcon, Screen } from '@/components/ui';
 import { locale, t } from '@/i18n';
 import { daysBetween } from '@/lib/planner';
 import type { Goal, Task } from '@/lib/types';
@@ -83,7 +83,7 @@ export default function Metas() {
   return (
     <Screen>
       <View style={styles.header}>
-        <Pestanas active="metas" />
+        <Text style={styles.screenTitle} accessibilityRole="header">{t('tab.goals')}</Text>
         <IconCircle label={t('account.title')} onPress={() => router.push('/cuenta')} size={34}>
           <PersonIcon />
         </IconCircle>
@@ -107,15 +107,14 @@ export default function Metas() {
           <Text style={styles.addText}>{t('goals.add')}</Text>
         </Pressable>
       </ScrollView>
-      <View style={styles.dock} pointerEvents="box-none">
-        <Dock onWrite={() => router.push({ pathname: '/escribir', params: { meta: '1' } })} onSpeak={() => router.push('/escuchando')} />
-      </View>
+      <Barra active="metas" onWrite={() => router.push({ pathname: '/escribir', params: { meta: '1' } })} />
       <TaskSheet task={sheet} onClose={() => setSheet(null)} />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  screenTitle: { fontFamily: fonts.bold, fontSize: 30, letterSpacing: -1.1, color: colors.ink },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, minHeight: 52, marginTop: 6 },
   body: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 140, gap: 10 },
   empty: { gap: 10, marginTop: 20, marginBottom: 12 },

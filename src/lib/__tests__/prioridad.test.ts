@@ -71,3 +71,27 @@ describe('areas', () => {
     expect(topThree([football, work], TODAY, lorena)[0].id).toBe(work.id);
   });
 });
+
+import { sameGoal } from '../perfil';
+describe('goals', () => {
+  it('spots the same goal said twice', () => {
+    expect(sameGoal('Bajar 3kg para finales de diciembre', 'Bajar 5kg para finales de diciembre')).toBe(true);
+    expect(sameGoal('Ir al gym 3 veces por semana', 'Gym 3 veces por semana')).toBe(true);
+    expect(sameGoal('Aprobar el examen de estadística', 'Bajar 5 kg para diciembre')).toBe(false);
+  });
+});
+
+import { checkinDue, nextReto } from '../retos';
+describe('retos and check-ins', () => {
+  const goal = { id: 'g1', title: 'Bajar 5kg para diciembre', type: 'pronto' as const, due: '2026-12-31', perWeek: null, createdOn: '2026-11-18' };
+  it('proposes a challenge that fits a weight goal', () => {
+    expect(nextReto(['bajar_peso'], [goal], [], TODAY)?.id).toBe('abs');
+    expect(nextReto(['bajar_peso'], [goal], [{ id: 'abs', status: 'declined', n: 20, goalId: null, since: TODAY }], TODAY)?.id).not.toBe('abs');
+  });
+  it('asks the weight the first time and on Mondays', () => {
+    expect(checkinDue([goal], TODAY)?.id).toBe('g1');
+    const logged = { ...goal, checkins: [{ date: '2026-11-18', value: 62 }] };
+    expect(checkinDue([logged], '2026-11-19')).toBeNull();
+    expect(checkinDue([logged], '2026-11-23')?.id).toBe('g1');
+  });
+});

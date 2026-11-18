@@ -7,7 +7,10 @@ import { estimate, learn, type Learned } from '@/lib/duraciones';
 import { addDays, schedule } from '@/lib/planner';
 import { countToday, isoDay, START_FREEZES } from '@/lib/streak';
 import { syncDay } from '@/lib/sync';
-import { EMPTY_PROFILE, type Profile } from '@/lib/perfil';
+import { EMPTY_PROFILE, sameGoal, type Profile } from '@/lib/perfil';
+import { RETOS, retoStepId, type Reto, type RetoId } from '@/lib/retos';
+import { defaultRoutine } from '@/lib/rutinas';
+import { t } from '@/i18n';
 import type { ChecklistItem, Goal, ParseResult, RawGoal, RawTask, Routine, RoutineKind, Settings, Streak, Task } from '@/lib/types';
 
 /**
@@ -47,6 +50,10 @@ type DayState = {
   routineLog: Record<string, Partial<Record<RoutineKind, string[]>>>;
   /** Filled in the onboarding: the 3 areas of life, stores, day window, energy… */
   profile: Profile;
+  /** Minutes of focus per day (from finished focus sessions), for the progress screen. */
+  focusLog: Record<string, number>;
+  /** Challenges proposed / accepted / declined. */
+  retos: Reto[];
 
   setDraft: (text: string) => void;
   /** New tasks from voice / text / screenshot: GetGo places them on the right days. */
@@ -60,6 +67,8 @@ type DayState = {
   setDetails: (taskId: string, patch: Partial<Pick<Task, 'where' | 'at'>>) => void;
   archiveGoal: (goalId: string) => void;
   updateGoal: (goalId: string, patch: Partial<Pick<Goal, 'title' | 'type' | 'due' | 'perWeek' | 'vision'>>) => void;
+  /** Today's check-in for a goal (merged with any earlier one today). */
+  addCheckin: (goalId: string, entry: { value?: number; photo?: string }) => void;
   addTitle: (title: string, day?: string) => void;
   rollOverIfNewDay: () => void;
   markDone: (id: string) => void;
@@ -77,6 +86,9 @@ type DayState = {
   proveDone: (id: string, photo: string, offline: boolean) => void;
   setRoutine: (kind: RoutineKind, routine: Routine) => void;
   setProfile: (patch: Partial<Profile>) => void;
+  offerReto: (id: RetoId, goalId: string | null) => void;
+  /** Accept: it joins its routine. Decline: GetGo won't propose it again for two weeks. */
+  answerReto: (id: RetoId, accept: boolean) => void;
   toggleRoutineStep: (kind: RoutineKind, stepId: string) => void;
   /** Re-plan with the latest calendar and durations. */
   replan: () => void;
@@ -115,6 +127,8 @@ const initial = {
   routines: {} as Partial<Record<RoutineKind, Routine>>,
   routineLog: {} as Record<string, Partial<Record<RoutineKind, string[]>>>,
   profile: EMPTY_PROFILE,
+  focusLog: {} as Record<string, number>,
+  retos: [] as Reto[],
 };
 
 const items = (list?: string[]): ChecklistItem[] =>
@@ -135,7 +149,10 @@ function weeklyTasks(goal: Goal, tasks: Task[], day: string): Task[] {
   const have = tasks.filter((t) => t.goalId === goal.id && (t.status === 'pendiente' ? t.day : (t.doneOn ?? t.day)) >= start && (t.status === 'pendiente' ? t.day : (t.doneOn ?? t.day)) <= end).length;
   const missing = Math.max(0, goal.perWeek - have);
   const tpl = goal.template ?? {};
-  return Array.from({ length: missing }, () => ({
+  // Spread the sessions over the days left this week (gym 3× → e.g. Mon, Wed, Fri), not all today.
+  const daysLeft = Array.from({ length: daysBetweenIso(day, end) + 1 }, (_, i) => addDays(day, i));
+  const spot = (k: number) => daysLeft[Math.min(daysLeft.length - 1, Math.floor((k * daysLeft.length) / Math.max(1, missing)))];
+  return Array.from({ length: missing }, (_, k) => ({
     ...fromRaw(
       {
         title: tpl.title ?? goal.title,
@@ -153,8 +170,12 @@ function weeklyTasks(goal: Goal, tasks: Task[], day: string): Task[] {
     ),
     goalId: goal.id,
     due: end,
+    day: spot(k),
+    pinned: true,
   }));
 }
+
+const daysBetweenIso = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00`) - Date.parse(`${a}T12:00:00`)) / 86_400_000);
 
 function fromRaw(r: RawTask, day: string): Task {
   const { dueInDays, checklist, goal: _goal, ...rest } = r;
@@ -220,11 +241,16 @@ export const useDay = create<DayState>()(
           const day = today();
           const goals = [...get().goals];
           const fresh: Task[] = [];
-          const findGoal = (title?: string | null) =>
-            title ? goals.find((g) => !g.archived && g.title.toLowerCase() === title.toLowerCase()) : undefined;
+          const findGoal = (title?: string | null) => (title ? goals.find((g) => !g.archived && sameGoal(g.title, title)) : undefined);
 
           for (const rg of rawGoals ?? []) {
             let goal = findGoal(rg.title);
+            if (goal) {
+              // Same goal said again: keep one, with the newest wording and date.
+              const g0 = goal;
+              goal = { ...g0, title: rg.title, due: rg.dueInDays === null ? g0.due : addDays(day, Math.max(0, rg.dueInDays)), perWeek: rg.perWeek ?? g0.perWeek };
+              goals[goals.indexOf(g0)] = goal;
+            }
             if (!goal) {
               goal = {
                 id: newId(),
@@ -272,6 +298,20 @@ export const useDay = create<DayState>()(
 
         setDetails: (taskId, patchIn) => patch(taskId, (t) => ({ ...t, ...patchIn })),
 
+        addCheckin: (goalId, entry) => {
+          const day = today();
+          set({
+            goals: get().goals.map((g) => {
+              if (g.id !== goalId) return g;
+              const list = g.checkins ?? [];
+              const prev = list.find((c) => c.date === day);
+              const next = { ...prev, ...entry, date: day };
+              return { ...g, checkins: [...list.filter((c) => c.date !== day), next].sort((a, b) => a.date.localeCompare(b.date)) };
+            }),
+          });
+          syncDay(get());
+        },
+
         updateGoal: (goalId, patchIn) => {
           const goals = get().goals.map((g) => (g.id === goalId ? { ...g, ...patchIn } : g));
           set({ goals });
@@ -298,14 +338,44 @@ export const useDay = create<DayState>()(
           if (get().lastDay === day) return;
           const oldest = addDays(day, -KEEP_DONE_DAYS);
           const tasks = get()
-            .tasks.filter((t) => t.status === 'pendiente' || (t.doneOn ?? day) >= oldest)
+            .tasks.filter((t) => t.status === 'pendiente' || (t.doneOn ?? day) >= (t.proofPhoto ? addDays(day, -365) : oldest))
             .map((t) =>
               // Unfinished from a past day: comes back today with priority, no longer pinned to the old day.
               t.status === 'pendiente' && t.day < day ? { ...t, pinned: false, postponed: t.postponed + 1 } : t,
             );
-          const weekly = get().goals.flatMap((g) => weeklyTasks(g, tasks, day));
-          set({ lastDay: day });
-          commit([...tasks, ...weekly]);
+          // Duplicated goals from earlier versions: merge them into the first one.
+          const goals = [...get().goals];
+          const moved = new Map<string, string>();
+          goals.forEach((g, i) => {
+            if (g.archived || moved.has(g.id)) return;
+            goals.slice(i + 1).forEach((h) => {
+              if (!h.archived && !moved.has(h.id) && sameGoal(g.title, h.title)) moved.set(h.id, g.id);
+            });
+          });
+          const merged = goals.map((g) => (moved.has(g.id) ? { ...g, archived: true } : g));
+          const relinked = tasks.map((t) => (t.goalId && moved.has(t.goalId) ? { ...t, goalId: moved.get(t.goalId)! } : t));
+          const weekly = merged.flatMap((g) => weeklyTasks(g, relinked, day));
+          set({ lastDay: day, goals: merged });
+          // Challenges kept at least 5 of the last 7 days grow a little (once a week).
+          const log = get().routineLog;
+          const retos = get().retos.map((r) => {
+            const def = RETOS[r.id];
+            if (r.status !== 'accepted' || !def.step || r.n >= def.max) return r;
+            const since = Math.round((Date.parse(`${day}T12:00:00`) - Date.parse(`${r.since}T12:00:00`)) / 86_400_000);
+            if (since < 7) return r;
+            const kept = Array.from({ length: 7 }, (_, i) => addDays(day, -1 - i)).filter((d) => (log[d]?.[def.routine] ?? []).includes(retoStepId(r.id))).length;
+            return kept >= 5 ? { ...r, n: Math.min(def.max, r.n + def.step), since: day } : { ...r, since: day };
+          });
+          set({ retos });
+          for (const r of retos) {
+            const def = RETOS[r.id];
+            const routine = get().routines[def.routine];
+            if (r.status !== 'accepted' || !routine) continue;
+            const text = retoText(r.id, r.n);
+            if (routine.steps.some((s) => s.id === retoStepId(r.id) && s.text !== text))
+              set({ routines: { ...get().routines, [def.routine]: { ...routine, steps: routine.steps.map((s) => (s.id === retoStepId(r.id) ? { ...s, text } : s)) } } });
+          }
+          commit([...relinked, ...weekly]);
         },
 
         markDone: (id) => {
@@ -314,7 +384,13 @@ export const useDay = create<DayState>()(
           const focus = get().focus;
           const task = get().tasks.find((t) => t.id === id);
           if (focus && focus.id === id && task) {
-            set({ learned: learn(get().learned, task, (Date.now() - focus.startedAt) / 60_000), focus: null });
+            const mins = (Date.now() - focus.startedAt) / 60_000;
+            const log = get().focusLog ?? {};
+            set({
+              learned: learn(get().learned, task, mins),
+              focus: null,
+              focusLog: { ...log, [day]: Math.round((log[day] ?? 0) + Math.min(mins, 240)) },
+            });
           }
           patch(id, (t) => ({ ...t, status: 'hecha', doneOn: day }));
           // The streak counts when today's list is finished.
@@ -383,6 +459,23 @@ export const useDay = create<DayState>()(
           syncDay(get());
         },
 
+        offerReto: (id, goalId) => {
+          if (get().retos.some((r) => r.id === id && r.status === 'offered')) return;
+          set({ retos: [...get().retos.filter((r) => r.id !== id), { id, status: 'offered', n: RETOS[id].start, goalId, since: today() }] });
+        },
+
+        answerReto: (id, accept) => {
+          const reto = get().retos.find((r) => r.id === id);
+          if (!reto) return;
+          set({ retos: get().retos.map((r) => (r.id === id ? { ...r, status: accept ? 'accepted' : 'declined', since: today() } : r)) });
+          if (!accept) return;
+          const def = RETOS[id];
+          const kind = def.routine;
+          const base = get().routines[kind] ?? defaultRoutine(kind, get().profile.areas.map((a) => a.id));
+          const step = { id: retoStepId(id), text: retoText(id, reto.n), minutes: def.minutes };
+          get().setRoutine(kind, { ...base, enabled: true, steps: [...base.steps.filter((s) => s.id !== step.id), step] });
+        },
+
         setRoutine: (kind, routine) => {
           set({ routines: { ...get().routines, [kind]: routine } });
           syncDay(get());
@@ -438,8 +531,10 @@ export const useDay = create<DayState>()(
       name: 'getgo-day',
       version: 6,
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: ({ settings, streak, tasks, lastDay, history, owner, learned, focus, goals, routines, routineLog, profile }) => ({
+      partialize: ({ settings, streak, tasks, lastDay, history, owner, learned, focus, goals, routines, routineLog, profile, focusLog, retos }) => ({
         goals,
+        retos,
+        focusLog,
         profile,
         routines,
         routineLog,
@@ -463,6 +558,8 @@ export const useDay = create<DayState>()(
             goals: s.goals ?? [],
             routines: s.routines ?? {},
             routineLog: s.routineLog ?? {},
+            retos: s.retos ?? [],
+            focusLog: s.focusLog ?? {},
             profile: { ...EMPTY_PROFILE, ...((s.profile as Partial<Profile>) ?? {}) },
             tasks: ((s.tasks as Task[]) ?? []).map(normalize),
           } as never;
@@ -533,4 +630,9 @@ export function goalProgress(goal: Goal, tasks: Task[]) {
   }
   const done = mine.filter((t) => t.status === 'hecha').length;
   return { done, total: mine.length, next: mine.filter((t) => t.status === 'pendiente') };
+}
+
+/** "20 abdominales antes de dormir" in the person's language. */
+export function retoText(id: RetoId, n: number) {
+  return t(`reto.${id}`, { n });
 }

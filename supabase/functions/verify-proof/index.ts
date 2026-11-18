@@ -7,10 +7,13 @@ const ANTHROPIC_MODEL = Deno.env.get('ANTHROPIC_MODEL') ?? 'claude-haiku-5-5';
 const GROQ_VISION_MODEL = Deno.env.get('GROQ_VISION_MODEL') ?? 'meta-llama/llama-4-scout-17b-16e-instruct';
 
 const SYSTEM = `Eres el verificador de GetGo. La persona dice que ha hecho una tarea y manda una foto como prueba.
-Decide si la foto muestra de forma razonable que la tarea está hecha. Sé justo pero no ingenuo:
+Decide si la foto muestra que ESTA tarea concreta está hecha. Sé estricto: el objetivo es que la persona se comprometa de verdad.
+- La foto tiene que mostrar algo directamente relacionado con la tarea (si la tarea es de deporte: ropa o lugar de deporte, la actividad o el reloj/app con la sesión; si es la compra: productos comprados o el ticket; si es estudiar: apuntes o libro abiertos).
+- Si la tarea dice un lugar o tienda (por ejemplo Lidl), vale una bolsa, ticket o productos de esa tienda, o la compra en casa.
 - Vale: la compra sobre la mesa o en bolsas para "hacer la compra"; la persona corriendo, ropa de deporte sudada o el reloj/app con la carrera para "correr"; la cocina limpia para "limpiar la cocina"; una captura del mail enviado para "mandar el mail".
 - No vale: una foto que no tiene nada que ver, una pantalla en negro, una foto de internet evidente, algo que solo muestra que la tarea está SIN hacer.
-Si dudas pero la foto es coherente con la tarea, acéptala.
+- No vale: una foto de una habitación, una cara, una mesa o un objeto cualquiera sin relación clara con la tarea.
+Si no ves una relación clara con la tarea, responde ok: false.
 "reason": una frase corta, amable, en el idioma indicado, dirigida a la persona (si no vale, di qué foto sí valdría).
 Responde SOLO con JSON: {"ok": boolean, "reason": string}`;
 

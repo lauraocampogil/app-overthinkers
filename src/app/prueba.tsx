@@ -63,7 +63,7 @@ export default function Prueba() {
       const check = await verifyProof(out.base64 ?? '', task.title, task.proof);
       if (!check.ok) {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-        setPhase({ kind: 'no', uri: out.uri, reason: check.reason || t('proof.noDefault') });
+        setPhase({ kind: 'no', uri: out.uri, reason: check.failed ? t('proof.failed') : check.reason || t('proof.noDefault') });
         return;
       }
       // Keep the photo with the task (documents folder survives cache clean-ups).

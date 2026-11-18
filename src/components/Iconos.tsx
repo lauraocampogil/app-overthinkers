@@ -119,3 +119,15 @@ export const ArrowRightIcon = ({ color = colors.ink, size = 16, strokeWidth = 1.
     <Path d="M5 12h14M13 6l6 6-6 6" {...line(color, strokeWidth)} />
   </Svg>
 );
+
+export const HomeIcon = ({ color = colors.ink, size = 22, strokeWidth = 1.8 }: P) => (
+  <Svg {...base(size)}>
+    <Path d="M4 10.5L12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15v-6h-6v6H5.5A1.5 1.5 0 0 1 4 19z" {...line(color, strokeWidth)} />
+  </Svg>
+);
+
+export const ChartIcon = ({ color = colors.ink, size = 22, strokeWidth = 1.8 }: P) => (
+  <Svg {...base(size)}>
+    <Path d="M5 20V12M10 20V6M15 20v-9M20 20V9" {...line(color, strokeWidth)} />
+  </Svg>
+);
