@@ -11,12 +11,15 @@ import type { RoutineKind } from '@/lib/types';
 import { todayIso, useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
+const NONE: string[] = [];
+
 /** Run through the morning or night routine: tick each step, the ring fills up. */
 export default function Rutina() {
   const params = useLocalSearchParams<{ kind?: RoutineKind }>();
   const kind: RoutineKind = params.kind === 'noche' || params.kind === 'manana' ? params.kind : routineNow() ?? 'manana';
   const routine = routineOf(useDay((s) => s.routines), kind);
-  const done = useDay((s) => s.routineLog[todayIso()]?.[kind] ?? []);
+  // Select the stored array itself (or one shared empty array): a new [] on every read loops forever.
+  const done = useDay((s) => s.routineLog[todayIso()]?.[kind]) ?? NONE;
   const toggle = useDay((s) => s.toggleRoutineStep);
   const voz = useVoz();
 
