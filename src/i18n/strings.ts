@@ -4,6 +4,9 @@
  * Plurals: keys ending in `_one` / `_other` are picked automatically from `{n}`.
  */
 const es = {
+  'account.privacy': "Privacidad",
+  'account.terms': "Términos",
+  'account.support': "Soporte",
   'focus.start': "Empezar foco",
   'focus.live': "En foco",
   'focus.paused': "En pausa",
@@ -335,6 +338,9 @@ export type Key = keyof typeof es;
 type Dict = Record<Key, string>;
 
 const en: Dict = {
+  'account.privacy': "Privacy",
+  'account.terms': "Terms",
+  'account.support': "Support",
   'focus.start': "Start focus",
   'focus.live': "Focusing",
   'focus.paused': "Paused",
@@ -653,6 +659,9 @@ const en: Dict = {
 };
 
 const fr: Dict = {
+  'account.privacy': "Confidentialité",
+  'account.terms': "Conditions",
+  'account.support': "Assistance",
   'focus.start': "Lancer le focus",
   'focus.live': "En focus",
   'focus.paused': "En pause",
@@ -971,6 +980,9 @@ const fr: Dict = {
 };
 
 const nl: Dict = {
+  'account.privacy': "Privacy",
+  'account.terms': "Voorwaarden",
+  'account.support': "Hulp",
   'focus.start': "Focus starten",
   'focus.live': "In focus",
   'focus.paused': "Gepauzeerd",
@@ -1289,6 +1301,9 @@ const nl: Dict = {
 };
 
 const de: Dict = {
+  'account.privacy': "Datenschutz",
+  'account.terms': "Nutzungsbedingungen",
+  'account.support': "Hilfe",
   'focus.start': "Fokus starten",
   'focus.live': "Im Fokus",
   'focus.paused': "Pausiert",
@@ -1607,6 +1622,9 @@ const de: Dict = {
 };
 
 const pt: Dict = {
+  'account.privacy': "Privacidade",
+  'account.terms': "Termos",
+  'account.support': "Suporte",
   'focus.start': "Começar foco",
   'focus.live': "Em foco",
   'focus.paused': "Em pausa",
@@ -1925,6 +1943,9 @@ const pt: Dict = {
 };
 
 const it: Dict = {
+  'account.privacy': "Privacy",
+  'account.terms': "Termini",
+  'account.support': "Assistenza",
   'focus.start': "Inizia focus",
   'focus.live': "In focus",
   'focus.paused': "In pausa",

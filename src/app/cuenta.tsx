@@ -7,6 +7,7 @@ import { BackIcon, IconCircle, Screen } from '@/components/ui';
 import { t } from '@/i18n';
 import { Mascota } from '@/components/Mascota';
 import { deleteAccount, signOut, useAuth, useMascot } from '@/lib/auth';
+import { openPage, SITE_URL } from '@/lib/legal';
 import { connectCalendar, defaultCalendarId, refreshAgenda, writableCalendars, type WritableCalendar } from '@/lib/calendario';
 import { useDay, withDefaults } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
@@ -160,6 +161,20 @@ export default function Cuenta() {
           <Text style={styles.rowText}>{t('routine.title')}</Text>
         </Pressable>
 
+        {SITE_URL ? (
+          <View style={styles.legalRow}>
+            <Pressable accessibilityRole="link" onPress={() => openPage('privacidad')} hitSlop={8}>
+              <Text style={styles.legalText}>{t('account.privacy')}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="link" onPress={() => openPage('terminos')} hitSlop={8}>
+              <Text style={styles.legalText}>{t('account.terms')}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="link" onPress={() => openPage('soporte')} hitSlop={8}>
+              <Text style={styles.legalText}>{t('account.support')}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         <Pressable accessibilityRole="button" onPress={() => void signOut()} style={styles.row}>
           <Text style={styles.rowText}>{t('account.signOut')}</Text>
         </Pressable>
@@ -184,6 +199,8 @@ const styles = StyleSheet.create({
   row: { backgroundColor: colors.card, borderRadius: 20, minHeight: 56, justifyContent: 'center', paddingHorizontal: 20 },
   rowText: { fontFamily: fonts.medium, fontSize: 16, color: colors.ink },
   spacer: { flex: 1 },
+  legalRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, paddingHorizontal: 4 },
+  legalText: { fontFamily: fonts.medium, fontSize: 14, color: colors.muted, textDecorationLine: 'underline' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { minHeight: 38, paddingHorizontal: 14, borderRadius: 19, backgroundColor: colors.white, justifyContent: 'center' },
   chipOn: { backgroundColor: colors.accentDark },

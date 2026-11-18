@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GetGo — Deja de pensar. Empieza.</title>
+  <meta name="description" content="GetGo es la app para overthinkers: sueltas lo que tienes en la cabeza y GetGo decide qué hacer hoy, cuándo y dónde. Con tu propia mascota." />
+  <meta property="og:title" content="GetGo — Deja de pensar. Empieza." />
+  <meta property="og:description" content="La app para overthinkers que decide por ti y no te deja escapar hasta que lo haces de verdad." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="nav" id="nav">
+    <div class="wrap">
+      <a class="logo" href="index.html"><span class="logo-dot" aria-hidden="true"></span>GetGo</a>
+      <nav class="nav-links" aria-label="Secciones">
+        <a href="#como">Cómo funciona</a>
+        <a href="#por-que">Por qué GetGo</a>
+        <a href="#mascota">Tu mascota</a>
+      </nav>
+      <a class="btn btn-dark btn-small" href="#descargar">Descargar</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="wrap">
+        <div>
+          <span class="eyebrow"><b>Para overthinkers</b> · iPhone y Android</span>
+          <h1 id="hero-title">Deja de pensar.<br /><span class="soft">Empieza.</span></h1>
+          <p class="lead">Suelta todo lo que tienes en la cabeza. GetGo decide qué hacer hoy, a qué hora, dónde y cuánto te lleva. Y no te deja escapar hasta que lo has hecho de verdad.</p>
+          <div class="cta-row" id="descargar">
+            <a class="store" href="#descargar" aria-label="Próximamente en el App Store">
+              <svg width="20" height="24" viewBox="0 0 20 24" fill="currentColor" aria-hidden="true"><path d="M16.5 12.7c0-2.8 2.3-4.1 2.4-4.2-1.3-1.9-3.3-2.2-4-2.2-1.7-.2-3.3 1-4.2 1-.9 0-2.2-1-3.6-.9-1.9 0-3.6 1.1-4.5 2.7-1.9 3.4-.5 8.3 1.4 11 .9 1.3 2 2.8 3.4 2.8 1.4-.1 1.9-.9 3.6-.9 1.7 0 2.1.9 3.6.9s2.4-1.4 3.3-2.7c1-1.5 1.5-3 1.5-3.1-.1 0-2.9-1.1-2.9-4.4zM13.8 4.4c.7-.9 1.3-2.2 1.1-3.4-1.1 0-2.4.7-3.2 1.6-.7.8-1.3 2.1-1.1 3.3 1.2.1 2.4-.6 3.2-1.5z"/></svg>
+              <div><small>Próximamente en</small><span>App Store</span></div>
+            </a>
+            <a class="store soon" href="#descargar" aria-label="Próximamente en Google Play">
+              <svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true"><path d="M1 1l11 10L1 21c-.4-.2-.6-.6-.6-1.1V2.1c0-.5.2-.9.6-1.1z" fill="#0a0a0a"/><path d="M15.5 7.7L12 11l3.5 3.3 3.6-2c.9-.5.9-2.1 0-2.6l-3.6-2z" fill="#6e6e6e"/><path d="M1 1c.3-.2.8-.2 1.2 0l13.3 6.7L12 11 1 1z" fill="#3a3a3a"/><path d="M12 11l3.5 3.3L2.2 21c-.4.2-.9.2-1.2 0l11-10z" fill="#a6a6a6"/></svg>
+              <div><small>Próximamente en</small><span>Google Play</span></div>
+            </a>
+          </div>
+          <p class="note">Gratis para empezar. Sin anuncios.</p>
+        </div>
+
+        <div class="phone-stage" aria-label="Así se ve GetGo: tus 3 prioridades del día y el botón para empezar">
+          <div class="phone" id="phone">
+            <div class="screen">
+              <div class="island" aria-hidden="true"></div>
+              <div class="tabs" aria-hidden="true"><span class="on">Hoy</span><span>Metas</span></div>
+              <div class="m-hero">
+                <div class="ring"><div><div style="width:56px;height:56px" data-mascot="phone"></div></div></div>
+                <div><h4>2 de 3 hechas</h4><p>Siguiente: Hacer la compra · 18:00</p></div>
+              </div>
+              <div class="top3">
+                <div class="top3-head"><span>LO MÁS IMPORTANTE</span><b>2/3</b></div>
+                <div class="t-row done"><span class="n">1</span><span class="tt">Enviar el CV<small>Captura del mail</small></span><span class="ck">✓</span></div>
+                <div class="t-row done"><span class="n">2</span><span class="tt">Correr 30 min<small>Bois de la Cambre</small></span><span class="ck">✓</span></div>
+                <div class="t-row"><span class="n">3</span><span class="tt">Hacer la compra<small>18:00 · Lidl</small></span><span class="ck">📷</span></div>
+              </div>
+              <div class="now">
+                <small>AHORA · 18:00 – 18:35</small>
+                <h5>Hacer la compra</h5>
+                <div class="chips"><span class="chip x">Huevos</span><span class="chip">Manzanas</span><span class="chip">Pasta</span><span class="chip">Yogur</span></div>
+                <div class="focus-btn">Empezar foco</div>
+              </div>
+              <div class="dock" aria-hidden="true"><span class="plus">+</span><span class="mic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="9" y="3" width="6" height="11" rx="3" stroke="#fff" stroke-width="2"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></span></div>
+            </div>
+          </div>
+          <div class="floating" data-mascot="float" aria-hidden="true"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="como" aria-labelledby="como-title">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="kicker">Cómo funciona</span>
+          <h2 id="como-title">Tú lo sueltas. GetGo lo ordena. Tú lo haces.</h2>
+          <p>Hecho para cabezas con mil ideas a la vez: nada que configurar, nada que decidir.</p>
+        </div>
+        <div class="steps">
+          <div class="step"><span class="num">01</span><h3>Suéltalo</h3><p>Habla, escribe, pega un mensaje o una captura. Tal cual te sale, sin orden.</p></div>
+          <div class="step"><span class="num">02</span><h3>GetGo decide</h3><p>Elige tus 3 prioridades, el día, la hora, el sitio y cuánto te va a llevar a ti. Y lo pone en tu calendario.</p></div>
+          <div class="step"><span class="num">03</span><h3>Hazlo de verdad</h3><p>Empiezas un foco con un toque y lo cierras con una foto. Hasta entonces, el aviso vuelve.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="dark" aria-labelledby="feat-title">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="kicker">Lo que nadie más hace</span>
+          <h2 id="feat-title">Una app que no te deja escapar.</h2>
+          <p>Las listas de tareas esperan a que tú decidas. GetGo decide contigo y te acompaña hasta el final.</p>
+        </div>
+        <div class="grid">
+          <div class="feat"><div class="ico">🎙</div><h3>Brain dump por voz</h3><p>Di todo lo que tienes en la cabeza. La IA separa cada acción, la hora, el lugar y la lista.</p></div>
+          <div class="feat"><div class="ico">③</div><h3>Solo 3 prioridades</h3><p>Si haces esas 3, el día cuenta. Cuando las cumples, entran las siguientes.</p></div>
+          <div class="feat"><div class="ico">◎</div><h3>Foco con un toque</h3><p>Una tarea, una cuenta atrás y tu mascota. También en la pantalla de bloqueo.</p></div>
+          <div class="feat"><div class="ico">📷</div><h3>Prueba con foto</h3><p>La IA comprueba la foto antes de cerrar la tarea. Hecho es hecho.</p></div>
+          <div class="feat"><div class="ico">🔒</div><h3>Apps bloqueadas</h3><p>Instagram y TikTok esperan hasta que termines tu rutina y tus prioridades.</p></div>
+          <div class="feat"><div class="ico">↗</div><h3>Metas en hábitos</h3><p>Tu meta se convierte en hábitos pequeños, con un ritmo realista y un recordatorio de tu visión.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="por-que" aria-labelledby="pq-title">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="kicker">Por qué GetGo</span>
+          <h2 id="pq-title">No es otra lista de tareas.</h2>
+        </div>
+        <table class="compare">
+          <thead><tr><th scope="col"></th><th scope="col">Una app de tareas</th><th scope="col">GetGo</th></tr></thead>
+          <tbody>
+            <tr><td>Apuntar</td><td>Escribir tarea por tarea</td><td>Soltarlo todo hablando, un mensaje o una captura</td></tr>
+            <tr><td>Qué hago hoy</td><td>Lo decides tú</td><td>3 prioridades, con hora, lugar y duración</td></tr>
+            <tr><td>Cerrar una tarea</td><td>Un toque</td><td>Una foto que la IA comprueba</td></tr>
+            <tr><td>Distracciones</td><td>Nada</td><td>Bloquea tus apps hasta que cumples</td></tr>
+            <tr><td>Metas</td><td>Una tarea más</td><td>Hábitos pequeños y visualización</td></tr>
+            <tr><td>Personalidad</td><td>Ninguna</td><td>Una mascota que es solo tuya</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="mascota" aria-labelledby="m-title" style="padding-top:24px">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="kicker">Tu mascota</span>
+          <h2 id="m-title">Nadie tiene una igual que la tuya.</h2>
+          <p>Durante tu primera semana, tus ondas se van tiñendo de un color que es solo tuyo. El día 7 nace tu mascota. Crece con tus rachas, te recuerda tu meta y puedes enseñarla.</p>
+        </div>
+        <div class="mascots">
+          <div class="m-card"><div class="art" data-mascot="258"></div><b>Nube</b><span>Racha de 12 días</span></div>
+          <div class="m-card"><div class="art" data-mascot="318"></div><b>Mochi</b><span>Racha de 31 días</span></div>
+          <div class="m-card"><div class="art" data-mascot="222"></div><b>Boo</b><span>Racha de 7 días</span></div>
+          <div class="m-card"><div class="art" data-mascot="292"></div><b>Lila</b><span>Racha de 54 días</span></div>
+          <div class="m-card"><div class="art" data-mascot="160"></div><b>Kiwi</b><span>Racha de 3 días</span></div>
+        </div>
+        <div class="growth" aria-label="De la onda gris a tu mascota en 7 días">
+          <div class="g"><div data-wave="0"></div><b>Día 1</b><span>Tu onda, en gris</span></div>
+          <div class="bar"></div>
+          <div class="g"><div data-wave="0.45"></div><b>Día 3</b><span>Empieza a tener color</span></div>
+          <div class="bar"></div>
+          <div class="g"><div data-wave="0.8"></div><b>Día 5</b><span>Casi es tu color</span></div>
+          <div class="bar"></div>
+          <div class="g"><div data-mascot="292"></div><b>Día 7</b><span>Nace tu mascota</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta" aria-labelledby="cta-title">
+      <div class="wrap">
+        <h2 id="cta-title">Tu cabeza no es una lista de tareas.</h2>
+        <p>Déjala a GetGo y empieza.</p>
+        <div class="cta-row"><a class="btn btn-dark" href="#descargar">Descargar GetGo</a><a class="btn btn-light" href="soporte.html">Preguntas</a></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>© 2026 GetGo · Unix Creative Studio · Bruselas</span>
+      <nav aria-label="Legal">
+        <a href="privacidad.html">Privacidad</a>
+        <a href="terminos.html">Términos</a>
+        <a href="soporte.html">Soporte</a>
+        <a href="eliminar-cuenta.html">Eliminar cuenta</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script>
+    // Mascots: same idea as the app: a glossy blob whose colours come from one hue, so each one is different.
+    const hsl = (h, s, l) => `hsl(${h} ${s}% ${l}%)`;
+    const palette = (h) => ({ core: hsl(h, 55, 40), mid: hsl(h, 70, 58), edge: hsl(h, 85, 76), a: hsl(h - 45, 90, 66) });
+    let uid = 0;
+    function mascot(h) {
+      const p = palette(h);
+      const id = `m${uid++}`;
+      return `<svg class="mascot" viewBox="0 0 200 200" role="img" aria-label="Mascota de GetGo"><defs>
+        <radialGradient id="${id}b" cx="50%" cy="62%" r="62%"><stop offset="0" stop-color="${p.core}"/><stop offset="0.6" stop-color="${p.mid}"/><stop offset="1" stop-color="${p.edge}"/></radialGradient>
+        <radialGradient id="${id}h" cx="34%" cy="26%" r="34%"><stop offset="0" stop-color="#fff" stop-opacity="0.75"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>
+        <g class="body"><path d="M104 18C152 16 186 52 184 100C182 150 150 184 100 184C50 184 16 150 18 100C20 52 56 20 104 18Z" fill="url(#${id}b)"/>
+        <path d="M104 18C152 16 186 52 184 100C182 150 150 184 100 184C50 184 16 150 18 100C20 52 56 20 104 18Z" fill="url(#${id}h)"/></g>
+        <g class="eyes"><rect x="78" y="80" width="13" height="26" rx="6.5" fill="#fff"/><rect x="109" y="80" width="13" height="26" rx="6.5" fill="#fff"/></g></svg>`;
+    }
+    function wave(t) {
+      // Grey at first, then the person's colour.
+      const g = (v) => Math.round(v);
+      const mix = (from, to) => from.map((v, i) => g(v + (to[i] - v) * t));
+      const c1 = mix([190, 190, 190], [245, 154, 203]);
+      const c2 = mix([92, 92, 92], [124, 77, 255]);
+      return `<svg viewBox="0 0 64 64" role="img" aria-label="Onda de voz"><defs><radialGradient id="w${uid}" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="rgb(${c2})"/><stop offset="1" stop-color="rgb(${c1})" stop-opacity="0.15"/></radialGradient></defs>
+        <circle cx="32" cy="32" r="30" fill="url(#w${uid++})"/><path d="M6 32c6-8 10-8 16 0s10 8 16 0 10-8 16 0 6 4 8 2" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`;
+    }
+    document.querySelectorAll('[data-wave]').forEach((el) => (el.innerHTML = wave(Number(el.dataset.wave))));
+    document.querySelectorAll('[data-mascot]').forEach((el) => {
+      const v = el.dataset.mascot;
+      if (/^\d+$/.test(v)) el.innerHTML = mascot(Number(v));
+    });
+
+    // Hero: the phone and the floating mascot change person every few seconds, to show each one is unique.
+    const hues = [292, 258, 318, 222, 160, 20];
+    let i = 0;
+    const phone = document.getElementById('phone');
+    function paint() {
+      const h = hues[i % hues.length];
+      const p = palette(h);
+      phone.style.setProperty('--a', p.a);
+      phone.style.setProperty('--mid', p.mid);
+      phone.style.setProperty('--core', p.core);
+      document.querySelectorAll('[data-mascot="phone"], [data-mascot="float"]').forEach((el) => (el.innerHTML = mascot(h)));
+      i++;
+    }
+    paint();
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(paint, 3200);
+
+    const nav = document.getElementById('nav');
+    addEventListener('scroll', () => nav.classList.toggle('scrolled', scrollY > 8), { passive: true });
+  </script>
+</body>
+</html>
