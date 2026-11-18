@@ -46,6 +46,16 @@ Si hay PERFIL, úsalo: "where" de la compra = su tienda favorita si no dice otra
 Si recibes una CAPTURA de mensajes o mails, extrae solo lo que la persona TIENE QUE HACER (peticiones, citas, fechas, lugares, horas).
 Responde SOLO con JSON: {"tasks":[...],"goals":[...],"tired":boolean}`;
 
+const WEEK = `
+MODO SEMANA: la persona te cuenta lo que quiere hacer esta semana. Organízale la semana entera.
+- Reparte las tareas en días: "dueInDays" = el día en que se HACE (0 = hoy, 1 = mañana… hasta 6). Equilibra los días: nada de 8 cosas un día y 0 otro.
+- Pon "at" ("HH:MM") a CADA tarea, dentro de su horario del PERFIL (se levanta / se acuesta, trabajo o clases), sin solapar, dejando huecos para comer. Lo difícil en sus horas de más energía. Lo que dice con hora fija (entreno de fútbol a las 19:00) se queda a esa hora.
+- "importance": 3 para lo que dice que es prioridad o importante; el resto 2 o 1.
+- Las tareas de casa (lavar los platos, hacer la comida) también llevan hora y duración realista.
+- "wake": si un día está muy lleno o la persona empieza muy tarde, propone una hora de levantarse ("07:00"); si no hace falta, null.
+- "advice": 1 o 2 frases cortas, amables y concretas en su idioma, dirigidas a la persona (por ejemplo: "El martes tienes mucho: levántate a las 7 y haz el gym antes de clase").
+Responde SOLO con JSON: {"tasks":[...],"goals":[...],"tired":boolean,"wake":string|null,"advice":string}`;
+
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -54,7 +64,8 @@ const cors = {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
-    const { text, today, weekday, lang, image, mediaType, profile } = await req.json();
+    const { text, today, weekday, lang, image, mediaType, profile, mode } = await req.json();
+    const week = mode === 'week';
     const hasImage = typeof image === 'string' && image.length > 0;
     if (!hasImage && (typeof text !== 'string' || !text.trim())) {
         return Response.json({ error: 'text or image is required' }, { status: 400, headers: cors });
@@ -82,8 +93,8 @@ Deno.serve(async (req) => {
         headers: { 'x-api-key': anthropicKey!, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
         body: JSON.stringify({
           model: ANTHROPIC_MODEL,
-          max_tokens: 2500,
-          system: SYSTEM,
+          max_tokens: 4000,
+          system: week ? SYSTEM + WEEK : SYSTEM,
           messages: [{ role: 'user', content: hasImage
             ? [
                 { type: 'image', source: { type: 'base64', media_type: type, data: image } },
@@ -106,12 +117,12 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           model: GROQ_MODEL,
           temperature: 0.2,
-          max_completion_tokens: 2500,
+          max_completion_tokens: 4000,
           response_format: { type: 'json_object' },
           // Qwen on Groq: answer directly, no thinking tokens (faster and cheaper on the free quota).
           ...(GROQ_MODEL.startsWith('qwen/') ? { reasoning_effort: 'none', reasoning_format: 'hidden' } : {}),
           messages: [
-            { role: 'system', content: SYSTEM },
+            { role: 'system', content: week ? SYSTEM + WEEK : SYSTEM },
             { role: 'user', content: hasImage
               ? [
                   { type: 'text', text: prompt },
@@ -131,7 +142,12 @@ Deno.serve(async (req) => {
     }
     const json = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
     return Response.json(
-      { tasks: Array.isArray(json.tasks) ? json.tasks : [], goals: Array.isArray(json.goals) ? json.goals : [], tired: Boolean(json.tired) },
+      {
+        tasks: Array.isArray(json.tasks) ? json.tasks : [],
+        goals: Array.isArray(json.goals) ? json.goals : [],
+        tired: Boolean(json.tired),
+        ...(week ? { wake: typeof json.wake === 'string' ? json.wake : null, advice: typeof json.advice === 'string' ? json.advice : '' } : {}),
+      },
       { headers: cors },
     );
   } catch (e) {

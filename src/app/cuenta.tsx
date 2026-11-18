@@ -161,6 +161,10 @@ export default function Cuenta() {
           <Text style={styles.rowText}>{t('ob.editProfile')}</Text>
         </Pressable>
 
+        <Pressable accessibilityRole="button" onPress={() => router.push('/semana')} style={styles.row}>
+          <Text style={styles.rowText}>{t('week.title')}</Text>
+        </Pressable>
+
         <Pressable accessibilityRole="button" onPress={() => router.push('/rutinas')} style={styles.row}>
           <Text style={styles.rowText}>{t('routine.title')}</Text>
         </Pressable>

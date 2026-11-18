@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Anillo } from '@/components/Anillo';
-import { CameraIcon, ChartIcon, ClockIcon, StarIcon, MoonIcon, PinIcon, PlayIcon, SunIcon, TargetIcon } from '@/components/Iconos';
+import { ArrowRightIcon, CalendarIcon, CameraIcon, ChartIcon, ClockIcon, StarIcon, MoonIcon, PinIcon, PlayIcon, SunIcon, TargetIcon } from '@/components/Iconos';
 import { Mascota } from '@/components/Mascota';
 import { Ondas } from '@/components/Ondas';
 import { Barra } from '@/components/Barra';
@@ -72,6 +72,7 @@ export default function Inicio() {
   const learned = useDay((s) => s.learned);
   const routines = useDay((s) => s.routines);
   const routineLog = useDay((s) => s.routineLog);
+  const weekPlannedOn = useDay((s) => s.weekPlannedOn);
   const areas = useDay((s) => s.profile.areas);
   const onboarded = useDay((s) => s.profile.onboarded);
   const owner = useDay((s) => s.owner);
@@ -183,6 +184,9 @@ export default function Inicio() {
       </View>
     </View>
   );
+  const dow = new Date(`${today}T12:00:00`).getDay();
+  // Sunday or Monday, and the week has not been planned in the last days.
+  const showPlanWeek = (dow === 0 || dow === 1) && (!weekPlannedOn || daysBetween(weekPlannedOn, today) > 2);
   const dock = <Barra active="hoy" />;
 
   if (!tasks.some((x) => x.status === 'pendiente' || x.doneOn === today) && !goals.some((g) => !g.archived)) {
@@ -193,6 +197,14 @@ export default function Inicio() {
           <Text style={type.title} accessibilityRole="header">{t('home.title')}</Text>
           <Text style={type.muted}>{t('home.subtitle')}</Text>
         </View>
+        <Pressable onPress={() => router.push('/semana')} style={({ pressed }) => [styles.planWeek, { marginHorizontal: 20, marginTop: 16 }, pressed && { opacity: 0.85 }]} accessibilityRole="button">
+          <CalendarIcon size={20} color={colors.white} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={styles.planWeekTitle}>{t('week.cardTitle')}</Text>
+            <Text style={styles.planWeekBody}>{t('week.cardBody')}</Text>
+          </View>
+          <ArrowRightIcon size={18} color={colors.white} />
+        </Pressable>
         <View style={styles.flexCenter}>{mascot.unlocked ? <Mascota seed={mascot.seed} size={250} /> : <Ondas mode="calma" height={300} />}</View>
         {dock}
       </Screen>
@@ -234,6 +246,17 @@ export default function Inicio() {
             </Text>
           </View>
         </View>
+
+        {showPlanWeek ? (
+          <Pressable onPress={() => router.push('/semana')} style={({ pressed }) => [styles.planWeek, pressed && { opacity: 0.85 }]} accessibilityRole="button">
+            <CalendarIcon size={20} color={colors.white} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={styles.planWeekTitle}>{t('week.cardTitle')}</Text>
+              <Text style={styles.planWeekBody}>{t('week.cardBody')}</Text>
+            </View>
+            <ArrowRightIcon size={18} color={colors.white} />
+          </Pressable>
+        ) : null}
 
         {routine && routine.enabled && routine.steps.length && kind ? (
           routineDone >= routine.steps.length ? (
@@ -496,6 +519,9 @@ export default function Inicio() {
 }
 
 const styles = StyleSheet.create({
+  planWeek: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18, borderRadius: 24, backgroundColor: colors.ink },
+  planWeekTitle: { fontFamily: fonts.semibold, fontSize: 17, color: colors.white, letterSpacing: -0.2 },
+  planWeekBody: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: '#BDBDBD' },
   center: { alignItems: 'center', justifyContent: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, minHeight: 52, marginTop: 6 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },

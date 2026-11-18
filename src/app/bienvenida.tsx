@@ -80,6 +80,15 @@ export default function Bienvenida() {
   const [perms, setPerms] = useState({ notif: false, cal: false, cam: false });
   // Routine steps: GetGo's suggestions (based on the areas) + the person's own, minus the ones switched off.
   const [off, setOff] = useState<string[]>([]);
+  // GetGo's suggestions start unticked: the person accepts the ones they want.
+  const [picked, setPicked] = useState<string[]>([]);
+  const suggested = (kind: RoutineKind, id: string) => !routines[kind] && !id.includes('-own-');
+  const isOn = (kind: RoutineKind, id: string) => (suggested(kind, id) ? picked.includes(id) : !off.includes(id));
+  const flip = (kind: RoutineKind, id: string) => {
+    const on = isOn(kind, id);
+    if (suggested(kind, id)) setPicked((cur) => (on ? cur.filter((x) => x !== id) : [...cur, id]));
+    else setOff((cur) => (on ? [...cur, id] : cur.filter((x) => x !== id)));
+  };
   const [extra, setExtra] = useState<Record<RoutineKind, RoutineStep[]>>({ manana: [], noche: [] });
   const [newStep, setNewStep] = useState<Record<RoutineKind, string>>({ manana: '', noche: '' });
   const baseRoutine = (kind: RoutineKind) => {
@@ -146,7 +155,7 @@ export default function Bienvenida() {
     // The day window and the routines follow the hours the person gave.
     store.setSettings({ dayStart: p.wake, dayEnd: p.sleep === '00:00' || p.sleep.startsWith('00') || p.sleep.startsWith('01') ? '24:00' : p.sleep });
     for (const kind of ['manana', 'noche'] as const) {
-      const kept = baseRoutine(kind).filter((s) => !off.includes(s.id));
+      const kept = baseRoutine(kind).filter((s) => isOn(kind, s.id));
       store.setRoutine(kind, {
         enabled: kept.length > 0,
         at: kind === 'manana' ? addMinutes(p.wake, 10) : addMinutes(p.sleep, -45),
@@ -394,13 +403,13 @@ export default function Bienvenida() {
                     <Text style={styles.hint}>{at}</Text>
                   </View>
                   {list.map((s) => {
-                    const on = !off.includes(s.id);
+                    const on = isOn(kind, s.id);
                     return (
                       <Pressable
                         key={s.id}
                         accessibilityRole="checkbox"
                         accessibilityState={{ checked: on }}
-                        onPress={() => setOff((cur) => (on ? [...cur, s.id] : cur.filter((x) => x !== s.id)))}
+                        onPress={() => flip(kind, s.id)}
                         style={styles.stepRow}
                       >
                         <View style={[styles.box, on && styles.boxOn]}>{on ? <CheckIcon color={colors.white} size={12} /> : null}</View>

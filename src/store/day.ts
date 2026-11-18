@@ -59,7 +59,9 @@ type DayState = {
   /** New tasks from voice / text / screenshot: GetGo places them on the right days. */
   addTasks: (raw: RawTask[]) => AddResult;
   /** Full result from the AI: tasks and goals (each goal becomes its tasks). */
-  addParsed: (result: Pick<ParseResult, 'tasks' | 'goals'>) => AddResult & { goals: number };
+  addParsed: (result: Pick<ParseResult, 'tasks' | 'goals'>, opts?: { pinDays?: boolean }) => AddResult & { goals: number };
+  /** Week planned (to show "Planifica tu semana" only once a week). */
+  weekPlannedOn: string | null;
   toggleItem: (taskId: string, itemId: string) => void;
   addItem: (taskId: string, text: string) => void;
   setItemText: (taskId: string, itemId: string, text: string) => void;
@@ -129,6 +131,7 @@ const initial = {
   profile: EMPTY_PROFILE,
   focusLog: {} as Record<string, number>,
   retos: [] as Reto[],
+  weekPlannedOn: null as string | null,
 };
 
 const items = (list?: string[]): ChecklistItem[] =>
@@ -237,7 +240,7 @@ export const useDay = create<DayState>()(
           return { added: placed.length, today: forToday, later: placed.length - forToday };
         },
 
-        addParsed: ({ tasks: raw, goals: rawGoals }) => {
+        addParsed: ({ tasks: raw, goals: rawGoals }, opts) => {
           const day = today();
           const goals = [...get().goals];
           const fresh: Task[] = [];
@@ -274,7 +277,9 @@ export const useDay = create<DayState>()(
             const key = r.title.toLowerCase();
             if (existing.has(key)) continue;
             existing.add(key);
-            fresh.push({ ...fromRaw(r, day), goalId: findGoal(r.goal)?.id ?? null });
+            const t0 = { ...fromRaw(r, day), goalId: findGoal(r.goal)?.id ?? null };
+            // Week plan: the task stays on the day the plan gave it (dueInDays = day it is done).
+            fresh.push(opts?.pinDays && r.dueInDays !== null && r.dueInDays !== undefined ? { ...t0, day: addDays(day, r.dueInDays), due: null, pinned: true } : t0);
           }
           const weekly = goals.flatMap((g) => weeklyTasks(g, [...get().tasks, ...fresh], day));
           set({ goals, draft: '' });
@@ -531,8 +536,9 @@ export const useDay = create<DayState>()(
       name: 'getgo-day',
       version: 6,
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: ({ settings, streak, tasks, lastDay, history, owner, learned, focus, goals, routines, routineLog, profile, focusLog, retos }) => ({
+      partialize: ({ settings, streak, tasks, lastDay, history, owner, learned, focus, goals, routines, routineLog, profile, focusLog, retos, weekPlannedOn }) => ({
         goals,
+        weekPlannedOn,
         retos,
         focusLog,
         profile,

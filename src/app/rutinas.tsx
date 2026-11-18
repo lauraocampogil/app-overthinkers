@@ -4,8 +4,8 @@ import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from
 
 import { BackIcon, IconCircle, Screen } from '@/components/ui';
 import { minutesLabel, t } from '@/i18n';
-import { routineOf } from '@/lib/rutinas';
-import type { Routine, RoutineKind } from '@/lib/types';
+import { defaultRoutine, routineOf } from '@/lib/rutinas';
+import type { Routine, RoutineKind, RoutineStep } from '@/lib/types';
 import { useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
@@ -19,6 +19,7 @@ const MINUTES = [2, 5, 10, 15, 20, 30];
 export default function Rutinas() {
   const routines = useDay((s) => s.routines);
   const setRoutine = useDay((s) => s.setRoutine);
+  const areas = useDay((s) => s.profile.areas);
 
   return (
     <Screen>
@@ -33,14 +34,22 @@ export default function Rutinas() {
         </Text>
         <Text style={type.muted}>{t('routine.intro')}</Text>
         {(['manana', 'noche'] as const).map((kind) => (
-          <Editor key={kind} kind={kind} routine={routineOf(routines, kind)} onChange={(r) => setRoutine(kind, r)} />
+          <Editor
+            key={kind}
+            kind={kind}
+            routine={routineOf(routines, kind)}
+            ideas={defaultRoutine(kind, areas.map((a) => a.id)).steps}
+            onChange={(r) => setRoutine(kind, r)}
+          />
         ))}
       </ScrollView>
     </Screen>
   );
 }
 
-function Editor({ kind, routine, onChange }: { kind: RoutineKind; routine: Routine; onChange: (r: Routine) => void }) {
+function Editor({ kind, routine, ideas, onChange }: { kind: RoutineKind; routine: Routine; ideas: RoutineStep[]; onChange: (r: Routine) => void }) {
+  // GetGo's proposals that are not in the routine yet: one tap accepts them, ignoring them is fine.
+  const proposals = ideas.filter((idea) => !routine.steps.some((x) => x.id === idea.id || x.text.toLowerCase() === idea.text.toLowerCase()));
   const [draft, setDraft] = useState('');
   const [open, setOpen] = useState<string | null>(null);
   const update = (patch: Partial<Routine>) => onChange({ ...routine, ...patch });
@@ -123,6 +132,24 @@ function Editor({ kind, routine, onChange }: { kind: RoutineKind; routine: Routi
             placeholderTextColor={colors.faint}
             style={styles.add}
           />
+          {proposals.length ? (
+            <>
+              <Text style={[type.label, { marginTop: 6 }]}>{t('routine.ideas')}</Text>
+              <View style={styles.chips}>
+                {proposals.map((idea) => (
+                  <Pressable
+                    key={idea.id}
+                    onPress={() => update({ steps: [...routine.steps, idea] })}
+                    style={styles.idea}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('routine.accept', { step: idea.text })}
+                  >
+                    <Text style={styles.ideaText}>+ {idea.text}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          ) : null}
         </>
       ) : null}
     </View>
@@ -146,5 +173,7 @@ const styles = StyleSheet.create({
   stepInput: { flex: 1, fontFamily: fonts.medium, fontSize: 15, color: colors.ink, paddingVertical: 8 },
   stepMins: { fontFamily: fonts.medium, fontSize: 13, color: colors.muted },
   remove: { fontFamily: fonts.regular, fontSize: 22, color: colors.faint, paddingHorizontal: 4 },
+  idea: { minHeight: 36, paddingHorizontal: 13, borderRadius: 18, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.white, justifyContent: 'center' },
+  ideaText: { fontFamily: fonts.medium, fontSize: 14, color: colors.muted },
   add: { minHeight: 48, paddingHorizontal: 14, borderRadius: 16, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.faint, fontFamily: fonts.regular, fontSize: 15, color: colors.ink },
 });

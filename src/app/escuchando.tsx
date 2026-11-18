@@ -7,7 +7,7 @@ import {
   useAudioRecorderState,
 } from 'expo-audio';
 import { BlurView } from 'expo-blur';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { type ComponentRef, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -52,6 +52,7 @@ export default function Escuchando() {
   const mascot = useMascot();
   // Live mode: the phone's recogniser writes the words while you talk (development / store build).
   // Fallback (Expo Go): record, then transcribe on the server. Without either, say so instead of inventing text.
+  const { to } = useLocalSearchParams<{ to?: string }>();
   const [live] = useState(() => liveSpeechAvailable());
   const [phase, setPhase] = useState<Phase>(live || supabase ? 'starting' : 'noServer');
   const [heard, setHeard] = useState('');
@@ -151,7 +152,7 @@ export default function Escuchando() {
         return;
       }
       setDraft(text);
-      router.replace('/ordenando');
+      router.replace(to === 'semana' ? { pathname: '/semana', params: { review: '1' } } : '/ordenando');
     } catch (e) {
       console.warn('[record] stop failed', e);
       setPhase('failed');

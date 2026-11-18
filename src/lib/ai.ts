@@ -157,3 +157,28 @@ export async function verifyProof(base64: string, task: string, hint: string | n
     return { ok: false, reason: '', failed: true };
   }
 }
+
+export type WeekPlan = { tasks: RawTask[]; goals: RawGoal[]; wake: string | null; advice: string };
+
+/** "Planificar mi semana": the AI spreads what the person said over the 7 days, with times, and gives advice. */
+export async function planWeek(text: string): Promise<WeekPlan | null> {
+  if (!supabase) return null;
+  try {
+    await ensureSession();
+    const now = new Date();
+    const { data, error } = await supabase.functions.invoke('plan-day', {
+      body: { text, today: isoDay(now), weekday: now.getDay(), lang, profile: profileContext(useDay.getState().profile), mode: 'week' },
+    });
+    if (error) throw error;
+    const wake = typeof data?.wake === 'string' && /^([01]?\d|2[0-3]):[0-5]\d$/.test(data.wake) ? data.wake.padStart(5, '0') : null;
+    return {
+      tasks: ((Array.isArray(data?.tasks) ? data.tasks : []).map(sanitize).filter(Boolean) as RawTask[]).map((t) => ({ ...t, dueInDays: Math.min(6, t.dueInDays ?? 0) })),
+      goals: (Array.isArray(data?.goals) ? data.goals : []).map(sanitizeGoal).filter(Boolean) as RawGoal[],
+      wake,
+      advice: typeof data?.advice === 'string' ? data.advice.slice(0, 400) : '',
+    };
+  } catch (e) {
+    console.warn('[ai] week plan failed', e);
+    return null;
+  }
+}
