@@ -114,6 +114,7 @@ export const DEFAULT_SETTINGS: Settings = {
   notifyAt: '08:00',
   calendar: 'off',
   calendarTarget: null,
+  calendarsOff: [],
   dayStart: '08:00',
   dayEnd: '22:00',
 };

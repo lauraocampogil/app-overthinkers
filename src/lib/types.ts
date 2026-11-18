@@ -109,6 +109,8 @@ export type Settings = {
   calendar: 'off' | 'read' | 'write';
   /** Calendar id GetGo writes its blocks into (any calendar on the phone: iCloud, Google, Outlook…). */
   calendarTarget: string | null;
+  /** Calendars GetGo should NOT read (ids). Every calendar on the phone is read by default: iCloud, Google, Outlook… */
+  calendarsOff: string[];
   /** The part of the day GetGo may plan in (HH:MM). */
   dayStart: string;
   dayEnd: string;

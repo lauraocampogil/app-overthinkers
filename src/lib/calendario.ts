@@ -28,6 +28,17 @@ export async function writableCalendars(): Promise<WritableCalendar[]> {
 }
 
 /** The phone's default calendar, used when the person has not picked one. */
+/** Every calendar on the phone, grouped by account: iCloud (Apple), Google (also what Notion Calendar shows), Outlook… */
+export type ReadableCalendar = { id: string; title: string; account: string; color: string };
+export async function readableCalendars(): Promise<ReadableCalendar[]> {
+  const perm = await Calendar.getCalendarPermissionsAsync();
+  if (!perm.granted) return [];
+  const cals = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+  return cals
+    .map((c) => ({ id: c.id, title: c.title, account: c.source?.name || c.source?.type || '', color: c.color ?? '#8A8A8A' }))
+    .sort((a, b) => a.account.localeCompare(b.account) || a.title.localeCompare(b.title));
+}
+
 export async function defaultCalendarId(): Promise<string | null> {
   try {
     if (Platform.OS === 'ios') return (await Calendar.getDefaultCalendarAsync()).id;
@@ -85,7 +96,8 @@ export async function refreshAgenda(settings: Settings): Promise<void> {
       return;
     }
     const cals = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
-    const ids = cals.map((c) => c.id);
+    const off = new Set(settings.calendarsOff ?? []);
+    const ids = cals.filter((c) => !off.has(c.id)).map((c) => c.id);
     const from = new Date();
     from.setHours(0, 0, 0, 0);
     const to = new Date(from.getTime() + DAYS_AHEAD * 86_400_000);

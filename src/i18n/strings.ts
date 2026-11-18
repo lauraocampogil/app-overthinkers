@@ -4,6 +4,14 @@
  * Plurals: keys ending in `_one` / `_other` are picked automatically from `{n}`.
  */
 const es = {
+  'order.howLongFor': "¿Cuánto tiempo quieres para «{task}»?",
+  'order.sayIt': "O dímelo: «media hora»",
+  'order.listening': "Te escucho…",
+  'order.dontKnow': "No lo sé",
+  'cal.reading': "GetGo lee estos calendarios. Toca para quitar uno.",
+  'cal.thisPhone': "En este iPhone",
+  'cal.addGoogle': "¿Falta Google Calendar o Notion Calendar? En Ajustes › Calendario › Cuentas › Añadir cuenta › Google. Notion Calendar usa tu cuenta de Google, así que sus eventos aparecen aquí también.",
+  'cal.today': "En tu calendario",
   'order.howLong': "¿Cuánto tiempo?",
   'order.howLongBody': "No lo dijiste, así que te pregunto en vez de inventarlo. Si no lo sabes, déjalo vacío.",
   'order.howLongDone': "Listo",
@@ -649,6 +657,14 @@ export type Key = keyof typeof es;
 type Dict = Record<Key, string>;
 
 const en: Dict = {
+  'order.howLongFor': "How long do you want for “{task}”?",
+  'order.sayIt': "Or tell me: “half an hour”",
+  'order.listening': "Listening…",
+  'order.dontKnow': "I don't know",
+  'cal.reading': "GetGo reads these calendars. Tap to leave one out.",
+  'cal.thisPhone': "On this iPhone",
+  'cal.addGoogle': "Missing Google Calendar or Notion Calendar? Go to Settings › Calendar › Accounts › Add Account › Google. Notion Calendar uses your Google account, so its events show up here too.",
+  'cal.today': "In your calendar",
   'order.howLong': "How long?",
   'order.howLongBody': "You didn't say, so I'm asking instead of guessing. If you don't know, leave it empty.",
   'order.howLongDone': "Done",
@@ -1281,6 +1297,14 @@ const en: Dict = {
 };
 
 const fr: Dict = {
+  'order.howLongFor': "Combien de temps veux-tu pour « {task} » ?",
+  'order.sayIt': "Ou dis-le : « une demi-heure »",
+  'order.listening': "Je t'écoute…",
+  'order.dontKnow': "Je ne sais pas",
+  'cal.reading': "GetGo lit ces calendriers. Touche pour en retirer un.",
+  'cal.thisPhone': "Sur cet iPhone",
+  'cal.addGoogle': "Il manque Google Agenda ou Notion Calendar ? Réglages › Calendrier › Comptes › Ajouter un compte › Google. Notion Calendar utilise ton compte Google, ses événements apparaissent donc ici.",
+  'cal.today': "Dans ton calendrier",
   'order.howLong': "Combien de temps ?",
   'order.howLongBody': "Tu ne l'as pas dit, alors je te demande au lieu d'inventer. Si tu ne sais pas, laisse vide.",
   'order.howLongDone': "OK",
@@ -1913,6 +1937,14 @@ const fr: Dict = {
 };
 
 const nl: Dict = {
+  'order.howLongFor': "Hoeveel tijd wil je voor ‘{task}’?",
+  'order.sayIt': "Of zeg het: ‘een half uur’",
+  'order.listening': "Ik luister…",
+  'order.dontKnow': "Weet ik niet",
+  'cal.reading': "GetGo leest deze agenda's. Tik om er een weg te laten.",
+  'cal.thisPhone': "Op deze iPhone",
+  'cal.addGoogle': "Mis je Google Agenda of Notion Calendar? Instellingen › Agenda › Accounts › Voeg account toe › Google. Notion Calendar gebruikt je Google-account, dus die afspraken verschijnen hier ook.",
+  'cal.today': "In je agenda",
   'order.howLong': "Hoe lang?",
   'order.howLongBody': "Je zei het niet, dus ik vraag het in plaats van te gokken. Weet je het niet, laat het leeg.",
   'order.howLongDone': "Klaar",
@@ -2545,6 +2577,14 @@ const nl: Dict = {
 };
 
 const de: Dict = {
+  'order.howLongFor': "Wie viel Zeit willst du für „{task}“?",
+  'order.sayIt': "Oder sag es: „eine halbe Stunde“",
+  'order.listening': "Ich höre zu…",
+  'order.dontKnow': "Weiß ich nicht",
+  'cal.reading': "GetGo liest diese Kalender. Tippe, um einen auszulassen.",
+  'cal.thisPhone': "Auf diesem iPhone",
+  'cal.addGoogle': "Fehlt Google Kalender oder Notion Calendar? Einstellungen › Kalender › Accounts › Account hinzufügen › Google. Notion Calendar nutzt dein Google-Konto, also erscheinen die Termine auch hier.",
+  'cal.today': "In deinem Kalender",
   'order.howLong': "Wie lange?",
   'order.howLongBody': "Du hast es nicht gesagt, also frage ich statt zu raten. Wenn du es nicht weißt, lass es leer.",
   'order.howLongDone': "Fertig",
@@ -3177,6 +3217,14 @@ const de: Dict = {
 };
 
 const pt: Dict = {
+  'order.howLongFor': "Quanto tempo queres para «{task}»?",
+  'order.sayIt': "Ou diz-me: «meia hora»",
+  'order.listening': "Estou a ouvir…",
+  'order.dontKnow': "Não sei",
+  'cal.reading': "O GetGo lê estes calendários. Toca para tirar um.",
+  'cal.thisPhone': "Neste iPhone",
+  'cal.addGoogle': "Falta o Google Calendar ou o Notion Calendar? Definições › Calendário › Contas › Adicionar conta › Google. O Notion Calendar usa a tua conta Google, por isso os eventos aparecem aqui também.",
+  'cal.today': "No teu calendário",
   'order.howLong': "Quanto tempo?",
   'order.howLongBody': "Não disseste, por isso pergunto em vez de inventar. Se não souberes, deixa vazio.",
   'order.howLongDone': "Pronto",
@@ -3809,6 +3857,14 @@ const pt: Dict = {
 };
 
 const it: Dict = {
+  'order.howLongFor': "Quanto tempo vuoi per «{task}»?",
+  'order.sayIt': "Oppure dimmelo: «mezz'ora»",
+  'order.listening': "Ti ascolto…",
+  'order.dontKnow': "Non lo so",
+  'cal.reading': "GetGo legge questi calendari. Tocca per escluderne uno.",
+  'cal.thisPhone': "Su questo iPhone",
+  'cal.addGoogle': "Manca Google Calendar o Notion Calendar? Impostazioni › Calendario › Account › Aggiungi account › Google. Notion Calendar usa il tuo account Google, quindi i suoi eventi compaiono anche qui.",
+  'cal.today': "Nel tuo calendario",
   'order.howLong': "Quanto tempo?",
   'order.howLongBody': "Non l'hai detto, quindi te lo chiedo invece di inventarlo. Se non lo sai, lascia vuoto.",
   'order.howLongDone': "Fatto",

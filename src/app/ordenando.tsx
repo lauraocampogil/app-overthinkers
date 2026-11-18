@@ -1,18 +1,17 @@
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Cargador } from '@/components/Cargador';
+import { PreguntaTiempo } from '@/components/PreguntaTiempo';
 import { PrimaryButton, Screen } from '@/components/ui';
-import { minutesLabel, t } from '@/i18n';
+import { t } from '@/i18n';
 import type { ParseResult, RawTask } from '@/lib/types';
 import { parseBrainDump } from '@/lib/ai';
 import { useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
 const MIN_MS = 900;
-const CHOICES = [15, 30, 45, 60, 90];
 /** An activity with no duration said ("correr", "estudiar"): ask instead of guessing. */
 const needsTime = (x: RawTask) => x.minutes === null && (x.askMinutes || x.kind === 'deporte' || x.kind === 'estudio'); // a short beat so it feels sorted, without making anyone wait
 
@@ -22,7 +21,6 @@ export default function Ordenando() {
   const addParsed = useDay((s) => s.addParsed);
   const [empty, setEmpty] = useState(false);
   const [ask, setAsk] = useState<{ result: ParseResult; started: number } | null>(null);
-  const [times, setTimes] = useState<Record<number, number | 0>>({});
 
   const save = (result: ParseResult, started: number) => {
     const added = addParsed(result);
@@ -54,36 +52,19 @@ export default function Ordenando() {
   }, [addParsed]);
 
   if (ask) {
-    const list = ask.result.tasks.map((x, i) => ({ x, i })).filter(({ x }) => needsTime(x));
-    const done = () => {
-      const tasks = ask.result.tasks.map((x, i) => (times[i] ? { ...x, minutes: times[i], askMinutes: false } : x));
-      save({ ...ask.result, tasks }, Date.now() - MIN_MS);
-    };
+    const idx = ask.result.tasks.map((x, i) => (needsTime(x) ? i : -1)).filter((i) => i >= 0);
     return (
-      <Screen>
-        <ScrollView contentContainerStyle={styles.askBody}>
-          <Text style={type.title} accessibilityRole="header">{t('order.howLong')}</Text>
-          <Text style={type.muted}>{t('order.howLongBody')}</Text>
-          {list.map(({ x, i }, k) => (
-            <Animated.View key={i} entering={FadeInDown.delay(k * 70).duration(320)} style={styles.askCard}>
-              <Text style={styles.askTitle}>{x.title}</Text>
-              <View style={styles.chips}>
-                {CHOICES.map((m) => {
-                  const on = times[i] === m;
-                  return (
-                    <Pressable key={m} onPress={() => setTimes((c) => ({ ...c, [i]: on ? 0 : m }))} style={[styles.chip, on && styles.chipOn]} accessibilityRole="button" accessibilityState={{ selected: on }}>
-                      <Text style={[styles.chipText, on && { color: colors.white }]}>{minutesLabel(m)}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </Animated.View>
-          ))}
-        </ScrollView>
-        <View style={styles.footer}>
-          <PrimaryButton label={t('order.howLongDone')} onPress={done} />
-        </View>
-      </Screen>
+      <PreguntaTiempo
+        titles={idx.map((i) => ask.result.tasks[i].title)}
+        onDone={(mins) => {
+          const tasks = ask.result.tasks.map((x, i) => {
+            const k = idx.indexOf(i);
+            const m = k >= 0 ? mins[k] : null;
+            return m ? { ...x, minutes: m, askMinutes: false } : x;
+          });
+          save({ ...ask.result, tasks }, Date.now() - MIN_MS);
+        }}
+      />
     );
   }
 

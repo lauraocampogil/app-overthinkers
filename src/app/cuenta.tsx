@@ -3,12 +3,12 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { BackIcon, IconCircle, Screen } from '@/components/ui';
+import { BackIcon, CheckIcon, IconCircle, Screen } from '@/components/ui';
 import { t } from '@/i18n';
 import { Mascota } from '@/components/Mascota';
 import { deleteAccount, signOut, useAuth, useMascot } from '@/lib/auth';
 import { openPage, SITE_URL } from '@/lib/legal';
-import { connectCalendar, defaultCalendarId, refreshAgenda, writableCalendars, type WritableCalendar } from '@/lib/calendario';
+import { connectCalendar, defaultCalendarId, readableCalendars, refreshAgenda, writableCalendars, type ReadableCalendar, type WritableCalendar } from '@/lib/calendario';
 import { useDay, withDefaults } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
@@ -31,6 +31,17 @@ export default function Cuenta() {
     if (mode === 'write') setCals(await writableCalendars());
   };
   const [cals, setCals] = useState<WritableCalendar[]>([]);
+  const [readable, setReadable] = useState<ReadableCalendar[]>([]);
+  useEffect(() => {
+    if (settings.calendar !== 'off') void readableCalendars().then(setReadable);
+    else setReadable([]);
+  }, [settings.calendar]);
+  const toggleRead = (id: string) => {
+    const off = settings.calendarsOff ?? [];
+    const next = off.includes(id) ? off.filter((x) => x !== id) : [...off, id];
+    setSettings({ calendarsOff: next });
+    void refreshAgenda({ ...settings, calendarsOff: next });
+  };
   useEffect(() => {
     if (settings.calendar === 'write') void writableCalendars().then(setCals);
   }, [settings.calendar]);
@@ -108,6 +119,31 @@ export default function Cuenta() {
               </Pressable>
             ))}
           </View>
+          {readable.length ? (
+            <View style={{ gap: 8, marginTop: 4 }}>
+              <Text style={type.muted}>{t('cal.reading')}</Text>
+              {Array.from(new Set(readable.map((c) => c.account))).map((acc) => (
+                <View key={acc} style={{ gap: 4 }}>
+                  <Text style={styles.account}>{acc || t('cal.thisPhone')}</Text>
+                  {readable
+                    .filter((c) => c.account === acc)
+                    .map((c) => {
+                      const on = !(settings.calendarsOff ?? []).includes(c.id);
+                      return (
+                        <Pressable key={c.id} onPress={() => toggleRead(c.id)} style={styles.calRow} accessibilityRole="checkbox" accessibilityState={{ checked: on }}>
+                          <View style={[styles.calDot, { backgroundColor: on ? c.color : colors.line }]} />
+                          <Text style={[styles.calRowText, !on && { color: colors.faint }]} numberOfLines={1}>
+                            {c.title}
+                          </Text>
+                          <View style={[styles.calBox, on && styles.calBoxOn]}>{on ? <CheckIcon color={colors.white} size={11} /> : null}</View>
+                        </Pressable>
+                      );
+                    })}
+                </View>
+              ))}
+              <Text style={styles.calHelp}>{t('cal.addGoogle')}</Text>
+            </View>
+          ) : null}
           {settings.calendar === 'write' && cals.length ? (
             <>
               <Text style={[type.muted, { marginTop: 4 }]}>{t('cal.target')}</Text>
@@ -210,6 +246,12 @@ export default function Cuenta() {
 }
 
 const styles = StyleSheet.create({
+  account: { fontFamily: fonts.semibold, fontSize: 12, letterSpacing: 0.5, color: colors.muted, textTransform: 'uppercase', marginTop: 6 },
+  calRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 40 },
+  calRowText: { flex: 1, fontFamily: fonts.medium, fontSize: 15, color: colors.ink },
+  calBox: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: colors.faint, alignItems: 'center', justifyContent: 'center' },
+  calBoxOn: { backgroundColor: colors.ink, borderColor: colors.ink },
+  calHelp: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.muted, marginTop: 6 },
   header: { paddingHorizontal: 20, height: 52, justifyContent: 'center', marginTop: 4 },
   body: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 16 },
   card: { backgroundColor: colors.card, borderRadius: 24, padding: 20, gap: 4, marginTop: 8 },
