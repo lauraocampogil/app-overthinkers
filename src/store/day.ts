@@ -96,7 +96,7 @@ type DayState = {
   offerReto: (id: RetoId, goalId: string | null) => void;
   /** Accept: it joins its routine. Decline: GetGo won't propose it again for two weeks. */
   answerReto: (id: RetoId, accept: boolean) => void;
-  toggleRoutineStep: (kind: RoutineKind, stepId: string) => void;
+  toggleRoutineStep: (kind: RoutineKind, stepId: string, day?: string) => void;
   /** Re-plan with the latest calendar and durations. */
   replan: () => void;
   setSettings: (patch: Partial<Settings>) => void;
@@ -532,8 +532,8 @@ export const useDay = create<DayState>()(
           syncDay(get());
         },
 
-        toggleRoutineStep: (kind, stepId) => {
-          const day = today();
+        toggleRoutineStep: (kind, stepId, forDay) => {
+          const day = forDay && forDay <= today() ? forDay : today();
           const log = get().routineLog;
           const doneIds = log[day]?.[kind] ?? [];
           const next = doneIds.includes(stepId) ? doneIds.filter((x) => x !== stepId) : [...doneIds, stepId];

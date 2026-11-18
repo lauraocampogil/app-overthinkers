@@ -131,7 +131,8 @@ export default function RootLayout() {
   // Home-screen widget: mirror today's list, and apply ticks made on the widget when coming back.
   useEffect(() => {
     if (!signedIn) return;
-    syncWidget({ today: todayList(tasks), seed: userId ?? 'getgo', day: todayIso(), areas: useDay.getState().profile.areas });
+    const st = useDay.getState();
+    syncWidget({ today: todayList(tasks), seed: userId ?? 'getgo', day: todayIso(), areas: st.profile.areas, streak: st.streak.current, focus: st.focusLog?.[todayIso()] ?? 0 });
   }, [signedIn, tasks, userId]);
   useEffect(() => {
     if (!signedIn) return;

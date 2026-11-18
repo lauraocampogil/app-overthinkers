@@ -15,11 +15,14 @@ const NONE: string[] = [];
 
 /** Run through the morning or night routine: tick each step, the ring fills up. */
 export default function Rutina() {
-  const params = useLocalSearchParams<{ kind?: RoutineKind }>();
+  const params = useLocalSearchParams<{ kind?: RoutineKind; d?: string }>();
+  // The routine of the day it was opened for: another day shows its own log (a future day can't be ticked yet).
+  const day = params.d && /^\d{4}-\d{2}-\d{2}$/.test(params.d) ? params.d : todayIso();
+  const future = day > todayIso();
   const kind: RoutineKind = params.kind === 'noche' || params.kind === 'manana' ? params.kind : routineNow() ?? 'manana';
   const routine = routineOf(useDay((s) => s.routines), kind);
   // Select the stored array itself (or one shared empty array): a new [] on every read loops forever.
-  const done = useDay((s) => s.routineLog[todayIso()]?.[kind]) ?? NONE;
+  const done = useDay((s) => s.routineLog[day]?.[kind]) ?? NONE;
   const toggle = useDay((s) => s.toggleRoutineStep);
   const voz = useVoz();
 
@@ -55,10 +58,11 @@ export default function Rutina() {
             <Pressable
               key={step.id}
               accessibilityRole="checkbox"
-              accessibilityState={{ checked: on }}
+              accessibilityState={{ checked: on, disabled: future }}
+              disabled={future}
               onPress={() => {
                 void Haptics.selectionAsync().catch(() => {});
-                toggle(kind, step.id);
+                toggle(kind, step.id, day);
               }}
               style={({ pressed }) => [styles.step, pressed && { opacity: 0.8 }]}
             >

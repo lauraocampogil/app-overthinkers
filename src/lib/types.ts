@@ -27,6 +27,8 @@ export type RawTask = {
   proof?: string | null;
   /** The AI could not hear a duration for an activity that needs one: GetGo asks the person instead of guessing. */
   askMinutes?: boolean;
+  /** Follow-up questions GetGo asks right after ("¿Qué libro?", "¿Para cuándo?"). */
+  ask?: TaskQuestion[];
 };
 
 /** A goal the person wants to reach. GetGo breaks it into tasks and keeps them on the calendar. */
@@ -123,5 +125,8 @@ export type Streak = {
   /** ISO date (yyyy-mm-dd) of the last day that counted. */
   lastCountedDate: string | null;
 };
+
+/** A follow-up question about a task: its answer fills the duration, the title (template with {}) or the deadline. */
+export type TaskQuestion = { q: string; kind: 'minutes' | 'text' | 'deadline'; template?: string };
 
 export type ParseResult = { tasks: RawTask[]; tired: boolean; goals?: RawGoal[] };

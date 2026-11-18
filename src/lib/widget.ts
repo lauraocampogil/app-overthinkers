@@ -36,7 +36,7 @@ const toWidget = (x: Task) => ({
   time: x.at ?? undefined,
 });
 
-export function syncWidget(opts: { today: Task[]; seed: string; day: string; areas?: Area[] }) {
+export function syncWidget(opts: { today: Task[]; seed: string; day: string; areas?: Area[]; streak?: number; focus?: number }) {
   if (!widget) return;
   try {
     const list = opts.today;
@@ -58,7 +58,13 @@ export function syncWidget(opts: { today: Task[]; seed: string; day: string; are
         eyeH: (tr.eyeH / BODY) * 100,
         gap: (tr.eyeGap / BODY) * 100,
       },
+      stats: { done: done.length, focus: opts.focus ?? 0, streak: opts.streak ?? 0 },
       text: {
+        pending: t('widget.pending', { n: pending.length }),
+        done: t('widget.done'),
+        focus: t('widget.focus'),
+        streak: t('widget.streak'),
+        next: t('widget.next'),
         left: t('widget.left', { n: pending.length }),
         none: t('widget.none'),
         allDone: t('hoy.doneTitle'),

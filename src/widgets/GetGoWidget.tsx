@@ -1,10 +1,15 @@
-import { Button, Capsule, Circle, HStack, Link, Spacer, Text, VStack, ZStack } from '@expo/ui/swift-ui';
+import { Button, Capsule, Circle, Gauge, HStack, Link, Spacer, Text, VStack, ZStack } from '@expo/ui/swift-ui';
 import {
   containerBackground,
+  clipped,
   font,
   foregroundStyle,
   frame,
+  gaugeStyle,
   lineLimit,
+  monospacedDigit,
+  offset,
+  tint,
   opacity,
   strikethrough,
   widgetURL,
@@ -28,7 +33,21 @@ export type WidgetProps = {
   /** Everything else for today, for the large size and the lock screen. */
   tasks: WidgetTask[];
   mascot: { core: string; mid: string; edge: string; eyeW: number; eyeH: number; gap: number };
-  text: { left: string; none: string; allDone: string; empty: string; top: string; then: string };
+  /** Small stats under the ring, like a fitness widget: done today, focus minutes, streak. */
+  stats?: { done: number; focus: number; streak: number };
+  text: {
+    left: string;
+    none: string;
+    allDone: string;
+    empty: string;
+    top: string;
+    then: string;
+    pending?: string;
+    done?: string;
+    focus?: string;
+    streak?: string;
+    next?: string;
+  };
 };
 
 const GetGoWidget = (props: WidgetProps, env: WidgetEnvironment) => {
@@ -136,67 +155,108 @@ const GetGoWidget = (props: WidgetProps, env: WidgetEnvironment) => {
   const status = props.total === 0 ? props.text.empty : props.left === 0 ? props.text.allDone : props.text.left;
   const firstOpen = top.find((x) => !x.done) ?? props.tasks.find((x) => !x.done);
 
-  // Lock Screen
+  const done = props.total - props.left;
+  const progress = props.total ? done / props.total : 0;
+  const pendingWord = props.text.pending ?? '';
+  const stats = props.stats ?? { done, focus: 0, streak: 0 };
+
+  // The ring with the number of tasks still to do in the middle (like a calories-left ring).
+  const ring = (size: number, label: string = String(props.left)) => (
+    <Gauge
+      value={progress}
+      modifiers={[gaugeStyle('circularCapacity'), tint({ type: 'linearGradient', colors: [m.edge, m.mid, m.core], startPoint: { x: 0, y: 0 }, endPoint: { x: 1, y: 1 } }), frame({ width: size, height: size })]}
+      currentValueLabel={<Text modifiers={[font({ size: size * (label.length > 2 ? 0.24 : 0.34), weight: 'bold' }), monospacedDigit()]}>{label}</Text>}
+    />
+  );
+
+  // Lock Screen: how many tasks are left, at a glance.
   if (env.widgetFamily === 'accessoryCircular') {
     return (
-      <VStack modifiers={[containerBackground('#00000000', 'widget'), widgetURL('getgo://')]}>
-        <Text modifiers={[font({ size: 20, weight: 'bold' })]}>{`${topDone}/${top.length || 3}`}</Text>
-      </VStack>
+      <Gauge
+        value={progress}
+        modifiers={[gaugeStyle('circularCapacity'), containerBackground('#00000000', 'widget'), widgetURL('getgo://')]}
+        currentValueLabel={<Text modifiers={[font({ size: 18, weight: 'bold' }), monospacedDigit()]}>{String(props.left)}</Text>}
+      />
     );
   }
   if (env.widgetFamily === 'accessoryInline') {
     return (
       <Text modifiers={[containerBackground('#00000000', 'widget'), widgetURL('getgo://')]}>
-        {firstOpen ? firstOpen.title : status}
+        {props.left ? `${props.left} ${pendingWord}${firstOpen ? ` · ${firstOpen.title}` : ''}` : status}
       </Text>
     );
   }
   if (env.widgetFamily === 'accessoryRectangular') {
     return (
-      <VStack alignment="leading" spacing={2} modifiers={[containerBackground('#00000000', 'widget'), widgetURL('getgo://')]}>
-        <Text modifiers={[font({ size: 12, weight: 'semibold' }), opacity(0.7)]}>{`${props.text.top} · ${topDone}/${top.length || 3}`}</Text>
-        {top.slice(0, 2).map((x) => (
-          <Text key={x.id} modifiers={[font({ size: 14, weight: 'semibold' }), lineLimit(1), strikethrough({ isActive: x.done, pattern: 'solid' })]}>
-            {x.title}
-          </Text>
-        ))}
-      </VStack>
+      <HStack spacing={8} modifiers={[containerBackground('#00000000', 'widget'), widgetURL('getgo://')]}>
+        <Gauge
+          value={progress}
+          modifiers={[gaugeStyle('circularCapacity'), frame({ width: 44, height: 44 })]}
+          currentValueLabel={<Text modifiers={[font({ size: 15, weight: 'bold' }), monospacedDigit()]}>{String(props.left)}</Text>}
+        />
+        <VStack alignment="leading" spacing={1}>
+          <Text modifiers={[font({ size: 15, weight: 'bold' })]}>{props.left ? `${props.left} ${pendingWord}` : status}</Text>
+          {firstOpen ? (
+            <Text modifiers={[font({ size: 12, weight: 'medium' }), opacity(0.75), lineLimit(1)]}>{`${props.text.next ?? ''} ${firstOpen.title}`.trim()}</Text>
+          ) : null}
+        </VStack>
+        <Spacer />
+      </HStack>
     );
   }
 
-  // Small: the mascot and the one thing to do now.
+  // Small: the mascot peeking from the corner and the ring.
   if (env.widgetFamily === 'systemSmall') {
     return (
-      <VStack alignment="leading" spacing={6} modifiers={[containerBackground(bg, 'widget'), widgetURL(firstOpen ? `getgo://foco?id=${firstOpen.id}` : 'getgo://')]}>
-        <HStack>
-          {mascot(40)}
+      <ZStack modifiers={[containerBackground(bg, 'widget'), widgetURL(firstOpen ? `getgo://foco?id=${firstOpen.id}` : 'getgo://')]}>
+        <VStack alignment="leading" spacing={4}>
+          <HStack>
+            {ring(64)}
+            <Spacer />
+          </HStack>
           <Spacer />
-          <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle(ink)]}>{`${topDone}/${top.length || 3}`}</Text>
-        </HStack>
-        <Spacer />
-        <Text modifiers={[font({ size: 11, weight: 'semibold' }), foregroundStyle(muted)]}>{props.text.top.toUpperCase()}</Text>
-        <Text modifiers={[font({ size: 18, weight: 'bold' }), foregroundStyle(ink), lineLimit(3)]}>
-          {firstOpen ? firstOpen.title : status}
-        </Text>
-      </VStack>
+          <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle(muted)]}>{props.left ? pendingWord : status}</Text>
+          <Text modifiers={[font({ size: 15, weight: 'bold' }), foregroundStyle(ink), lineLimit(2)]}>{firstOpen ? firstOpen.title : ''}</Text>
+        </VStack>
+        <VStack alignment="trailing">
+          <HStack>
+            <Spacer />
+            <ZStack modifiers={[offset({ x: 22, y: -18 })]}>{mascot(70)}</ZStack>
+          </HStack>
+          <Spacer />
+        </VStack>
+      </ZStack>
     );
   }
 
-  // Medium: mascot + the 3 priorities.
+  // Medium, like the reference: the mascot peeking on the left, the ring with what's left, small stats below.
   if (env.widgetFamily === 'systemMedium') {
+    const stat = (value: string, label: string) => (
+      <VStack spacing={0}>
+        <Text modifiers={[font({ size: 15, weight: 'bold' }), foregroundStyle(ink), monospacedDigit()]}>{value}</Text>
+        <Text modifiers={[font({ size: 10, weight: 'medium' }), foregroundStyle(muted)]}>{label}</Text>
+      </VStack>
+    );
     return (
-      <HStack spacing={14} modifiers={[containerBackground(bg, 'widget'), widgetURL('getgo://')]}>
-        <VStack alignment="leading" modifiers={[frame({ width: 64 })]}>
-          {mascot(56)}
-          <Spacer />
-          <Text modifiers={[font({ size: 22, weight: 'bold' }), foregroundStyle(ink)]}>{String(props.left)}</Text>
-          <Text modifiers={[font({ size: 11 }), foregroundStyle(muted), lineLimit(2)]}>{status}</Text>
+      <HStack spacing={0} modifiers={[containerBackground(bg, 'widget'), widgetURL('getgo://')]}>
+        <ZStack modifiers={[frame({ width: 120 }), clipped()]}>
+          <ZStack modifiers={[offset({ x: -18, y: 34 })]}>{mascot(150)}</ZStack>
+        </ZStack>
+        <VStack alignment="leading" spacing={8}>
+          <HStack spacing={10}>
+            {ring(62, `${done}/${props.total}`)}
+            <VStack alignment="leading" spacing={0}>
+              <Text modifiers={[font({ size: 34, weight: 'heavy' }), foregroundStyle(ink), monospacedDigit()]}>{String(props.left)}</Text>
+              <Text modifiers={[font({ size: 13, weight: 'medium' }), foregroundStyle(muted), lineLimit(1)]}>{props.left ? pendingWord : status}</Text>
+            </VStack>
+          </HStack>
+          <HStack spacing={14}>
+            {stat(String(stats.done), props.text.done ?? '')}
+            {stat(`${stats.focus}′`, props.text.focus ?? '')}
+            {stat(String(stats.streak), props.text.streak ?? '')}
+          </HStack>
         </VStack>
-        <VStack alignment="leading" spacing={9}>
-          {header}
-          {top.length ? top.map((x, i) => row(x, i + 1, 18)) : <Text modifiers={[font({ size: 14 }), foregroundStyle(muted)]}>{props.text.none}</Text>}
-          <Spacer />
-        </VStack>
+        <Spacer />
       </HStack>
     );
   }

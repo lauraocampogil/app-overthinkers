@@ -163,6 +163,16 @@ export async function refreshReminders(opts: {
     const now = Date.now();
     for (const { task, start } of opts.alarms) {
       if (task.status !== 'pendiente') continue;
+      // 30 minutes before it starts: time to get ready.
+      const before = new Date(start.getTime() - 30 * 60_000);
+      if (before.getTime() > now + 5_000 && budget > 0) {
+        budget--;
+        await Notifications.scheduleNotificationAsync({
+          identifier: `${TASK_PREFIX}${task.id}-pre`,
+          content: { ...taskContent(task), subtitle: t('notif.in30') },
+          trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: before },
+        });
+      }
       // Always the next MAX_PER_TASK reminders from now on (re-planned each time the app opens).
       let sent = 0;
       for (let i = 0; sent < MAX_PER_TASK && budget > 0; i++) {

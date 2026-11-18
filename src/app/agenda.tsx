@@ -82,7 +82,7 @@ export default function Agenda() {
             <Animated.View key={`${it.kind}${i}`} entering={FadeInDown.delay(i * 40).duration(280)}>
               <Pressable
                 disabled={it.kind === 'event'}
-                onPress={() => (it.kind === 'routine' ? router.push({ pathname: '/rutina', params: { kind: it.routine } }) : undefined)}
+                onPress={() => (it.kind === 'routine' ? router.push({ pathname: '/rutina', params: { kind: it.routine, d: day } }) : undefined)}
                 style={styles.row}
               >
                 <Text style={styles.time}>{it.at || '—'}</Text>

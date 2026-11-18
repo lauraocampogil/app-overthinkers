@@ -6,14 +6,23 @@ import { Cargador } from '@/components/Cargador';
 import { PreguntaTiempo } from '@/components/PreguntaTiempo';
 import { PrimaryButton, Screen } from '@/components/ui';
 import { t } from '@/i18n';
-import type { ParseResult, RawTask } from '@/lib/types';
+import type { ParseResult, RawTask, TaskQuestion } from '@/lib/types';
 import { parseBrainDump } from '@/lib/ai';
 import { useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
 const MIN_MS = 900;
 /** An activity with no duration said ("correr", "estudiar"): ask instead of guessing. */
-const needsTime = (x: RawTask) => x.minutes === null && (x.askMinutes || x.kind === 'deporte' || x.kind === 'estudio'); // a short beat so it feels sorted, without making anyone wait
+const needsTime = (x: RawTask) => x.minutes === null && (x.askMinutes || x.kind === 'deporte' || x.kind === 'estudio');
+/** Every question to ask, in order: the AI's own ("¿Qué libro?") plus a duration when one is missing. */
+function questionsFor(tasks: RawTask[]) {
+  const out: (TaskQuestion & { task: string; index: number })[] = [];
+  tasks.forEach((x, index) => {
+    for (const a of x.ask ?? []) out.push({ ...a, task: x.title, index });
+    if (needsTime(x) && !(x.ask ?? []).some((a) => a.kind === 'minutes')) out.push({ q: t('order.howLongFor', { task: x.title.charAt(0).toLowerCase() + x.title.slice(1) }), kind: 'minutes', task: x.title, index });
+  });
+  return out.slice(0, 6);
+} // a short beat so it feels sorted, without making anyone wait
 
 export default function Ordenando() {
   // Read the brain dump once: addTasks() clears the draft.
@@ -40,7 +49,7 @@ export default function Ordenando() {
         setEmpty(true);
         return;
       }
-      if (result.tasks.some(needsTime)) {
+      if (questionsFor(result.tasks).length) {
         setAsk({ result, started });
         return;
       }
@@ -52,17 +61,21 @@ export default function Ordenando() {
   }, [addParsed]);
 
   if (ask) {
-    const idx = ask.result.tasks.map((x, i) => (needsTime(x) ? i : -1)).filter((i) => i >= 0);
+    const qs = questionsFor(ask.result.tasks);
     return (
       <PreguntaTiempo
-        titles={idx.map((i) => ask.result.tasks[i].title)}
-        onDone={(mins) => {
-          const tasks = ask.result.tasks.map((x, i) => {
-            const k = idx.indexOf(i);
-            const m = k >= 0 ? mins[k] : null;
-            return m ? { ...x, minutes: m, askMinutes: false } : x;
+        questions={qs}
+        onDone={(answers) => {
+          const tasks = ask.result.tasks.map((x) => ({ ...x }));
+          answers.forEach((a, k) => {
+            if (!a) return;
+            const q = qs[k];
+            const task = tasks[q.index];
+            if (a.minutes) Object.assign(task, { minutes: a.minutes, askMinutes: false });
+            if (a.text) task.title = q.template ? q.template.replace('{}', a.text) : `${task.title}: ${a.text}`;
+            if (a.dueInDays !== undefined) task.dueInDays = a.dueInDays;
           });
-          save({ ...ask.result, tasks }, Date.now() - MIN_MS);
+          save({ ...ask.result, tasks: tasks.map((x) => ({ ...x, ask: [] })) }, Date.now() - MIN_MS);
         }}
       />
     );

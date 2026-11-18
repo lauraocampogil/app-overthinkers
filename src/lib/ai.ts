@@ -6,7 +6,7 @@ import { profileContext } from './perfil';
 import { lang } from '../i18n';
 import { isoDay } from './streak';
 import { ensureSession, supabase } from './supabase';
-import type { RawGoal, Energy, Kind, ParseResult, RawTask } from './types';
+import type { RawGoal, Energy, Kind, ParseResult, RawTask, TaskQuestion } from './types';
 
 const KINDS: Kind[] = ['trabajo', 'estudio', 'deporte', 'casa', 'otro'];
 
@@ -31,8 +31,16 @@ function sanitize(raw: unknown): RawTask | null {
   const at = typeof r.at === 'string' && /^([01]?\d|2[0-3]):[0-5]\d$/.test(r.at.trim()) ? r.at.trim().padStart(5, '0') : null;
   const goal = typeof r.goal === 'string' && r.goal.trim() ? r.goal.trim() : null;
   const proof = typeof r.proof === 'string' && r.proof.trim() ? r.proof.trim().slice(0, 60) : null;
-  const askMinutes = minutes === null && (r.askMinutes === true || kind === 'deporte' || kind === 'estudio');
-  return { title, minutes, dueInDays: Number.isNaN(due) ? null : due, energy, kind, sport, importance, checklist, where, at, goal, proof, askMinutes };
+  const ask: TaskQuestion[] = Array.isArray(r.ask)
+    ? (r.ask as unknown[])
+        .map((a) => a as Partial<TaskQuestion>)
+        .filter((a) => typeof a?.q === 'string' && a.q.trim() && (a.kind === 'minutes' || a.kind === 'text' || a.kind === 'deadline'))
+        .filter((a) => !(a.kind === 'minutes' && minutes !== null) && !(a.kind === 'deadline' && !Number.isNaN(due) && due !== null))
+        .slice(0, 2)
+        .map((a) => ({ q: String(a.q).slice(0, 120), kind: a.kind as TaskQuestion['kind'], template: typeof a.template === 'string' && a.template.includes('{}') ? a.template.slice(0, 120) : undefined }))
+    : [];
+  const askMinutes = minutes === null && !ask.some((a) => a.kind === 'minutes') && (r.askMinutes === true || kind === 'deporte' || kind === 'estudio');
+  return { title, minutes, dueInDays: Number.isNaN(due) ? null : due, energy, kind, sport, importance, checklist, where, at, goal, proof, askMinutes, ask };
 }
 
 function sanitizeGoal(raw: unknown): RawGoal | null {
@@ -161,9 +169,15 @@ export async function verifyProof(base64: string, task: string, hint: string | n
 
 export type WeekPlan = { tasks: RawTask[]; goals: RawGoal[]; wake: string | null; advice: string };
 
+/** Last reason the week plan failed, shown on the screen so the person (and we) can see what happened. */
+export let lastWeekError = '';
+
 /** "Planificar mi semana": the AI spreads what the person said over the 7 days, with times, and gives advice. */
-export async function planWeek(text: string): Promise<WeekPlan | null> {
-  if (!supabase) return null;
+export async function planWeek(text: string, attempt = 0): Promise<WeekPlan | null> {
+  if (!supabase) {
+    lastWeekError = 'no_supabase';
+    return null;
+  }
   try {
     await ensureSession();
     const now = new Date();
@@ -172,14 +186,25 @@ export async function planWeek(text: string): Promise<WeekPlan | null> {
     });
     if (error) throw error;
     const wake = typeof data?.wake === 'string' && /^([01]?\d|2[0-3]):[0-5]\d$/.test(data.wake) ? data.wake.padStart(5, '0') : null;
+    const tasks = ((Array.isArray(data?.tasks) ? data.tasks : []).map(sanitize).filter(Boolean) as RawTask[]).map((t) => ({ ...t, dueInDays: Math.max(0, Math.min(6, t.dueInDays ?? 0)) }));
+    if (!tasks.length && attempt === 0) return planWeek(text, 1);
+    lastWeekError = tasks.length ? '' : 'empty';
     return {
-      tasks: ((Array.isArray(data?.tasks) ? data.tasks : []).map(sanitize).filter(Boolean) as RawTask[]).map((t) => ({ ...t, dueInDays: Math.min(6, t.dueInDays ?? 0) })),
+      tasks,
       goals: (Array.isArray(data?.goals) ? data.goals : []).map(sanitizeGoal).filter(Boolean) as RawGoal[],
       wake,
       advice: typeof data?.advice === 'string' ? data.advice.slice(0, 400) : '',
     };
   } catch (e) {
-    console.warn('[ai] week plan failed', e);
+    const ctx = (e as { context?: Response }).context;
+    const detail = ctx && typeof ctx.text === 'function' ? await ctx.text().catch(() => '') : String(e);
+    console.warn('[ai] week plan failed', e, detail);
+    lastWeekError = detail.slice(0, 200);
+    // One quiet retry: the free AI quota sometimes refuses a request for a few seconds.
+    if (attempt === 0) {
+      await new Promise((r) => setTimeout(r, 1500));
+      return planWeek(text, 1);
+    }
     return null;
   }
 }

@@ -7,7 +7,7 @@ import { Cargador } from '@/components/Cargador';
 import { SunIcon } from '@/components/Iconos';
 import { CloseIcon, IconCircle, MicIcon, PrimaryButton, Screen } from '@/components/ui';
 import { locale, minutesLabel, t } from '@/i18n';
-import { planWeek, type WeekPlan } from '@/lib/ai';
+import { lastWeekError, planWeek, type WeekPlan } from '@/lib/ai';
 import { useVoz } from '@/lib/paleta';
 import { addDays } from '@/lib/planner';
 import type { RawTask } from '@/lib/types';
@@ -166,7 +166,12 @@ export default function Semana() {
             {t('week.title')}
           </Text>
           <Text style={type.muted}>{t('week.body')}</Text>
-          {phase === 'failed' ? <Text style={[type.muted, { color: colors.danger }]}>{t('week.failed')}</Text> : null}
+          {phase === 'failed' ? (
+            <View style={{ gap: 4 }}>
+              <Text style={[type.muted, { color: colors.danger }]}>{t('week.failed')}</Text>
+              {lastWeekError ? <Text style={styles.meta}>{lastWeekError}</Text> : null}
+            </View>
+          ) : null}
           <TextInput
             value={text}
             onChangeText={setText}

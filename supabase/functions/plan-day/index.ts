@@ -21,6 +21,8 @@ TAREAS (cosas concretas que hacer):
 - "at": la hora si la dice, en formato "HH:MM" 24 h ("a las 6 de la tarde" → "18:00"), si no null.
 - "minutes": SOLO lo que dice ("1 hora de gym" → 60, "media hora corriendo" → 30). Si no lo dice, null: NUNCA inventes una duración. La app le preguntará cuánto tiempo.
 - "askMinutes": true si "minutes" es null y es una actividad que necesita una duración para ser concreta (correr, gym, entrenar, estudiar, leer, meditar, caminar, practicar, trabajar en algo, ordenar, limpiar). false para el resto (llamar, mandar un mail, comprar, recoger algo).
+- "ask": lista (0 a 2) de preguntas cortas para lo que FALTA y cambia la tarea, en el idioma del móvil. Solo si no lo dijo. Cada una: {"q": pregunta, "kind": "minutes" | "text" | "deadline", "template": título con {} donde va la respuesta (solo para "text")}.
+  Ejemplos: "leer" → [{"q":"¿Qué libro?","kind":"text","template":"Leer {}"},{"q":"¿Cuánto tiempo quieres leer?","kind":"minutes"}]; "hacer una app" → [{"q":"¿Qué app?","kind":"text","template":"Hacer la app {}"},{"q":"¿Para cuándo la quieres terminar?","kind":"deadline"}]; "estudiar" → [{"q":"¿Qué vas a estudiar?","kind":"text","template":"Estudiar {}"},{"q":"¿Cuánto tiempo?","kind":"minutes"}]; "correr" → [{"q":"¿Cuánto tiempo quieres correr?","kind":"minutes"}]. Nunca preguntes por "llamar a mamá", "comprar pan" o lo que ya está claro. Máximo 4 preguntas en total.
 - Cada tarea tiene que ser CONCRETA: no "Hacer deporte" sino "Correr"; no "Estudiar" sino "Estudiar tema 3 de estadística" si lo dice. No pongas la duración en el título. Si falta el lugar y el PERFIL lo da, ponlo en "where".
 - LA COMPRA: los productos (huevos, manzanas, pasta…) NUNCA son tareas sueltas: van en "checklist" de UNA tarea "Hacer la compra" (con cantidades si las dice: "Huevos · 12"). Si menciona productos sin decir "compra", crea igualmente esa tarea.
 - Lo que es un RESULTADO (pesar 48 kg, aprobar, ahorrar 2000 €) no es una tarea: es una META.
@@ -106,7 +108,7 @@ Deno.serve(async (req) => {
         headers: { 'x-api-key': anthropicKey!, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
         body: JSON.stringify({
           model: ANTHROPIC_MODEL,
-          max_tokens: 4000,
+          max_tokens: week ? 2600 : 1800,
           system: week ? SYSTEM + WEEK : SYSTEM,
           messages: [{ role: 'user', content: hasImage
             ? [
@@ -130,7 +132,8 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           model: GROQ_MODEL,
           temperature: 0.2,
-          max_completion_tokens: 4000,
+          // Groq's free plan counts prompt + max output against ~6000 tokens a minute: keep the ceiling realistic.
+          max_completion_tokens: week ? 2600 : 1800,
           response_format: { type: 'json_object' },
           // Qwen on Groq: answer directly, no thinking tokens (faster and cheaper on the free quota).
           ...(GROQ_MODEL.startsWith('qwen/') ? { reasoning_effort: 'none', reasoning_format: 'hidden' } : {}),
