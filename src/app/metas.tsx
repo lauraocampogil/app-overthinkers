@@ -45,7 +45,7 @@ export default function Metas() {
 
   const goalCard = (goal: Goal) => {
     const p = goalProgress(goal, tasks);
-    const pct = p.total ? p.done / p.total : 0;
+    const pct = p.pct;
     const shown = goal.type === 'semanal' ? p.next.slice(0, 1) : p.next.slice(0, 3);
     return (
       <Pressable key={goal.id} onPress={() => router.push({ pathname: '/meta', params: { id: goal.id } })} onLongPress={() => confirmArchive(goal)} style={styles.goal} accessibilityHint={t('goals.longPress')}>

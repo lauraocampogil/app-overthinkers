@@ -155,7 +155,7 @@ export default function Progreso() {
           const left = g.due ? daysBetween(today, g.due) : null;
           return (
             <Pressable key={g.id} onPress={() => router.push({ pathname: '/meta', params: { id: g.id } })} style={styles.goal} accessibilityRole="button">
-              <Anillo progress={p.total ? p.done / p.total : 0} size={52} stroke={5} color={voz.mic[1]} label={`${p.total ? Math.round((p.done / p.total) * 100) : 0}%`} />
+              <Anillo progress={p.pct} size={52} stroke={5} color={voz.mic[1]} label={`${Math.round(p.pct * 100)}%`} />
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={styles.goalTitle} numberOfLines={2}>
                   {g.title}

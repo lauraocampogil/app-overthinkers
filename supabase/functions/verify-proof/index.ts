@@ -1,10 +1,11 @@
 // Supabase Edge Function (Deno): does this photo show that the task was really done?
 // Same providers as plan-day (GROQ_API_KEY or ANTHROPIC_API_KEY). Groq needs a vision model:
-// GROQ_VISION_MODEL (default meta-llama/llama-4-scout-17b-16e-instruct).
+// GROQ_VISION_MODEL (optional; falls back to qwen/qwen3.8-27b, then meta-models/muse-spark-open).
 // The photo is only used for this check: it is not stored.
 
 const ANTHROPIC_MODEL = Deno.env.get('ANTHROPIC_MODEL') ?? 'claude-haiku-5-5';
-const GROQ_VISION_MODEL = Deno.env.get('GROQ_VISION_MODEL') ?? 'meta-llama/llama-4-scout-17b-16e-instruct';
+// Groq vision models change: try the configured one, then the current ones in Groq's vision docs.
+const GROQ_VISION_MODELS = [Deno.env.get('GROQ_VISION_MODEL'), 'qwen/qwen3.8-27b', 'meta-models/muse-spark-open'].filter(Boolean) as string[];
 
 const SYSTEM = `Eres el verificador de GetGo. La persona dice que ha hecho una tarea y manda una foto como prueba.
 Decide si la foto muestra que ESTA tarea concreta está hecha. Sé estricto: el objetivo es que la persona se comprometa de verdad.
@@ -12,6 +13,7 @@ Decide si la foto muestra que ESTA tarea concreta está hecha. Sé estricto: el 
 - Si la tarea dice un lugar o tienda (por ejemplo Lidl), vale una bolsa, ticket o productos de esa tienda, o la compra en casa.
 - Vale: la compra sobre la mesa o en bolsas para "hacer la compra"; la persona corriendo, ropa de deporte sudada o el reloj/app con la carrera para "correr"; la cocina limpia para "limpiar la cocina"; una captura del mail enviado para "mandar el mail".
 - No vale: una foto que no tiene nada que ver, una pantalla en negro, una foto de internet evidente, algo que solo muestra que la tarea está SIN hacer.
+- Para ir a un sitio o a un evento (partido, concierto, médico, clase), vale una foto EN ese sitio: el estadio, la sala, la entrada, la persona allí. Un selfie en el estadio vale para "ir al partido".
 - No vale: una foto de una habitación, una cara, una mesa o un objeto cualquiera sin relación clara con la tarea.
 Si no ves una relación clara con la tarea, responde ok: false.
 "reason": una frase corta, amable, en el idioma indicado, dirigida a la persona (si no vale, di qué foto sí valdría).
@@ -59,27 +61,29 @@ Deno.serve(async (req) => {
       const data = await res.json();
       raw = data?.content?.find((c: { type: string }) => c.type === 'text')?.text ?? '{}';
     } else {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${groqKey}`, 'content-type': 'application/json' },
-        body: JSON.stringify({
-          model: GROQ_VISION_MODEL,
-          temperature: 0.1,
-          max_completion_tokens: 200,
-          response_format: { type: 'json_object' },
-          messages: [
-            { role: 'system', content: SYSTEM },
-            { role: 'user', content: [
-              { type: 'text', text: prompt },
-              { type: 'image_url', image_url: { url: `data:${type};base64,${image}` } },
-            ] },
-          ],
-        }),
-      });
-      if (!res.ok) {
-        console.error('groq error', res.status, await res.text());
-        return Response.json({ error: 'ai_failed', status: res.status }, { status: 502, headers: cors });
+      let res: Response | null = null;
+      for (const model of GROQ_VISION_MODELS) {
+        res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${groqKey}`, 'content-type': 'application/json' },
+          body: JSON.stringify({
+            model,
+            temperature: 0.1,
+            max_completion_tokens: 400,
+            response_format: { type: 'json_object' },
+            messages: [
+              { role: 'system', content: SYSTEM },
+              { role: 'user', content: [
+                { type: 'text', text: prompt },
+                { type: 'image_url', image_url: { url: `data:${type};base64,${image}` } },
+              ] },
+            ],
+          }),
+        });
+        if (res.ok) break;
+        console.error('groq vision error', model, res.status, await res.text());
       }
+      if (!res || !res.ok) return Response.json({ error: 'ai_failed', status: res?.status ?? 0 }, { status: 502, headers: cors });
       const data = await res.json();
       raw = data?.choices?.[0]?.message?.content ?? '{}';
     }

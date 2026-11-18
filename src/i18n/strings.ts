@@ -4,6 +4,7 @@
  * Plurals: keys ending in `_one` / `_other` are picked automatically from `{n}`.
  */
 const es = {
+  'hoy.backToToday': "Volver a hoy",
   'cal.open': "Ver el día",
   'cal.event': "Calendario",
   'cal.task': "Tarea",
@@ -660,6 +661,7 @@ export type Key = keyof typeof es;
 type Dict = Record<Key, string>;
 
 const en: Dict = {
+  'hoy.backToToday': "Back to today",
   'cal.open': "See the day",
   'cal.event': "Calendar",
   'cal.task': "Task",
@@ -1303,6 +1305,7 @@ const en: Dict = {
 };
 
 const fr: Dict = {
+  'hoy.backToToday': "Revenir à aujourd'hui",
   'cal.open': "Voir la journée",
   'cal.event': "Calendrier",
   'cal.task': "Tâche",
@@ -1946,6 +1949,7 @@ const fr: Dict = {
 };
 
 const nl: Dict = {
+  'hoy.backToToday': "Terug naar vandaag",
   'cal.open': "Dag bekijken",
   'cal.event': "Agenda",
   'cal.task': "Taak",
@@ -2589,6 +2593,7 @@ const nl: Dict = {
 };
 
 const de: Dict = {
+  'hoy.backToToday': "Zurück zu heute",
   'cal.open': "Tag ansehen",
   'cal.event': "Kalender",
   'cal.task': "Aufgabe",
@@ -3232,6 +3237,7 @@ const de: Dict = {
 };
 
 const pt: Dict = {
+  'hoy.backToToday': "Voltar a hoje",
   'cal.open': "Ver o dia",
   'cal.event': "Calendário",
   'cal.task': "Tarefa",
@@ -3875,6 +3881,7 @@ const pt: Dict = {
 };
 
 const it: Dict = {
+  'hoy.backToToday': "Torna a oggi",
   'cal.open': "Vedi la giornata",
   'cal.event': "Calendario",
   'cal.task': "Attività",

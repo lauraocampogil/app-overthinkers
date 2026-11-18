@@ -102,6 +102,12 @@ export function startLive(lang: string, h: Handlers): LiveSession {
   ];
   const cleanup = () => subs.forEach((s) => s.remove());
 
+  // A session left open (another screen, an earlier answer) makes the next start fail silently: reset first.
+  try {
+    native.abort();
+  } catch {
+    // nothing to abort
+  }
   native.start({
     lang,
     interimResults: true,

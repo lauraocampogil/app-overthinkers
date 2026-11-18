@@ -57,7 +57,7 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
     <Modal transparent animationType="slide" visible onRequestClose={onClose}>
       <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable accessibilityRole="button" accessibilityLabel={t('common.close')} style={StyleSheet.absoluteFill} onPress={onClose} />
-        <View style={[styles.sheet, { paddingBottom: 16 + insets.bottom }]} accessibilityViewIsModal>
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 12) }]} accessibilityViewIsModal>
           <View style={styles.top}>
             <Pressable onPress={() => setSettings((v) => !v)} accessibilityRole="button" accessibilityLabel={t('sheet.settings')} style={[styles.round, settings && styles.roundOn]} hitSlop={6}>
               <GearIcon color={settings ? colors.white : colors.ink} size={18} />
@@ -68,7 +68,7 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
             </Pressable>
           </View>
 
-          <ScrollView contentContainerStyle={{ gap: 14 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <ScrollView style={{ flexGrow: 0, flexShrink: 1 }} contentContainerStyle={{ gap: 14, paddingBottom: 6 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <Text style={[type.title, styles.title, cur.status === 'hecha' && styles.done]} numberOfLines={3}>
               {cur.title}
             </Text>
@@ -78,8 +78,8 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
                 <ClockIcon color={colors.muted} size={14} />
                 <Text style={styles.metaText}>
                   {dayLabel}
-                  {cur.at ? ` · ${cur.at}` : ''} · {est.source === 'guess' ? '~' : ''}
-                  {minutesLabel(est.minutes)}
+                  {cur.at ? ` · ${cur.at}` : ''}
+                  {est.source === 'guess' ? '' : ` · ${minutesLabel(est.minutes)}`}
                 </Text>
               </View>
               {cur.where ? (
@@ -120,35 +120,6 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
                 ))}
               </View>
             ) : null}
-
-            {cur.status === 'hecha' ? (
-              <Pressable onPress={() => go(() => undoDone(cur.id))} style={styles.secondary} accessibilityRole="button">
-                <Text style={styles.secondaryText}>{t('task.undo')}</Text>
-              </Pressable>
-            ) : (
-              <View style={styles.actions}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={t('focus.start')}
-                  onPress={() => go(() => router.push({ pathname: '/foco', params: { id: cur.id } }))}
-                  style={({ pressed }) => [styles.focusWrap, pressed && { transform: [{ scale: 0.97 }] }]}
-                >
-                  <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.focus}>
-                    <PlayIcon size={26} />
-                    <Text style={styles.focusText}>{t('focus.start')}</Text>
-                  </LinearGradient>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={proof ? t('proof.take') : t('task.markDone')}
-                  onPress={() => go(() => (proof ? router.push({ pathname: '/prueba', params: { id: cur.id } }) : markDone(cur.id)))}
-                  style={({ pressed }) => [styles.photo, pressed && { opacity: 0.8 }]}
-                >
-                  {proof ? <CameraIcon size={24} /> : <CheckIcon color={colors.ink} size={22} />}
-                  <Text style={styles.photoText}>{proof ? t('sheet.photo') : t('sheet.done')}</Text>
-                </Pressable>
-              </View>
-            )}
 
             {settings && cur.status === 'pendiente' ? (
               <View style={styles.settings}>
@@ -208,6 +179,38 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
               </View>
             ) : null}
           </ScrollView>
+          {/* The main actions stay visible under the content, whatever its height. */}
+          <View style={styles.footer}>
+            {cur.status === 'hecha' ? (
+                <Pressable onPress={() => go(() => undoDone(cur.id))} style={styles.secondary} accessibilityRole="button">
+                  <Text style={styles.secondaryText}>{t('task.undo')}</Text>
+                </Pressable>
+              ) : (
+                <View style={styles.actions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t('focus.start')}
+                    onPress={() => go(() => router.push({ pathname: '/foco', params: { id: cur.id } }))}
+                    style={({ pressed }) => [styles.focusWrap, pressed && { transform: [{ scale: 0.97 }] }]}
+                  >
+                    <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.focus}>
+                      <PlayIcon size={26} />
+                      <Text style={styles.focusText}>{t('focus.start')}</Text>
+                    </LinearGradient>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={proof ? t('proof.take') : t('task.markDone')}
+                    onPress={() => go(() => (proof ? router.push({ pathname: '/prueba', params: { id: cur.id } }) : markDone(cur.id)))}
+                    style={({ pressed }) => [styles.photo, pressed && { opacity: 0.8 }]}
+                  >
+                    {proof ? <CameraIcon size={24} /> : <CheckIcon color={colors.ink} size={22} />}
+                    <Text style={styles.photoText}>{proof ? t('sheet.photo') : t('sheet.done')}</Text>
+                  </Pressable>
+                </View>
+              )}
+
+          </View>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -216,6 +219,7 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(10,10,10,0.4)' },
+  footer: { paddingTop: 12 },
   sheet: { maxHeight: '88%', backgroundColor: colors.white, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 22, paddingTop: 12 },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
   grabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: colors.line },

@@ -60,7 +60,7 @@ export default function Meta() {
         </View>
         <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
           <View style={styles.hero}>
-            <Anillo progress={p.total ? p.done / p.total : 0} size={96} stroke={7} color={voz.mic[1]} label={`${p.total ? Math.round((p.done / p.total) * 100) : 0}%`} />
+            <Anillo progress={p.pct} size={96} stroke={7} color={voz.mic[1]} label={`${Math.round(p.pct * 100)}%`} />
             <View style={{ flex: 1, gap: 6 }}>
               {left !== null ? (
                 <>

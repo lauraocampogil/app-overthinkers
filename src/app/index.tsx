@@ -94,14 +94,14 @@ export default function Inicio() {
   const nudges = useDay((s) => s.nudges);
   const [celebrate, setCelebrate] = useState(false);
   const focused = useIsFocused();
-  // The moment the last task of today is ticked (not when opening an already finished day): celebrate once.
+  // Every time the last task of today is ticked (not when opening an already finished day): celebrate.
   const todayAll = todayList(tasks);
   const leftToday = todayAll.filter((x) => x.status === 'pendiente').length;
   const prevLeft = useRef<number | null>(null);
   useEffect(() => {
     const prev = prevLeft.current;
     prevLeft.current = leftToday;
-    if (prev && prev > 0 && leftToday === 0 && todayAll.length > 0 && useDay.getState().nudges.doneOn !== todayIso()) {
+    if (prev && prev > 0 && leftToday === 0 && todayAll.length > 0) {
       useDay.getState().setNudge({ doneOn: todayIso() });
       setCelebrate(true);
     }
@@ -179,7 +179,14 @@ export default function Inicio() {
 
   const header = (
     <View style={styles.header}>
-      <Text style={styles.screenTitle} accessibilityRole="header">{t('tab.today')}</Text>
+      {sel === today ? (
+        <Text style={styles.screenTitle} accessibilityRole="header">{t('tab.today')}</Text>
+      ) : (
+        <Pressable onPress={() => setSel(today)} style={styles.dateTitle} accessibilityRole="header" accessibilityHint={t('hoy.backToToday')}>
+          <Text style={styles.screenTitle}>{new Date(`${sel}T12:00:00`).getDate()}</Text>
+          <Text style={styles.monthSmall}>{new Date(`${sel}T12:00:00`).toLocaleDateString(locale, { month: 'short' })}</Text>
+        </Pressable>
+      )}
       <View style={styles.headerRight}>
         {daysLeft !== null ? (
           <Pressable accessibilityRole="button" accessibilityLabel={`${nextGoal!.title}: ${t('goals.daysLeft', { n: daysLeft })}`} onPress={() => router.push({ pathname: '/meta', params: { id: nextGoal!.id } })} style={styles.pill} hitSlop={6}>
@@ -272,10 +279,7 @@ export default function Inicio() {
   const selTasks = tasks.filter((x) => x.day === sel && x.status === 'pendiente').sort((a, b) => (a.at ?? '99').localeCompare(b.at ?? '99'));
   const dayView = (
     <View style={styles.section}>
-      <Text style={styles.dayTitle} accessibilityRole="header">
-        {new Date(`${sel}T12:00:00`).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
-      </Text>
-      <Text style={[styles.rowMeta, { marginBottom: 10 }]}>{selTasks.length ? t('day.count', { n: selTasks.length }) : t('day.nothing')}</Text>
+      <Text style={[styles.rowMeta, { marginBottom: 10, marginTop: 8, textTransform: 'capitalize' }]}>{new Date(`${sel}T12:00:00`).toLocaleDateString(locale, { weekday: 'long' })} · {selTasks.length ? t('day.count', { n: selTasks.length }) : t('day.nothing')}</Text>
       {(['manana', 'noche'] as const).map((rk) => {
         const r = routineOf(routines, rk);
         return r.enabled && r.steps.length ? (
@@ -533,6 +537,8 @@ export default function Inicio() {
 }
 
 const styles = StyleSheet.create({
+  dateTitle: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  monthSmall: { fontFamily: fonts.medium, fontSize: 16, color: colors.muted, textTransform: 'lowercase' },
   events: { padding: 14, borderRadius: 20, borderWidth: 1, borderColor: colors.line, gap: 4, marginBottom: 10 },
   eventsHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
   eventRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 30 },

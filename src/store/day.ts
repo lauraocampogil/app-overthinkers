@@ -8,7 +8,7 @@ import { addDays, schedule } from '@/lib/planner';
 import { countToday, isoDay, START_FREEZES } from '@/lib/streak';
 import { syncDay } from '@/lib/sync';
 import { EMPTY_PROFILE, sameGoal, type FixedItem, type Profile } from '@/lib/perfil';
-import { RETOS, retoStepId, type Reto, type RetoId } from '@/lib/retos';
+import { isWeightGoal, RETOS, retoStepId, type Reto, type RetoId } from '@/lib/retos';
 import { defaultRoutine } from '@/lib/rutinas';
 import { t } from '@/i18n';
 import type { ChecklistItem, Goal, ParseResult, RawGoal, RawTask, Routine, RoutineKind, Settings, Streak, Task } from '@/lib/types';
@@ -674,15 +674,39 @@ export const upcoming = (tasks: Task[]) => {
 };
 
 /** Progress of a goal: done / total of its tasks, or this week's count for weekly goals. */
+/** Target weight in the goal title ("Bajar a 48 kg" → 48), if any. */
+export function weightTarget(goal: Goal): number | null {
+  const m = goal.title.match(/(\d+(?:[.,]\d+)?)\s*(kg|kilo|kilos|lbs)/i);
+  return m ? Number(m[1].replace(',', '.')) : null;
+}
+
+/**
+ * How far a goal really is. A weight goal is measured by the weight check-ins (from the first weight to the
+ * target), not by ticked steps: doing two small steps doesn't mean the goal is reached.
+ */
 export function goalProgress(goal: Goal, tasks: Task[]) {
   const mine = tasks.filter((t) => t.goalId === goal.id);
+  const next = mine.filter((t) => t.status === 'pendiente');
   if (goal.type === 'semanal' && goal.perWeek) {
     const start = weekStart(today());
     const done = mine.filter((t) => t.status === 'hecha' && (t.doneOn ?? '') >= start).length;
-    return { done, total: goal.perWeek, next: mine.filter((t) => t.status === 'pendiente') };
+    return { done, total: goal.perWeek, next, pct: Math.min(1, done / goal.perWeek) };
   }
   const done = mine.filter((t) => t.status === 'hecha').length;
-  return { done, total: mine.length, next: mine.filter((t) => t.status === 'pendiente') };
+  const weights = (goal.checkins ?? []).filter((c) => typeof c.value === 'number').map((c) => c.value as number);
+  const target = weightTarget(goal);
+  if (isWeightGoal(goal) && target !== null) {
+    if (weights.length < 2) return { done, total: mine.length, next, pct: 0 };
+    const start = weights[0];
+    const now = weights[weights.length - 1];
+    const span = start - target;
+    const pct = span === 0 ? 1 : Math.max(0, Math.min(1, (start - now) / span));
+    return { done, total: mine.length, next, pct };
+  }
+  // Steps done, but never "100 %" while there is still time and the goal isn't archived as reached.
+  const raw = mine.length ? done / mine.length : 0;
+  const open = goal.due ? goal.due >= today() : true;
+  return { done, total: mine.length, next, pct: open && !goal.archived ? Math.min(raw, 0.95) : raw };
 }
 
 /** "20 abdominales antes de dormir" in the person's language. */

@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -7,16 +8,18 @@ import { ArrowRightIcon, CalendarIcon, MoonIcon, SunIcon } from '@/components/Ic
 import { CloseIcon, IconCircle, Screen } from '@/components/ui';
 import { locale, minutesLabel, t } from '@/i18n';
 import { connectCalendar, refreshAgenda, useAgenda } from '@/lib/calendario';
+import { useVoz } from '@/lib/paleta';
 import { routineOf } from '@/lib/rutinas';
 import { todayIso, useDay, withDefaults } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
-const clock = (d: Date) => d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+/** Always HH:MM (24 h) so the list sorts and lines up: "06:00", not "6:00". */
+const clock = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
 type Item =
   | { kind: 'routine'; at: string; routine: 'manana' | 'noche'; steps: number }
   | { kind: 'event'; at: string; end: string; title: string }
-  | { kind: 'task'; at: string; title: string; minutes: number | null; id: string };
+  | { kind: 'task'; at: string; title: string; minutes: number | null; id: string; top: boolean };
 
 /**
  * One day at a glance, kept off Hoy so Hoy stays calm: the routines at their time, the events of every
@@ -31,6 +34,7 @@ export default function Agenda() {
   const tasks = useDay((s) => s.tasks);
   const routines = useDay((s) => s.routines);
   const settings = withDefaults(useDay((s) => s.settings));
+  const voz = useVoz();
 
   useEffect(() => {
     void refreshAgenda(settings);
@@ -44,8 +48,9 @@ export default function Agenda() {
   }
   for (const e of busy[day] ?? []) items.push({ kind: 'event', at: clock(e.start), end: clock(e.end), title: e.title });
   const dayTasks = tasks.filter((x) => x.status === 'pendiente' && x.day === day);
-  for (const x of dayTasks) items.push({ kind: 'task', at: x.at ?? '', title: x.title, minutes: x.minutes, id: x.id });
-  items.sort((a, b) => (a.at || '99').localeCompare(b.at || '99'));
+  for (const x of dayTasks) items.push({ kind: 'task', at: x.at ?? '', title: x.title, minutes: x.minutes, id: x.id, top: x.importance === 3 || !!x.top });
+  const mins = (at: string) => (at ? Number(at.slice(0, 2)) * 60 + Number(at.slice(3, 5)) : 9999);
+  items.sort((a, b) => mins(a.at) - mins(b.at));
 
   const connect = async () => {
     if (!(await connectCalendar())) return;
@@ -81,7 +86,11 @@ export default function Agenda() {
                 style={styles.row}
               >
                 <Text style={styles.time}>{it.at || '—'}</Text>
-                <View style={[styles.line, it.kind === 'event' && styles.lineEvent, it.kind === 'routine' && styles.lineRoutine]} />
+                {it.kind === 'task' && it.top ? (
+                  <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={styles.line} />
+                ) : (
+                  <View style={[styles.line, it.kind === 'event' && styles.lineEvent, it.kind === 'routine' && styles.lineRoutine]} />
+                )}
                 <View style={{ flex: 1, gap: 2 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     {it.kind === 'routine' ? it.routine === 'manana' ? <SunIcon size={15} /> : <MoonIcon size={15} /> : null}
@@ -117,7 +126,7 @@ const styles = StyleSheet.create({
   connect: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 56, paddingHorizontal: 16, borderRadius: 20, backgroundColor: colors.card, marginVertical: 8 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 62 },
   time: { width: 50, fontFamily: fonts.semibold, fontSize: 14, color: colors.ink, fontVariant: ['tabular-nums'] },
-  line: { width: 3, alignSelf: 'stretch', marginVertical: 8, borderRadius: 2, backgroundColor: colors.ink },
+  line: { width: 4, alignSelf: 'stretch', marginVertical: 8, borderRadius: 2, backgroundColor: colors.ink },
   lineEvent: { backgroundColor: colors.faint },
   lineRoutine: { backgroundColor: colors.line },
   title: { fontFamily: fonts.medium, fontSize: 16, color: colors.ink, flexShrink: 1 },
