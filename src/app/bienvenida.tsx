@@ -13,7 +13,7 @@ import { locale, t } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { askNotificationsNow } from '@/lib/avisos';
 import { connectCalendar, defaultCalendarId, refreshAgenda } from '@/lib/calendario';
-import { AREA_ORDER, AREAS, COUNTRIES, EMPTY_PROFILE, STORES, type Area, type AreaId, type Profile } from '@/lib/perfil';
+import { AREA_ORDER, AREAS, COUNTRIES, EMPTY_PROFILE, ROLES, STORES, type Area, type AreaId, type Profile } from '@/lib/perfil';
 import { defaultRoutine } from '@/lib/rutinas';
 import type { RoutineKind, RoutineStep } from '@/lib/types';
 import { useDay, withDefaults } from '@/store/day';
@@ -23,7 +23,7 @@ import { colors, fonts, type } from '@/theme';
  * Onboarding: GetGo gets to know the person so it can decide for them.
  * One question per screen, things to tap rather than to type. Everything can be changed later in Cuenta.
  */
-const STEPS = ['intro', 'areas', 'details', 'stores', 'day', 'energy', 'routines', 'week', 'permissions', 'goal'] as const;
+const STEPS = ['intro', 'role', 'areas', 'details', 'stores', 'day', 'energy', 'routines', 'week', 'permissions', 'goal'] as const;
 type Step = (typeof STEPS)[number];
 
 const WAKE = ['06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '10:00'];
@@ -370,6 +370,18 @@ export default function Bienvenida() {
                 <Chip key={a + b} label={`${a}–${b}`} on={p.workFrom === a && p.workTo === b} onPress={() => set({ workFrom: a, workTo: b })} />
               ))}
               <Chip label={t('opt.variable')} on={!p.workFrom} onPress={() => set({ workFrom: null, workTo: null })} />
+            </View>
+          </>
+        );
+      case 'role':
+        return (
+          <>
+            <Text style={type.title} accessibilityRole="header">{t('ob.roleTitle')}</Text>
+            <Text style={[type.muted, styles.sub]}>{t('ob.roleBody')}</Text>
+            <View style={styles.row}>
+              {ROLES.map((r) => (
+                <Chip key={r} label={t(`role.${r}`)} on={p.role === r} onPress={() => set({ role: p.role === r ? null : r })} />
+              ))}
             </View>
           </>
         );

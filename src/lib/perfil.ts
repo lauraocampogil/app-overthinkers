@@ -24,6 +24,19 @@ export type AreaId =
 
 export type Area = { id: AreaId; label?: string; answers: Record<string, string | string[]> };
 
+export const ROLES = ['estudiante', 'empleado', 'freelance', 'emprendedor', 'coachGym', 'coachFutbol', 'deportista', 'otro'] as const;
+export type Role = (typeof ROLES)[number];
+const ROLE_ES: Record<Role, string> = {
+  estudiante: 'estudiante',
+  empleado: 'trabaja por cuenta ajena',
+  freelance: 'freelance (trabaja con clientes y proyectos)',
+  emprendedor: 'emprendedor/a (lleva su propio negocio)',
+  coachGym: 'entrenador/a de gimnasio o personal trainer (sesiones con clientes)',
+  coachFutbol: 'entrenador/a de fútbol (entrenamientos y partidos con su equipo)',
+  deportista: 'deportista',
+  otro: '',
+};
+
 export type Profile = {
   onboarded: boolean;
   /** Ordered: the first one weighs most. */
@@ -39,6 +52,8 @@ export type Profile = {
   workTo: string | null;
   energy: 'manana' | 'tarde' | 'noche' | null;
   struggles: string[];
+  /** What the person does: shapes how the week is planned (coach sessions, client work, study…). */
+  role?: Role | null;
   /** The fixed week: things that repeat every week and almost never change (training, classes, gym). */
   fixed: FixedItem[];
 };
@@ -155,6 +170,7 @@ export function profileContext(p: Profile): string {
     })
     .join(' ');
   const lines = [
+    p.role && ROLE_ES[p.role] ? `A qué se dedica: ${ROLE_ES[p.role]}.` : '',
     areas ? `Lo más importante para la persona, por orden: ${areas}.` : '',
     p.favoriteStore ? `Hace la compra en ${p.favoriteStore}${p.stores.length > 1 ? ` (también ${p.stores.filter((s) => s !== p.favoriteStore).join(', ')})` : ''}.` : '',
     `Se levanta a las ${p.wake} y se acuesta a las ${p.sleep}.`,

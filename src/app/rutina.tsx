@@ -35,7 +35,7 @@ export default function Rutina() {
         <IconCircle label={t('common.close')} onPress={() => router.back()}>
           <CloseIcon />
         </IconCircle>
-        <Pressable accessibilityRole="button" onPress={() => router.push('/rutinas')} style={styles.edit} hitSlop={8}>
+        <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/rutinas', params: { kind } })} style={styles.edit} hitSlop={8}>
           <Text style={styles.editText}>{t('routine.edit')}</Text>
         </Pressable>
       </View>

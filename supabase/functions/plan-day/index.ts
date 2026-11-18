@@ -58,6 +58,12 @@ MODO SEMANA: la persona te cuenta lo que quiere hacer esta semana. Organízale l
 - Pon "at" ("HH:MM") a CADA tarea, dentro de su horario del PERFIL (se levanta / se acuesta, trabajo o clases), sin solapar, dejando huecos para comer. Lo difícil en sus horas de más energía. Lo que dice con hora fija (entreno de fútbol a las 19:00) se queda a esa hora.
 - "importance": 3 para lo que dice que es prioridad o importante; el resto 2 o 1.
 - Las tareas de casa (lavar los platos, hacer la comida) también llevan hora y duración realista.
+- Según a qué se dedica (PERFIL):
+  · Entrenador/a de gym o personal trainer: cada sesión con un cliente es una tarea con su hora ("Sesión con Marta", 60 min); añade antes un rato corto de preparar los programas y deja su propio entreno en algún hueco.
+  · Entrenador/a de fútbol: entrenamientos y partido son tareas con hora; añade preparar la sesión (ejercicios, convocatoria) el día antes y revisar el partido después.
+  · Freelance: bloques de trabajo por cliente o proyecto, más un rato de admin (facturas, emails) a la semana.
+  · Emprendedor/a: lo que hace crecer el negocio (ventas, producto) en sus horas de más energía, lo operativo después.
+  · Estudiante: bloques de estudio cortos repartidos antes de cada examen o entrega.
 - "wake": si un día está muy lleno o la persona empieza muy tarde, propone una hora de levantarse ("07:00"); si no hace falta, null.
 - "advice": 1 o 2 frases cortas, amables y concretas en su idioma, dirigidas a la persona (por ejemplo: "El martes tienes mucho: levántate a las 7 y haz el gym antes de clase").
 Responde SOLO con JSON: {"tasks":[...],"goals":[...],"tired":boolean,"wake":string|null,"advice":string}`;

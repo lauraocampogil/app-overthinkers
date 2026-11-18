@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
@@ -21,6 +21,9 @@ export default function Rutinas() {
   const routines = useDay((s) => s.routines);
   const setRoutine = useDay((s) => s.setRoutine);
   const areas = useDay((s) => s.profile.areas);
+  // Opened from one routine ("Editar" on the night routine): show only that one.
+  const { kind: kindParam } = useLocalSearchParams<{ kind?: string }>();
+  const only: RoutineKind | null = kindParam === 'manana' || kindParam === 'noche' ? kindParam : null;
   const fixed = useDay((s) => s.profile.fixed);
 
   return (
@@ -35,7 +38,7 @@ export default function Rutinas() {
           {t('routine.title')}
         </Text>
         <Text style={type.muted}>{t('routine.intro')}</Text>
-        {(['manana', 'noche'] as const).map((kind) => (
+        {(only ? [only] : (['manana', 'noche'] as RoutineKind[])).map((kind) => (
           <Editor
             key={kind}
             kind={kind}
@@ -44,11 +47,15 @@ export default function Rutinas() {
             onChange={(r) => setRoutine(kind, r)}
           />
         ))}
-        <Text style={[type.title, { fontSize: 26, marginTop: 18 }]} accessibilityRole="header">
-          {t('ob.weekTitle')}
-        </Text>
-        <Text style={type.muted}>{t('fixed.intro')}</Text>
-        <SemanaFija items={fixed ?? []} onChange={(items) => useDay.getState().setFixed(items)} />
+        {!only ? (
+          <>
+            <Text style={[type.title, { fontSize: 26, marginTop: 18 }]} accessibilityRole="header">
+              {t('ob.weekTitle')}
+            </Text>
+            <Text style={type.muted}>{t('fixed.intro')}</Text>
+            <SemanaFija items={fixed ?? []} onChange={(items) => useDay.getState().setFixed(items)} />
+          </>
+        ) : null}
       </ScrollView>
     </Screen>
   );

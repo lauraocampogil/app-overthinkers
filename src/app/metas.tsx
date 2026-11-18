@@ -103,11 +103,8 @@ export default function Metas() {
         {weekly.map(goalCard)}
         {longTerm.length ? <Text style={styles.section}>{t('goals.long')}</Text> : null}
         {longTerm.map(goalCard)}
-        <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/escribir', params: { meta: '1' } })} style={styles.add}>
-          <Text style={styles.addText}>{t('goals.add')}</Text>
-        </Pressable>
       </ScrollView>
-      <Barra active="metas" onWrite={() => router.push({ pathname: '/escribir', params: { meta: '1' } })} />
+      <Barra active="metas" />
       <TaskSheet task={sheet} onClose={() => setSheet(null)} />
     </Screen>
   );

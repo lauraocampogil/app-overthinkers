@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraIcon, CartIcon, ClockIcon, GearIcon, PinIcon, PlayIcon, TargetIcon, TrashIcon } from '@/components/Iconos';
 import { CheckIcon, CloseIcon } from '@/components/ui';
 import { locale, minutesLabel, t } from '@/i18n';
+import { appsFor, openApp } from '@/lib/apps';
 import { estimate } from '@/lib/duraciones';
 import { useVoz } from '@/lib/paleta';
 import { addDays } from '@/lib/planner';
@@ -178,6 +179,15 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
                 </View>
               </View>
             ) : null}
+            {appsFor(cur.title).length ? (
+              <View style={styles.appsRow}>
+                {appsFor(cur.title).map((a) => (
+                  <Pressable key={a.id} onPress={() => void openApp(a)} accessibilityRole="link" hitSlop={6}>
+                    <Text style={styles.appLink}>{t('task.openIn', { app: a.name })} ↗</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
           </ScrollView>
           {/* The main actions stay visible under the content, whatever its height. */}
           <View style={styles.footer}>
@@ -218,6 +228,8 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
 }
 
 const styles = StyleSheet.create({
+  appsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 18 },
+  appLink: { fontFamily: fonts.medium, fontSize: 15, color: colors.ink, textDecorationLine: 'underline' },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(10,10,10,0.4)' },
   footer: { paddingTop: 12 },
   sheet: { maxHeight: '88%', backgroundColor: colors.white, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 22, paddingTop: 12 },

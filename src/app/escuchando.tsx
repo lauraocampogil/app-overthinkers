@@ -26,7 +26,7 @@ import { cleanFillers, liveSpeechAvailable, pickLocale, requestLivePermission, s
 import { useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
-type Phase = 'starting' | 'recording' | 'transcribing' | 'denied' | 'failed' | 'noServer';
+type Phase = 'starting' | 'recording' | 'transcribing' | 'denied' | 'failed' | 'noServer' | 'review';
 
 const RECORDING = { ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true };
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -151,13 +151,19 @@ export default function Escuchando() {
         stopping.current = false;
         return;
       }
-      setDraft(text);
-      router.replace(to === 'semana' ? { pathname: '/semana', params: { review: '1' } } : '/ordenando');
+      // Show what was understood, in text, before GetGo sorts it.
+      setHeard(text);
+      setPhase('review');
     } catch (e) {
       console.warn('[record] stop failed', e);
       setPhase('failed');
       stopping.current = false;
     }
+  };
+
+  const confirm = () => {
+    setDraft(heard);
+    router.replace(to === 'semana' ? { pathname: '/semana', params: { review: '1' } } : '/ordenando');
   };
 
   const cancel = () => {
@@ -198,7 +204,7 @@ export default function Escuchando() {
           ) : (
             <Ondas mode="habla" height={220} level={shown} fadeTo="transparent" />
           )}
-          {heard ? (
+          {phase === 'review' && heard ? (
             <ScrollView
               ref={scroller}
               style={styles.heardBox}
@@ -212,7 +218,7 @@ export default function Escuchando() {
             </ScrollView>
           ) : (
             <Text style={styles.prompt}>
-              {t(phase === 'transcribing' ? 'listen.wait' : live ? 'listen.prompt' : 'listen.promptLater')}
+              {phase === 'transcribing' ? t('listen.wait') : phase === 'recording' ? t('listen.listening') : t(live ? 'listen.prompt' : 'listen.promptLater')}
             </Text>
           )}
         </View>
@@ -225,8 +231,14 @@ export default function Escuchando() {
               </Svg>
             </BlurView>
           </Pressable>
-          <Text style={styles.hint}>{t(phase === 'recording' ? 'listen.tapToFinish' : 'listen.transcribing')}</Text>
-          {phase === 'recording' ? (
+          <Text style={styles.hint}>{t(phase === 'recording' ? 'listen.tapToFinish' : phase === 'review' ? 'listen.reviewHint' : 'listen.transcribing')}</Text>
+          {phase === 'review' ? (
+            <Pressable accessibilityRole="button" accessibilityLabel={t('listen.finish')} onPress={confirm} style={styles.done} hitSlop={8}>
+              <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+                <Path d="M5 12h14M13 6l6 6-6 6" stroke={colors.accentDark} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+              </Svg>
+            </Pressable>
+          ) : phase === 'recording' ? (
             <Pressable accessibilityRole="button" accessibilityLabel={t('listen.finish')} onPress={finish} style={styles.done} hitSlop={8}>
               <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
                 <Path d="M5 12.5l4.5 4.5L19 7.5" stroke={colors.accentDark} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />

@@ -1,7 +1,9 @@
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import { Alert, AppState, BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LockIcon, PinIcon } from '@/components/Iconos';
@@ -11,7 +13,7 @@ import { t } from '@/i18n';
 import { useMascot } from '@/lib/auth';
 import { blockingAuthorized, blockingAvailable, useBloqueo } from '@/lib/bloqueo';
 import { estimate } from '@/lib/duraciones';
-import { addMinutes, elapsedMs, endFocus, endsAt, pauseFocus, resumeFocus, startFocus, useFoco } from '@/lib/foco';
+import { addMinutes, cameBack, elapsedMs, endFocus, endsAt, MAX_LEAVES, pauseFocus, resumeFocus, startFocus, useFoco, wentAway } from '@/lib/foco';
 import { useVoz } from '@/lib/paleta';
 import { requiresProof, topThree } from '@/lib/prioridad';
 import { todayIso, todayList, useDay } from '@/store/day';
@@ -60,6 +62,25 @@ export default function Foco() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task?.id]);
 
+  // Like a plant: every time you leave the app, the mascot loses a bit of life.
+  // A gentle notification calls you back; after MAX_LEAVES it's gone and the grey waves return.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'background') {
+        wentAway();
+        void Notifications.scheduleNotificationAsync({
+          identifier: 'focus-away',
+          content: { title: t('focus.awayTitle'), body: t('focus.awayBody') },
+          trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 6 },
+        }).catch(() => {});
+      } else if (st === 'active') {
+        void Notifications.cancelScheduledNotificationAsync('focus-away').catch(() => {});
+        if (cameBack()) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(id);
@@ -77,6 +98,16 @@ export default function Foco() {
     }
     if (!over) rang.current = false;
   }, [over]);
+
+  // Android back button: no silent exit, ask like "Salir".
+  const quitRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      quitRef.current();
+      return true;
+    });
+    return () => sub.remove();
+  }, []);
 
   if (!task) {
     return (
@@ -116,15 +147,21 @@ export default function Foco() {
       },
     ]);
 
+  quitRef.current = quit;
   const paused = Boolean(s?.pausedAt);
+  const leaves = s?.leaves ?? 0;
+  const life = Math.max(0, 1 - leaves / MAX_LEAVES);
+  const dead = life <= 0;
 
   return (
     <View style={styles.root}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.replace('/')} accessibilityRole="button" style={styles.pill} hitSlop={8}>
-            <Text style={styles.pillText}>{t('focus.minimize')}</Text>
-          </Pressable>
+          <View style={styles.lives} accessibilityLabel={t('focus.life', { n: MAX_LEAVES - Math.min(leaves, MAX_LEAVES) })}>
+            {Array.from({ length: MAX_LEAVES }, (_, i) => (
+              <View key={i} style={[styles.dot, i < MAX_LEAVES - leaves && { backgroundColor: voz.mic[1] }]} />
+            ))}
+          </View>
           <Text style={styles.headerLabel}>{paused ? t('focus.paused') : t('focus.live')}</Text>
           <Pressable onPress={quit} accessibilityRole="button" style={styles.pill} hitSlop={8}>
             <Text style={styles.pillText}>{t('focus.quit')}</Text>
@@ -132,10 +169,14 @@ export default function Foco() {
         </View>
 
         <View style={styles.visual}>
-          {mascot.unlocked ? (
-            <Mascota seed={mascot.seed} size={170} mood={over ? 'feliz' : 'calma'} />
+          {mascot.unlocked && !dead ? (
+            <Animated.View key="m" exiting={FadeOut.duration(900)} style={{ opacity: 0.35 + life * 0.65, transform: [{ scale: 0.8 + life * 0.2 }] }}>
+              <Mascota seed={mascot.seed} size={170} mood={over ? 'feliz' : 'calma'} />
+            </Animated.View>
           ) : (
-            <Ondas mode={paused ? 'hecho' : 'calma'} height={220} fadeTo={BG} />
+            <Animated.View key="o" entering={FadeIn.duration(900)} style={{ alignSelf: 'stretch' }}>
+              <Ondas mode={paused || dead ? 'hecho' : 'calma'} height={220} fadeTo={BG} />
+            </Animated.View>
           )}
         </View>
 
@@ -153,6 +194,9 @@ export default function Foco() {
           <Text style={styles.title} accessibilityRole="header">
             {task.title}
           </Text>
+          {leaves > 0 && !over ? (
+            <Text style={[styles.sub, { color: '#BDBDBD' }]}>{dead ? t('focus.dead') : t('focus.hurt')}</Text>
+          ) : null}
           {over ? <Text style={styles.sub}>{t('focus.timeUpBody')}</Text> : task.where ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <PinIcon color="#9A9A9A" size={15} />
@@ -214,6 +258,8 @@ const styles = StyleSheet.create({
   centerAll: { alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, height: 52 },
   headerLabel: { fontFamily: fonts.medium, fontSize: 13, letterSpacing: 0.4, color: '#8A8A8A', textTransform: 'uppercase' },
+  lives: { flexDirection: 'row', gap: 6, minWidth: 60 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#2A2A2A' },
   pill: { minHeight: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#1C1C1C', justifyContent: 'center' },
   pillText: { fontFamily: fonts.medium, fontSize: 14, color: colors.white },
   visual: { alignItems: 'center', justifyContent: 'center', height: 220 },

@@ -22,6 +22,10 @@ type Session = {
   /** Total ms spent paused so far. */
   pausedMs: number;
   color: string;
+  /** How many times the person left the app during this session. Like a plant: each leave hurts the mascot. */
+  leaves?: number;
+  /** When the app went to the background (to ignore quick glances). */
+  awayAt?: number | null;
   colorSoft: string;
 };
 
@@ -137,4 +141,23 @@ export function endFocus(): number {
     // no live activity
   }
   return s ? elapsedMs(s) / 60_000 : 0;
+}
+
+/** Leaves before the mascot fades out completely and the grey waves come back. */
+export const MAX_LEAVES = 3;
+
+/** The app went to the background while focusing. */
+export function wentAway() {
+  const s = useFoco.getState().session;
+  if (!s || s.pausedAt) return;
+  useFoco.setState({ session: { ...s, awayAt: Date.now() } });
+}
+
+/** The app came back. A leave counts only when the person was gone more than a few seconds. */
+export function cameBack(): boolean {
+  const s = useFoco.getState().session;
+  if (!s || !s.awayAt) return false;
+  const counted = Date.now() - s.awayAt > 5000;
+  useFoco.setState({ session: { ...s, awayAt: null, leaves: (s.leaves ?? 0) + (counted ? 1 : 0) } });
+  return counted;
 }
