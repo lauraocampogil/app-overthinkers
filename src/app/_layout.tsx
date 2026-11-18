@@ -196,6 +196,7 @@ export default function RootLayout() {
           <Stack.Screen name="compra" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="meta" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="semana" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="agenda" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="bloqueo" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="pro" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
           <Stack.Screen name="no-puedo" options={{ presentation: 'transparentModal', animation: 'fade' }} />

@@ -300,9 +300,12 @@ export const useDay = create<DayState>()(
               fresh.push({ ...t, goalId: g.id, due: t.due ?? g.due, importance: g.type === 'largo' && !t.due ? 1 : t.importance });
             }
           }
-          const existing = new Set(get().tasks.filter((t) => t.status === 'pendiente').map((t) => t.title.toLowerCase()));
+          // In a week plan the same task can be on several days (gym Mon, Wed, Fri): one per day.
+          const keyOf = (title: string, dayIso: string) => (opts?.pinDays ? `${title.toLowerCase()}|${dayIso}` : title.toLowerCase());
+          const existing = new Set(get().tasks.filter((t) => t.status === 'pendiente').map((t) => keyOf(t.title, t.day)));
           for (const r of raw) {
-            const key = r.title.toLowerCase();
+            // In a week plan the same task can be on several days (gym Mon, Wed, Fri): one per day.
+            const key = keyOf(r.title, addDays(day, r.dueInDays ?? 0));
             if (existing.has(key)) continue;
             existing.add(key);
             const t0 = { ...fromRaw(r, day), goalId: findGoal(r.goal)?.id ?? null };

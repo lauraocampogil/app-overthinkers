@@ -49,7 +49,10 @@ Responde SOLO con JSON: {"tasks":[...],"goals":[...],"tired":boolean}`;
 
 const WEEK = `
 MODO SEMANA: la persona te cuenta lo que quiere hacer esta semana. Organízale la semana entera.
-- Reparte las tareas en días: "dueInDays" = el día en que se HACE (0 = hoy, 1 = mañana… hasta 6). Equilibra los días: nada de 8 cosas un día y 0 otro.
+- Reparte las tareas en días: "dueInDays" = el día en que se HACE, según la TABLA DE DÍAS de abajo (0 = hoy… 6). Usa TODOS los días de la semana: equilibra (nada de 8 cosas un día y 0 otro) y no lo metas todo en hoy.
+- Si dice desde qué día ("a partir del jueves", "desde el lunes"), NADA va antes de ese día.
+- Si nombra un día ("el viernes", "el martes y el jueves"), usa exactamente ese número de la TABLA DE DÍAS.
+- Lo que se repite ("gym 3 veces", "estudiar cada día", "lavar los platos todos los días") se convierte en VARIAS tareas, una por día, repartidas (gym 3 veces → 3 tareas en días distintos, separadas).
 - Pon "at" ("HH:MM") a CADA tarea, dentro de su horario del PERFIL (se levanta / se acuesta, trabajo o clases), sin solapar, dejando huecos para comer. Lo difícil en sus horas de más energía. Lo que dice con hora fija (entreno de fútbol a las 19:00) se queda a esa hora.
 - "importance": 3 para lo que dice que es prioridad o importante; el resto 2 o 1.
 - Las tareas de casa (lavar los platos, hacer la comida) también llevan hora y duración realista.
@@ -81,7 +84,16 @@ Deno.serve(async (req) => {
 
     const dayName = typeof weekday === 'number' ? WEEKDAYS[weekday] : '';
     const perfil = typeof profile === 'string' && profile.trim() ? `\nPERFIL de la persona: ${profile.slice(0, 1200)}` : '';
-    const intro = `Hoy es ${dayName} ${today ?? ''}. Idioma del móvil: ${lang ?? 'es'}.${perfil}`;
+    // A table of the next 7 days so "el jueves" or "a partir del lunes" land on the right day.
+    let table = '';
+    if (week && typeof weekday === 'number' && typeof today === 'string') {
+      const base = new Date(`${today}T12:00:00Z`);
+      table = '\nTABLA DE DÍAS (dueInDays): ' + Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(base.getTime() + i * 86_400_000);
+        return `${i} = ${WEEKDAYS[(weekday + i) % 7]} ${d.getUTCDate()}`;
+      }).join(', ') + '.';
+    }
+    const intro = `Hoy es ${dayName} ${today ?? ''}. Idioma del móvil: ${lang ?? 'es'}.${table}${perfil}`;
     const prompt = hasImage
       ? `${intro} Esta es una imagen: puede ser una captura de mis mensajes o mails, o una foto de mis notas, una libreta, una pizarra, un post-it, una lista de la nevera, un ticket, una carta o un papel del colegio. Lee todo el texto (también a mano) y dime qué tengo que hacer, con fechas, horas y lugares si aparecen. Una lista de compra va como una sola tarea con la lista. Responde en JSON.`
       : `${intro}\n\nLo que tengo en la cabeza:\n${String(text).slice(0, 4000)}`;

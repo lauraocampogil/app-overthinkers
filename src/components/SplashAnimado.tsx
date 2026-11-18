@@ -13,7 +13,7 @@ const K = NATIVE / 1024;
 
 /**
  * After the static native splash (the grey mascot): it squishes and bounces, blinks, moves up a little,
- * "getgo" appears under it, then everything fades into the app. About 1.8 s.
+ * "getgo" appears under it, then everything fades into the app. About 3 s.
  */
 export function SplashAnimado({ onDone }: { onDone: () => void }) {
   const squish = useSharedValue(1);
@@ -28,11 +28,11 @@ export function SplashAnimado({ onDone }: { onDone: () => void }) {
 
   useEffect(() => {
     void SplashScreen.hideAsync().catch(() => {});
-    squish.value = withSequence(withTiming(0.9, { duration: 160, easing: Easing.out(Easing.quad) }), withSpring(1, { damping: 6, stiffness: 180 }));
-    blink.value = withDelay(520, withSequence(withTiming(0.1, { duration: 80 }), withTiming(1, { duration: 120 })));
-    lift.value = withDelay(700, withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) }));
-    word.value = withDelay(820, withTiming(1, { duration: 420 }));
-    out.value = withDelay(1450, withTiming(0, { duration: 380 }, (fin) => fin && runOnJS(finish)()));
+    squish.value = withDelay(250, withSequence(withTiming(0.9, { duration: 160, easing: Easing.out(Easing.quad) }), withSpring(1, { damping: 6, stiffness: 180 })));
+    blink.value = withDelay(1000, withSequence(withTiming(0.1, { duration: 90 }), withTiming(1, { duration: 130 }), withDelay(180, withTiming(0.1, { duration: 80 })), withTiming(1, { duration: 120 })));
+    lift.value = withDelay(1500, withTiming(1, { duration: 650, easing: Easing.out(Easing.cubic) }));
+    word.value = withDelay(1650, withTiming(1, { duration: 500 }));
+    out.value = withDelay(2700, withTiming(0, { duration: 420 }, (fin) => fin && runOnJS(finish)()));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

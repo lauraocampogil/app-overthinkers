@@ -219,6 +219,6 @@ const styles = StyleSheet.create({
   remove: { fontFamily: fonts.regular, fontSize: 22, color: colors.faint, paddingHorizontal: 4 },
   // Floats over the list with nothing behind it, so the days stay visible under the button.
   footer: { position: 'absolute', left: 0, right: 0, bottom: 6, paddingHorizontal: 20, gap: 4 },
-  again: { minHeight: 44, alignSelf: 'center', paddingHorizontal: 18, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center' },
+  again: { minHeight: 44, alignSelf: 'center', paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center' },
   againText: { fontFamily: fonts.medium, fontSize: 15, color: colors.muted },
 });

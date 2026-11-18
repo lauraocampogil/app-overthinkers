@@ -4,6 +4,9 @@
  * Plurals: keys ending in `_one` / `_other` are picked automatically from `{n}`.
  */
 const es = {
+  'cal.open': "Ver el día",
+  'cal.event': "Calendario",
+  'cal.task': "Tarea",
   'order.howLongFor': "¿Cuánto tiempo quieres para «{task}»?",
   'order.sayIt': "O dímelo: «media hora»",
   'order.listening': "Te escucho…",
@@ -657,6 +660,9 @@ export type Key = keyof typeof es;
 type Dict = Record<Key, string>;
 
 const en: Dict = {
+  'cal.open': "See the day",
+  'cal.event': "Calendar",
+  'cal.task': "Task",
   'order.howLongFor': "How long do you want for “{task}”?",
   'order.sayIt': "Or tell me: “half an hour”",
   'order.listening': "Listening…",
@@ -1297,6 +1303,9 @@ const en: Dict = {
 };
 
 const fr: Dict = {
+  'cal.open': "Voir la journée",
+  'cal.event': "Calendrier",
+  'cal.task': "Tâche",
   'order.howLongFor': "Combien de temps veux-tu pour « {task} » ?",
   'order.sayIt': "Ou dis-le : « une demi-heure »",
   'order.listening': "Je t'écoute…",
@@ -1937,6 +1946,9 @@ const fr: Dict = {
 };
 
 const nl: Dict = {
+  'cal.open': "Dag bekijken",
+  'cal.event': "Agenda",
+  'cal.task': "Taak",
   'order.howLongFor': "Hoeveel tijd wil je voor ‘{task}’?",
   'order.sayIt': "Of zeg het: ‘een half uur’",
   'order.listening': "Ik luister…",
@@ -2577,6 +2589,9 @@ const nl: Dict = {
 };
 
 const de: Dict = {
+  'cal.open': "Tag ansehen",
+  'cal.event': "Kalender",
+  'cal.task': "Aufgabe",
   'order.howLongFor': "Wie viel Zeit willst du für „{task}“?",
   'order.sayIt': "Oder sag es: „eine halbe Stunde“",
   'order.listening': "Ich höre zu…",
@@ -3217,6 +3232,9 @@ const de: Dict = {
 };
 
 const pt: Dict = {
+  'cal.open': "Ver o dia",
+  'cal.event': "Calendário",
+  'cal.task': "Tarefa",
   'order.howLongFor': "Quanto tempo queres para «{task}»?",
   'order.sayIt': "Ou diz-me: «meia hora»",
   'order.listening': "Estou a ouvir…",
@@ -3857,6 +3875,9 @@ const pt: Dict = {
 };
 
 const it: Dict = {
+  'cal.open': "Vedi la giornata",
+  'cal.event': "Calendario",
+  'cal.task': "Attività",
   'order.howLongFor': "Quanto tempo vuoi per «{task}»?",
   'order.sayIt': "Oppure dimmelo: «mezz'ora»",
   'order.listening': "Ti ascolto…",

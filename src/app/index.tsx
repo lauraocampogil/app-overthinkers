@@ -83,7 +83,6 @@ export default function Inicio() {
   const userId = useAuth((s) => s.session?.user.id ?? null);
   const agenda = useAgenda((s) => s.status);
   useAgenda((s) => s.loadedAt);
-  const busy = useAgenda((s) => s.busy);
   const mascot = useMascot();
   const voz = useVoz();
   useAtajos();
@@ -192,6 +191,9 @@ export default function Inicio() {
           <FlameIcon />
           <Text style={styles.pillText}>{streak.current}</Text>
         </Pressable>
+        <IconCircle label={t('cal.open')} onPress={() => router.push({ pathname: '/agenda', params: { d: sel } })} size={34}>
+          <CalendarIcon size={17} />
+        </IconCircle>
         <IconCircle label={t('account.title')} onPress={() => router.push('/cuenta')} size={34}>
           <PersonIcon />
         </IconCircle>
@@ -239,30 +241,6 @@ export default function Inicio() {
     </Pressable>
   );
 
-  // Events from the phone's calendars (iCloud, Google, Outlook, Notion through Google) for a day.
-  const eventsBlock = (day: string) => {
-    const list = (busy[day] ?? []).slice().sort((a, b) => a.start.getTime() - b.start.getTime());
-    if (!list.length) return null;
-    return (
-      <View style={styles.events}>
-        <View style={styles.eventsHead}>
-          <CalendarIcon size={14} color={colors.muted} />
-          <Text style={styles.label}>{t('cal.today').toUpperCase()}</Text>
-        </View>
-        {list.map((e, i) => (
-          <View key={`${e.title}${i}`} style={styles.eventRow}>
-            <Text style={styles.eventTime}>
-              {clock(e.start)}–{clock(e.end)}
-            </Text>
-            <Text style={styles.eventTitle} numberOfLines={1}>
-              {e.title}
-            </Text>
-          </View>
-        ))}
-      </View>
-    );
-  };
-
   // The next 7 days as a calm strip: tap a day to see only what that day holds.
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, i));
   const countOn = (day: string) => (day === today ? pending.length : tasks.filter((x) => x.status === 'pendiente' && x.day === day).length);
@@ -275,6 +253,8 @@ export default function Inicio() {
           <Pressable
             key={day}
             onPress={() => setSel(day)}
+            onLongPress={() => router.push({ pathname: '/agenda', params: { d: day } })}
+            delayLongPress={350}
             style={[styles.stripDay, on && styles.stripDayOn]}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
@@ -296,7 +276,6 @@ export default function Inicio() {
         {new Date(`${sel}T12:00:00`).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
       </Text>
       <Text style={[styles.rowMeta, { marginBottom: 10 }]}>{selTasks.length ? t('day.count', { n: selTasks.length }) : t('day.nothing')}</Text>
-      {eventsBlock(sel)}
       {(['manana', 'noche'] as const).map((rk) => {
         const r = routineOf(routines, rk);
         return r.enabled && r.steps.length ? (
@@ -515,8 +494,6 @@ export default function Inicio() {
           </View>
         ) : null}
 
-        {busy[today]?.length ? <View style={{ marginHorizontal: 20 }}>{eventsBlock(today)}</View> : null}
-
         {rest.length || done.length ? (
           <View style={styles.section}>
             <View style={styles.sectionHead}>
@@ -538,33 +515,6 @@ export default function Inicio() {
           </View>
         ) : null}
 
-        {/* Both routines are always here: open them, or set them up if they are still empty. */}
-        <View style={styles.section}>
-          {(['manana', 'noche'] as const).map((rk) => {
-            const r = routineOf(routines, rk);
-            if (rk === kind && r.enabled && r.steps.length) return null; // shown above while it runs
-            const ready = r.enabled && r.steps.length > 0;
-            const n = (routineLog[today]?.[rk] ?? []).length;
-            return (
-              <Pressable
-                key={rk}
-                onPress={() => router.push(ready ? { pathname: '/rutina', params: { kind: rk } } : '/rutinas')}
-                style={styles.routineLine}
-                accessibilityRole="button"
-              >
-                {rk === 'manana' ? <SunIcon size={18} /> : <MoonIcon size={18} />}
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.routineTitle}>{t(`routine.${rk}`)}</Text>
-                  <Text style={styles.rowMeta}>
-                    {ready ? `${r.at} · ${t('routine.stepsShort', { n: r.steps.length })}` : t('routine.setUp')}
-                  </Text>
-                </View>
-                {ready ? n >= r.steps.length ? <CheckIcon color={colors.ink} size={16} /> : <Text style={styles.rowMeta}>{n}/{r.steps.length}</Text> : null}
-                <ArrowRightIcon size={14} color={colors.faint} />
-              </Pressable>
-            );
-          })}
-        </View>
         </>)}
       </ScrollView>
 
