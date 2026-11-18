@@ -4,6 +4,8 @@
  * Plurals: keys ending in `_one` / `_other` are picked automatically from `{n}`.
  */
 const es = {
+  'routine.setUp': "Toca para crearla",
+  'account.replayOnboarding': "Ver el onboarding otra vez",
   'block.title': "Bloquear apps en el foco",
   'block.body': "Mientras haces foco, GetGo bloquea las apps que te distraen (redes, juegos…). Las llamadas siempre funcionan. Al terminar, todo vuelve a la normalidad.",
   'block.soonTitle': "Llega con la versión de la App Store",
@@ -644,6 +646,8 @@ export type Key = keyof typeof es;
 type Dict = Record<Key, string>;
 
 const en: Dict = {
+  'routine.setUp': "Tap to set it up",
+  'account.replayOnboarding': "Watch the onboarding again",
   'block.title': "Block apps during focus",
   'block.body': "While you focus, GetGo blocks the apps that distract you (social media, games…). Calls always work. When you finish, everything is back to normal.",
   'block.soonTitle': "Coming with the App Store version",
@@ -1271,6 +1275,8 @@ const en: Dict = {
 };
 
 const fr: Dict = {
+  'routine.setUp': "Touche pour la créer",
+  'account.replayOnboarding': "Revoir l'onboarding",
   'block.title': "Bloquer les apps pendant le focus",
   'block.body': "Pendant ton focus, GetGo bloque les apps qui te distraient (réseaux, jeux…). Les appels marchent toujours. À la fin, tout redevient normal.",
   'block.soonTitle': "Arrive avec la version App Store",
@@ -1898,6 +1904,8 @@ const fr: Dict = {
 };
 
 const nl: Dict = {
+  'routine.setUp': "Tik om in te stellen",
+  'account.replayOnboarding': "Onboarding opnieuw bekijken",
   'block.title': "Apps blokkeren tijdens focus",
   'block.body': "Terwijl je focust, blokkeert GetGo de apps die je afleiden (sociale media, games…). Bellen werkt altijd. Als je klaar bent, is alles weer normaal.",
   'block.soonTitle': "Komt met de App Store-versie",
@@ -2525,6 +2533,8 @@ const nl: Dict = {
 };
 
 const de: Dict = {
+  'routine.setUp': "Tippen zum Einrichten",
+  'account.replayOnboarding': "Onboarding erneut ansehen",
   'block.title': "Apps im Fokus sperren",
   'block.body': "Während du fokussierst, sperrt GetGo die Apps, die dich ablenken (Social Media, Spiele…). Anrufe gehen immer. Danach ist alles wieder normal.",
   'block.soonTitle': "Kommt mit der App-Store-Version",
@@ -3152,6 +3162,8 @@ const de: Dict = {
 };
 
 const pt: Dict = {
+  'routine.setUp': "Toca para a criar",
+  'account.replayOnboarding': "Ver o onboarding outra vez",
   'block.title': "Bloquear apps no foco",
   'block.body': "Enquanto fazes foco, o GetGo bloqueia as apps que te distraem (redes, jogos…). As chamadas funcionam sempre. No fim, tudo volta ao normal.",
   'block.soonTitle': "Chega com a versão da App Store",
@@ -3779,6 +3791,8 @@ const pt: Dict = {
 };
 
 const it: Dict = {
+  'routine.setUp': "Tocca per crearla",
+  'account.replayOnboarding': "Rivedi l'onboarding",
   'block.title': "Bloccare le app nel focus",
   'block.body': "Mentre fai focus, GetGo blocca le app che ti distraggono (social, giochi…). Le chiamate funzionano sempre. Alla fine torna tutto normale.",
   'block.soonTitle': "Arriva con la versione App Store",

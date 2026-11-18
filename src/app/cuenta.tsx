@@ -161,6 +161,10 @@ export default function Cuenta() {
           <Text style={styles.rowText}>{t('ob.editProfile')}</Text>
         </Pressable>
 
+        <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/bienvenida', params: { preview: '1' } })} style={styles.row}>
+          <Text style={styles.rowText}>{t('account.replayOnboarding')}</Text>
+        </Pressable>
+
         <Pressable accessibilityRole="button" onPress={() => router.push('/pro')} style={styles.row}>
           <Text style={styles.rowText}>{t('pro.account')}</Text>
         </Pressable>

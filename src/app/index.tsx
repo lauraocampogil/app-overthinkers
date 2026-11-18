@@ -509,28 +509,33 @@ export default function Inicio() {
           </View>
         ) : null}
 
-        {(['manana', 'noche'] as const).some((rk) => rk !== kind && routineOf(routines, rk).enabled && routineOf(routines, rk).steps.length) ? (
-          <View style={styles.section}>
-            {(['manana', 'noche'] as const).map((rk) => {
-              const r = routineOf(routines, rk);
-              if (rk === kind || !r.enabled || !r.steps.length) return null;
-              const n = (routineLog[today]?.[rk] ?? []).length;
-              return (
-                <Pressable key={rk} onPress={() => router.push({ pathname: '/rutina', params: { kind: rk } })} style={styles.routineLine} accessibilityRole="button">
-                  {rk === 'manana' ? <SunIcon size={18} /> : <MoonIcon size={18} />}
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.routineTitle}>{t(`routine.${rk}`)}</Text>
-                    <Text style={styles.rowMeta}>
-                      {r.at} · {t('routine.stepsShort', { n: r.steps.length })}
-                    </Text>
-                  </View>
-                  {n >= r.steps.length ? <CheckIcon color={colors.ink} size={16} /> : <Text style={styles.rowMeta}>{n}/{r.steps.length}</Text>}
-                  <ArrowRightIcon size={14} color={colors.faint} />
-                </Pressable>
-              );
-            })}
-          </View>
-        ) : null}
+        {/* Both routines are always here: open them, or set them up if they are still empty. */}
+        <View style={styles.section}>
+          {(['manana', 'noche'] as const).map((rk) => {
+            const r = routineOf(routines, rk);
+            if (rk === kind && r.enabled && r.steps.length) return null; // shown above while it runs
+            const ready = r.enabled && r.steps.length > 0;
+            const n = (routineLog[today]?.[rk] ?? []).length;
+            return (
+              <Pressable
+                key={rk}
+                onPress={() => router.push(ready ? { pathname: '/rutina', params: { kind: rk } } : '/rutinas')}
+                style={styles.routineLine}
+                accessibilityRole="button"
+              >
+                {rk === 'manana' ? <SunIcon size={18} /> : <MoonIcon size={18} />}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.routineTitle}>{t(`routine.${rk}`)}</Text>
+                  <Text style={styles.rowMeta}>
+                    {ready ? `${r.at} · ${t('routine.stepsShort', { n: r.steps.length })}` : t('routine.setUp')}
+                  </Text>
+                </View>
+                {ready ? n >= r.steps.length ? <CheckIcon color={colors.ink} size={16} /> : <Text style={styles.rowMeta}>{n}/{r.steps.length}</Text> : null}
+                <ArrowRightIcon size={14} color={colors.faint} />
+              </Pressable>
+            );
+          })}
+        </View>
         </>)}
       </ScrollView>
 

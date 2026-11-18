@@ -63,8 +63,10 @@ function Chip({ label, on, onPress, wide }: { label: string; on: boolean; onPres
 }
 
 export default function Bienvenida() {
-  const params = useLocalSearchParams<{ edit?: string }>();
+  const params = useLocalSearchParams<{ edit?: string; preview?: string }>();
   const editing = params.edit === '1';
+  /** From Cuenta → "Ver el onboarding": walk through every screen without changing anything, then the paywall. */
+  const preview = params.preview === '1';
   const user = useAuth((s) => s.session?.user);
   const stored = useDay((s) => s.profile);
   const routines = useDay((s) => s.routines);
@@ -151,6 +153,10 @@ export default function Bienvenida() {
   }, [p.areas, goal]);
 
   function finish() {
+    if (preview) {
+      router.replace('/pro');
+      return;
+    }
     const store = useDay.getState();
     const profile: Profile = { ...p, onboarded: true };
     store.setProfile(profile);
