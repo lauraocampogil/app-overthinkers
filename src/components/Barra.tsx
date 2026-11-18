@@ -12,7 +12,7 @@ import { useVoz } from '@/lib/paleta';
 import { colors } from '@/theme';
 
 /**
- * Floating bottom navigation: "+" on the left, the three places in one pill, the big mic on the right.
+ * Floating bottom navigation: the three places in one pill on the left, write (+) and speak (mic) together on the right.
  * Nothing behind it: the content scrolls underneath and stays visible around the buttons.
  */
 export type Tab = 'hoy' | 'metas' | 'progreso';
@@ -54,7 +54,15 @@ export function Barra({ active, onWrite }: { active: Tab; onWrite?: () => void }
 
   return (
     <View style={[styles.wrap, { bottom: Math.max(insets.bottom - 6, 14) }]} pointerEvents="box-none">
-      <View style={styles.left}>
+      <Glass style={styles.pill}>
+        <View style={styles.tabs} accessibilityRole="tablist">
+          {tab('hoy', t('tab.today'), HomeIcon)}
+          {tab('metas', t('tab.goals'), TargetIcon)}
+          {tab('progreso', t('tab.progress'), ChartIcon)}
+        </View>
+      </Glass>
+      {/* The two ways to tell GetGo something, side by side: write or speak. */}
+      <View style={styles.actions}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('home.write')}
@@ -68,34 +76,27 @@ export function Barra({ active, onWrite }: { active: Tab; onWrite?: () => void }
             <PlusIcon />
           </Glass>
         </Pressable>
-        <Glass style={styles.pill}>
-          <View style={styles.tabs} accessibilityRole="tablist">
-            {tab('hoy', t('tab.today'), HomeIcon)}
-            {tab('metas', t('tab.goals'), TargetIcon)}
-            {tab('progreso', t('tab.progress'), ChartIcon)}
-          </View>
-        </Glass>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('home.speak')}
+          onPress={() => {
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+            router.push('/escuchando');
+          }}
+          style={({ pressed }) => [styles.micWrap, pressed && { transform: [{ scale: 0.95 }] }]}
+        >
+          <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.round}>
+            <MicIcon />
+          </LinearGradient>
+        </Pressable>
       </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('home.speak')}
-        onPress={() => {
-          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-          router.push('/escuchando');
-        }}
-        style={({ pressed }) => [styles.micWrap, pressed && { transform: [{ scale: 0.95 }] }]}
-      >
-        <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.mic}>
-          <MicIcon size={30} />
-        </LinearGradient>
-      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  left: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   glassEdge: { overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(0,0,0,0.12)' },
   glassTint: { backgroundColor: 'rgba(255,255,255,0.72)' },
   round: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
@@ -103,6 +104,5 @@ const styles = StyleSheet.create({
   tabs: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 6 },
   tab: { width: 50, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   tabOn: { backgroundColor: colors.ink },
-  micWrap: { borderRadius: 38, overflow: 'hidden' },
-  mic: { width: 76, height: 76, borderRadius: 38, alignItems: 'center', justifyContent: 'center' },
+  micWrap: { borderRadius: 30, overflow: 'hidden' },
 });

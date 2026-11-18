@@ -151,7 +151,6 @@ export default function Escribir() {
                 accessibilityLabel={t('write.inputLabel')}
                 value={text}
                 onChangeText={setText}
-                autoFocus
                 multiline
                 placeholder={t(goalMode ? 'write.goalPlaceholder' : 'write.placeholder')}
                 placeholderTextColor={colors.faint}
