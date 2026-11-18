@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PinIcon } from '@/components/Iconos';
 import { Mascota } from '@/components/Mascota';
 import { Ondas } from '@/components/Ondas';
 import { t } from '@/i18n';
@@ -149,7 +150,12 @@ export default function Foco() {
           <Text style={styles.title} accessibilityRole="header">
             {task.title}
           </Text>
-          {over ? <Text style={styles.sub}>{t('focus.timeUpBody')}</Text> : task.where ? <Text style={styles.sub}>📍 {task.where}</Text> : null}
+          {over ? <Text style={styles.sub}>{t('focus.timeUpBody')}</Text> : task.where ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <PinIcon color="#9A9A9A" size={15} />
+              <Text style={styles.sub}>{task.where}</Text>
+            </View>
+          ) : null}
           {task.checklist.length ? (
             <View style={styles.chips}>
               {task.checklist.map((i) => (

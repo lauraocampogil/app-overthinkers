@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { Linking } from 'react-native';
 
 import { t } from '../i18n';
 import type { Routine, RoutineKind, Task } from './types';
@@ -31,6 +32,28 @@ export async function ensureNotificationPermission(): Promise<boolean> {
   asked = true;
   const res = await Notifications.requestPermissionsAsync();
   return res.granted;
+}
+
+/**
+ * Asked on purpose by the person (onboarding, settings): always shows the system prompt if iOS still allows it,
+ * and opens the app's Settings page if they said no before (iOS never asks twice).
+ */
+export async function askNotificationsNow(): Promise<boolean> {
+  try {
+    const current = await Notifications.getPermissionsAsync();
+    if (current.granted || current.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL) return true;
+    if (current.canAskAgain) {
+      const res = await Notifications.requestPermissionsAsync({ ios: { allowAlert: true, allowBadge: true, allowSound: true } });
+      asked = true;
+      if (res.granted) return true;
+      if (res.canAskAgain) return false;
+    }
+    await Linking.openSettings();
+    return false;
+  } catch (e) {
+    console.warn('[avisos] permission', e);
+    return false;
+  }
 }
 
 Notifications.setNotificationHandler({

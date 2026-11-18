@@ -57,8 +57,8 @@ type Handlers = {
 };
 
 export type LiveSession = {
-  /** Stops listening and resolves with the full transcript. */
-  finish: () => Promise<string>;
+  /** Stops listening: the live transcript, and the recorded audio (for a more accurate pass on the server). */
+  finish: () => Promise<{ text: string; uri: string | null }>;
   cancel: () => void;
 };
 
@@ -69,6 +69,7 @@ export function startLive(lang: string, h: Handlers): LiveSession {
   let committed = '';
   let interim = '';
   let ended = false;
+  let audioUri: string | null = null;
   let resolveEnd: (() => void) | null = null;
   const endPromise = new Promise<void>((r) => (resolveEnd = r));
   const full = () => joinText(committed, interim);
@@ -91,6 +92,9 @@ export function startLive(lang: string, h: Handlers): LiveSession {
       // "no-speech" just means silence; "aborted" is our own cancel.
       if (e.error !== 'no-speech' && e.error !== 'aborted') h.onError(e.error);
     }),
+    native.addListener('audioend', (e) => {
+      if (e.uri) audioUri = e.uri;
+    }),
     native.addListener('end', () => {
       ended = true;
       resolveEnd?.();
@@ -105,6 +109,8 @@ export function startLive(lang: string, h: Handlers): LiveSession {
     addsPunctuation: true,
     maxAlternatives: 1,
     volumeChangeEventOptions: { enabled: true, intervalMillis: 120 },
+    // Keep the audio too: Whisper on the server then gives the final, more accurate text.
+    recordingOptions: { persist: true },
   });
 
   return {
@@ -115,7 +121,7 @@ export function startLive(lang: string, h: Handlers): LiveSession {
         await Promise.race([endPromise, new Promise((r) => setTimeout(r, 2500))]);
       }
       cleanup();
-      return full();
+      return { text: cleanFillers(full()), uri: audioUri };
     },
     cancel: () => {
       try {
@@ -126,4 +132,19 @@ export function startLive(lang: string, h: Handlers): LiveSession {
       cleanup();
     },
   };
+}
+
+/**
+ * Hesitations people say while thinking ("eh", "em", "mmm", "o sea"…) are not tasks: drop them
+ * before the text is shown or sent.
+ */
+const FILLERS = /(^|[\s,.;])(e+h+|e+m+|m{2,}|u+h+|u+m+|eh?m+|ehh+|ahh+|este+|o sea|pues nada|euh+|bah|ähm|äh|ehm|uhm)(?=[\s,.;!?]|$)/gi;
+export function cleanFillers(text: string): string {
+  return text
+    .replace(FILLERS, '$1')
+    .replace(/([,;])\s*[,;]+/g, '$1')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([,.;!?])/g, '$1')
+    .replace(/^[,.;\s]+/, '')
+    .trim();
 }

@@ -54,6 +54,9 @@ Deno.serve(async (req) => {
     out.append('response_format', 'json');
     // Language hint from the phone; the model also auto-detects if it is missing.
     if (typeof lang === 'string' && /^[a-z]{2}$/.test(lang)) out.append('language', lang);
+    // Context helps Whisper with names, times and places, and to leave out hesitations.
+    out.append('prompt', 'Lista de cosas que hacer: tareas, metas, horas, lugares y tiendas. Sin muletillas.');
+    out.append('temperature', '0');
 
     const res = await fetch(URL, { method: 'POST', headers: { Authorization: `Bearer ${key}` }, body: out });
     if (!res.ok) {

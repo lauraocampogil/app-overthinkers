@@ -41,6 +41,8 @@ export type Goal = {
   template?: Partial<Pick<RawTask, 'minutes' | 'kind' | 'energy' | 'sport' | 'where' | 'at' | 'checklist'>> & { title?: string };
   createdOn: string;
   archived?: boolean;
+  /** How it will look and feel when it's reached, in the person's words (visualisation). */
+  vision?: string;
 };
 
 export type RawGoal = {

@@ -21,9 +21,7 @@ function dueLabel(goal: Goal, done: number, total: number) {
   if (!goal.due) return '';
   const diff = daysBetween(todayIso(), goal.due);
   if (diff <= 0) return t('due.today');
-  if (diff === 1) return t('due.tomorrow');
-  if (diff < 7) return new Date(`${goal.due}T12:00:00`).toLocaleDateString(locale, { weekday: 'long' });
-  return new Date(`${goal.due}T12:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+  return t('goals.daysShort', { n: diff });
 }
 
 export default function Metas() {
@@ -50,7 +48,7 @@ export default function Metas() {
     const pct = p.total ? p.done / p.total : 0;
     const shown = goal.type === 'semanal' ? p.next.slice(0, 1) : p.next.slice(0, 3);
     return (
-      <Pressable key={goal.id} onLongPress={() => confirmArchive(goal)} style={styles.goal} accessibilityHint={t('goals.longPress')}>
+      <Pressable key={goal.id} onPress={() => router.push({ pathname: '/meta', params: { id: goal.id } })} onLongPress={() => confirmArchive(goal)} style={styles.goal} accessibilityHint={t('goals.longPress')}>
         <Anillo progress={pct} size={58} stroke={6} label={`${Math.round(pct * 100)}%`} />
         <View style={{ flex: 1, gap: 8 }}>
           <View style={styles.goalTop}>
@@ -125,7 +123,7 @@ const styles = StyleSheet.create({
   goal: { flexDirection: 'row', gap: 14, alignItems: 'flex-start', backgroundColor: colors.card, borderRadius: 24, padding: 16 },
   goalTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
   goalTitle: { flex: 1, fontFamily: fonts.semibold, fontSize: 16, lineHeight: 20, color: colors.ink },
-  goalDue: { fontFamily: fonts.medium, fontSize: 13, color: colors.accentDark, textTransform: 'capitalize' },
+  goalDue: { fontFamily: fonts.medium, fontSize: 13, color: colors.accentDark, },
   step: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 28 },
   box: { width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: colors.faint, alignItems: 'center', justifyContent: 'center' },
   boxOn: { backgroundColor: colors.accent, borderColor: colors.accent },

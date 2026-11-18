@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
+import { Intro } from '@/components/Intro';
 import { Ondas } from '@/components/Ondas';
 import { Screen } from '@/components/ui';
 import { t } from '@/i18n';
@@ -26,6 +27,7 @@ export default function Entrar() {
   const [busy, setBusy] = useState<'google' | 'apple' | null>(null);
   const [message, setMessage] = useState<string | null>(supabase ? null : t('auth.noServer'));
   const [appleAvailable, setAppleAvailable] = useState(false);
+  const [intro, setIntro] = useState(true);
 
   useEffect(() => {
     // The free-signing build can't use Sign in with Apple (app.config.ts sets extra.appleSignIn = false).
@@ -43,6 +45,14 @@ export default function Entrar() {
     if (result === 'failed') setMessage(t('auth.failed'));
     if (result === 'noServer') setMessage(t('auth.noServer'));
   };
+
+  if (intro) {
+    return (
+      <Screen>
+        <Intro onDone={() => setIntro(false)} />
+      </Screen>
+    );
+  }
 
   return (
     <Screen>
@@ -96,7 +106,7 @@ export default function Entrar() {
 
 const styles = StyleSheet.create({
   top: { paddingHorizontal: 24, marginTop: 40, gap: 10 },
-  brand: { fontFamily: fonts.semibold, fontSize: 17, color: colors.accentDark, marginBottom: 6 },
+  brand: { fontFamily: fonts.bold, fontSize: 22, letterSpacing: -0.8, color: colors.ink, marginBottom: 6 },
   center: { flex: 1, justifyContent: 'center' },
   actions: { paddingHorizontal: 24, paddingBottom: 16, gap: 12 },
   message: { ...type.muted, fontSize: 14, textAlign: 'center', marginBottom: 4 },

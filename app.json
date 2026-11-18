@@ -87,6 +87,15 @@
         {
           "calendarPermission": "GetGo lee tu calendario para saber cuándo estás libre y, si lo activas, añade tu plan como bloques."
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF"
+        }
       ]
     ],
     "experiments": {

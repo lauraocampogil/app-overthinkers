@@ -6,6 +6,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { CameraIcon } from '@/components/Iconos';
 import { CloseIcon, IconCircle, PrimaryButton, Screen, TextButton } from '@/components/ui';
 import { t } from '@/i18n';
 import { verifyProof } from '@/lib/ai';
@@ -112,7 +113,7 @@ export default function Prueba() {
             <Image source={{ uri: shown }} style={styles.photo} accessibilityIgnoresInvertColors />
           ) : (
             <Pressable onPress={() => void pick(true)} style={styles.empty} accessibilityRole="button" accessibilityLabel={t('proof.take')}>
-              <Text style={styles.emptyIcon}>📷</Text>
+              <CameraIcon size={44} color={colors.muted} strokeWidth={1.5} />
               <Text style={styles.emptyText}>{task.proof ?? t('proof.anyPhoto')}</Text>
             </Pressable>
           )}

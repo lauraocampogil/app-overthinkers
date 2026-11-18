@@ -3,13 +3,13 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Ondas } from '@/components/Ondas';
 import { BackIcon, CheckIcon, IconCircle, PrimaryButton, Screen, TextButton } from '@/components/ui';
 import { locale, t } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { ensureNotificationPermission } from '@/lib/avisos';
+import { askNotificationsNow } from '@/lib/avisos';
 import { connectCalendar, defaultCalendarId, refreshAgenda } from '@/lib/calendario';
 import { AREA_ORDER, AREAS, COUNTRIES, EMPTY_PROFILE, STORES, type Area, type AreaId, type Profile } from '@/lib/perfil';
 import { defaultRoutine } from '@/lib/rutinas';
@@ -295,7 +295,7 @@ export default function Bienvenida() {
             <Text style={[styles.q, { marginTop: 8 }]}>{t('ob.storesPick')}</Text>
             <View style={styles.row}>
               {[...stores, ...p.stores.filter((s) => !stores.includes(s))].map((s) => (
-                <Chip key={s} label={p.favoriteStore === s ? `★ ${s}` : s} on={p.stores.includes(s)} onPress={() => toggleStore(s)} />
+                <Chip key={s} label={s} on={p.stores.includes(s)} onPress={() => toggleStore(s)} />
               ))}
             </View>
             <TextInput
@@ -411,7 +411,7 @@ export default function Bienvenida() {
             <Text style={[type.muted, styles.sub]}>{t('ob.permBody')}</Text>
             {(
               [
-                ['notif', async () => ensureNotificationPermission()],
+                ['notif', async () => askNotificationsNow()],
                 [
                   'cal',
                   async () => {
@@ -422,7 +422,14 @@ export default function Bienvenida() {
                     return true;
                   },
                 ],
-                ['cam', async () => (await ImagePicker.requestCameraPermissionsAsync()).granted],
+                [
+                  'cam',
+                  async () => {
+                    const res = await ImagePicker.requestCameraPermissionsAsync();
+                    if (!res.granted && !res.canAskAgain) await Linking.openSettings();
+                    return res.granted;
+                  },
+                ],
               ] as const
             ).map(([key, ask]) => (
               <View key={key} style={styles.perm}>

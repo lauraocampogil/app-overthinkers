@@ -1,245 +1,255 @@
-import { useEffect, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { minutesLabel, t } from '@/i18n';
+import { CameraIcon, CartIcon, ClockIcon, GearIcon, PinIcon, PlayIcon, TargetIcon, TrashIcon } from '@/components/Iconos';
+import { CheckIcon, CloseIcon } from '@/components/ui';
+import { locale, minutesLabel, t } from '@/i18n';
 import { estimate } from '@/lib/duraciones';
+import { useVoz } from '@/lib/paleta';
 import { addDays } from '@/lib/planner';
 import { requiresProof } from '@/lib/prioridad';
+import { isShopping } from '@/lib/compra';
 import type { Task } from '@/lib/types';
 import { todayIso, useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
-/** Bottom sheet with what you can do with one task: tick, today, tomorrow, rename, delete. */
+const DURATIONS = [15, 30, 45, 60, 90, 120];
+
+/**
+ * One task, one decision: the big button starts the focus session. The photo closes it.
+ * Everything else (place, duration, priority, tomorrow, rename, delete) waits behind the gear.
+ */
 export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () => void }) {
-  const { markDone, undoDone, moveTo, rename, remove, setMinutes, toggleItem, addItem, setDetails, toggleTop, setNeedsProof } = useDay.getState();
+  const { undoDone, moveTo, rename, remove, setMinutes, toggleItem, setDetails, toggleTop, setNeedsProof, markDone } = useDay.getState();
   const learned = useDay((s) => s.learned);
   const goals = useDay((s) => s.goals);
-  // Read the live task so checklist ticks show up while the sheet is open.
   const live = useDay((s) => (task ? s.tasks.find((x) => x.id === task.id) : undefined));
-  const [item, setItem] = useState('');
-  const [where, setWhere] = useState('');
   const insets = useSafeAreaInsets();
+  const voz = useVoz();
+  const [settings, setSettings] = useState(false);
   const [title, setTitle] = useState('');
-  const [editing, setEditing] = useState(false);
+  const [where, setWhere] = useState('');
 
   useEffect(() => {
+    setSettings(false);
     setTitle(task?.title ?? '');
     setWhere(task?.where ?? '');
-    setItem('');
-    setEditing(false);
-  }, [task]);
+  }, [task?.id]);
 
   if (!task) return null;
   const cur = live ?? task;
   const goal = cur.goalId ? goals.find((g) => g.id === cur.goalId) : undefined;
-  const addOne = () => {
-    const v = item.trim();
-    if (v) addItem(cur.id, v);
-    setItem('');
-  };
-  const saveWhere = () => {
-    const v = where.trim();
-    if (v !== (cur.where ?? '')) setDetails(cur.id, { where: v || undefined });
-  };
+  const est = estimate(cur, learned);
   const today = todayIso();
-  const tomorrow = addDays(today, 1);
-  const act = (fn: () => void) => {
-    fn();
+  const go = (fn: () => void) => {
     onClose();
+    setTimeout(fn, 50);
   };
-  const save = () => {
-    const v = title.trim();
-    if (v && v !== task.title) rename(task.id, v);
-    onClose();
-  };
+  const shopping = isShopping(cur);
+  const proof = requiresProof(cur);
+  const dayLabel =
+    cur.day === today ? t('due.today') : cur.day === addDays(today, 1) ? t('due.tomorrow') : new Date(`${cur.day}T12:00:00`).toLocaleDateString(locale, { weekday: 'long' });
 
   return (
-    <Modal transparent animationType="fade" visible onRequestClose={onClose}>
+    <Modal transparent animationType="slide" visible onRequestClose={onClose}>
       <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable accessibilityRole="button" accessibilityLabel={t('common.close')} style={StyleSheet.absoluteFill} onPress={onClose} />
-        <View style={[styles.sheet, { paddingBottom: 20 + insets.bottom }]} accessibilityViewIsModal>
-          <View style={styles.grabber} />
-          {editing ? (
-            <View style={{ gap: 12 }}>
-              <TextInput
-                accessibilityLabel={t('summary.taskName')}
-                value={title}
-                onChangeText={setTitle}
-                autoFocus
-                onSubmitEditing={save}
-                returnKeyType="done"
-                style={styles.input}
-              />
-              <Option label={t('task.save')} onPress={save} strong />
-            </View>
-          ) : (
-            <>
-              <Text style={[type.title, styles.title]} numberOfLines={3}>
-                {task.title}
-              </Text>
-              {goal || cur.at ? (
-                <Text style={styles.meta}>
-                  {[goal ? t('sheet.goal', { title: goal.title }) : '', cur.at ? t('sheet.at', { time: cur.at }) : ''].filter(Boolean).join(' · ')}
+        <View style={[styles.sheet, { paddingBottom: 16 + insets.bottom }]} accessibilityViewIsModal>
+          <View style={styles.top}>
+            <Pressable onPress={() => setSettings((v) => !v)} accessibilityRole="button" accessibilityLabel={t('sheet.settings')} style={[styles.round, settings && styles.roundOn]} hitSlop={6}>
+              <GearIcon color={settings ? colors.white : colors.ink} size={18} />
+            </Pressable>
+            <View style={styles.grabber} />
+            <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={t('common.close')} style={styles.round} hitSlop={6}>
+              <CloseIcon />
+            </Pressable>
+          </View>
+
+          <ScrollView contentContainerStyle={{ gap: 14 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <Text style={[type.title, styles.title, cur.status === 'hecha' && styles.done]} numberOfLines={3}>
+              {cur.title}
+            </Text>
+
+            <View style={styles.metaRow}>
+              <View style={styles.meta}>
+                <ClockIcon color={colors.muted} size={14} />
+                <Text style={styles.metaText}>
+                  {dayLabel}
+                  {cur.at ? ` · ${cur.at}` : ''} · {est.source === 'guess' ? '~' : ''}
+                  {minutesLabel(est.minutes)}
                 </Text>
+              </View>
+              {cur.where ? (
+                <View style={styles.meta}>
+                  <PinIcon color={colors.muted} size={14} />
+                  <Text style={styles.metaText}>{cur.where}</Text>
+                </View>
               ) : null}
-              {cur.status === 'pendiente' ? (
+              {goal ? (
+                <View style={styles.meta}>
+                  <TargetIcon color={colors.muted} size={14} />
+                  <Text style={styles.metaText} numberOfLines={1}>
+                    {goal.title}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+
+            {shopping ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => go(() => router.push({ pathname: '/compra', params: { id: cur.id } }))}
+                style={({ pressed }) => [styles.listBtn, pressed && { opacity: 0.85 }]}
+              >
+                <CartIcon size={20} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.listTitle}>{t('shop.open')}</Text>
+                  <Text style={styles.metaText}>{t('shop.count', { n: cur.checklist.length })}</Text>
+                </View>
+              </Pressable>
+            ) : cur.checklist.length ? (
+              <View style={{ gap: 4 }}>
+                {cur.checklist.map((c) => (
+                  <Pressable key={c.id} accessibilityRole="checkbox" accessibilityState={{ checked: c.done }} onPress={() => toggleItem(cur.id, c.id)} style={styles.item}>
+                    <View style={[styles.box, c.done && styles.boxOn]}>{c.done ? <CheckIcon color={colors.white} size={11} /> : null}</View>
+                    <Text style={[styles.itemText, c.done && styles.itemDone]}>{c.text}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+
+            {cur.status === 'hecha' ? (
+              <Pressable onPress={() => go(() => undoDone(cur.id))} style={styles.secondary} accessibilityRole="button">
+                <Text style={styles.secondaryText}>{t('task.undo')}</Text>
+              </Pressable>
+            ) : (
+              <View style={styles.actions}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('focus.start')}
+                  onPress={() => go(() => router.push({ pathname: '/foco', params: { id: cur.id } }))}
+                  style={({ pressed }) => [styles.focusWrap, pressed && { transform: [{ scale: 0.97 }] }]}
+                >
+                  <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.focus}>
+                    <PlayIcon size={26} />
+                    <Text style={styles.focusText}>{t('focus.start')}</Text>
+                  </LinearGradient>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={proof ? t('proof.take') : t('task.markDone')}
+                  onPress={() => go(() => (proof ? router.push({ pathname: '/prueba', params: { id: cur.id } }) : markDone(cur.id)))}
+                  style={({ pressed }) => [styles.photo, pressed && { opacity: 0.8 }]}
+                >
+                  {proof ? <CameraIcon size={24} /> : <CheckIcon color={colors.ink} size={22} />}
+                  <Text style={styles.photoText}>{proof ? t('sheet.photo') : t('sheet.done')}</Text>
+                </Pressable>
+              </View>
+            )}
+
+            {settings && cur.status === 'pendiente' ? (
+              <View style={styles.settings}>
+                <Text style={styles.label}>{t('sheet.name')}</Text>
                 <TextInput
-                  accessibilityLabel={t('sheet.where')}
+                  value={title}
+                  onChangeText={setTitle}
+                  onEndEditing={() => title.trim() && title.trim() !== cur.title && rename(cur.id, title.trim())}
+                  style={styles.field}
+                  accessibilityLabel={t('sheet.name')}
+                />
+                <Text style={styles.label}>{t('sheet.where')}</Text>
+                <TextInput
                   value={where}
                   onChangeText={setWhere}
-                  onEndEditing={saveWhere}
+                  onEndEditing={() => where.trim() !== (cur.where ?? '') && setDetails(cur.id, { where: where.trim() || undefined })}
                   placeholder={t('sheet.wherePh')}
                   placeholderTextColor={colors.faint}
-                  returnKeyType="done"
                   style={styles.field}
                 />
-              ) : null}
-              {cur.status === 'pendiente' ? (
+                <Text style={styles.label}>{t('sheet.duration')}</Text>
+                <View style={styles.chips}>
+                  {DURATIONS.map((m) => {
+                    const on = cur.minutes === m;
+                    return (
+                      <Pressable key={m} onPress={() => setMinutes(cur.id, m)} style={[styles.chip, on && styles.chipOn]} accessibilityRole="button" accessibilityState={{ selected: on }}>
+                        <Text style={[styles.chipText, on && { color: colors.white }]}>{minutesLabel(m)}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
                 <View style={styles.toggleRow}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.toggleTitle}>{t('proof.toggle')}</Text>
-                    <Text style={styles.toggleSub}>{cur.proof ?? t('proof.anyPhoto')}</Text>
+                    <Text style={styles.metaText}>{cur.proof ?? t('proof.anyPhoto')}</Text>
                   </View>
-                  <Switch
-                    value={Boolean(cur.needsProof)}
-                    onValueChange={(on) => setNeedsProof(cur.id, on)}
-                    trackColor={{ true: colors.ink, false: colors.line }}
-                    accessibilityLabel={t('proof.toggle')}
-                  />
+                  <Switch value={Boolean(cur.needsProof)} onValueChange={(on) => setNeedsProof(cur.id, on)} trackColor={{ true: colors.ink, false: colors.line }} />
                 </View>
-              ) : null}
-              {cur.checklist.length || cur.status === 'pendiente' ? (
-                <View style={{ gap: 6 }}>
-                  {cur.checklist.map((c) => (
-                    <Pressable
-                      key={c.id}
-                      accessibilityRole="checkbox"
-                      accessibilityState={{ checked: c.done }}
-                      onPress={() => toggleItem(cur.id, c.id)}
-                      style={styles.item}
-                    >
-                      <View style={[styles.box, c.done && styles.boxOn]} />
-                      <Text style={[styles.itemText, c.done && styles.itemDone]}>{c.text}</Text>
+                <View style={styles.toggleRow}>
+                  <Text style={[styles.toggleTitle, { flex: 1 }]}>{t('sheet.priority')}</Text>
+                  <Switch value={Boolean(cur.top)} onValueChange={() => toggleTop(cur.id)} trackColor={{ true: colors.ink, false: colors.line }} />
+                </View>
+                <View style={styles.rowBtns}>
+                  {cur.day <= today ? (
+                    <Pressable onPress={() => go(() => moveTo(cur.id, addDays(today, 1)))} style={styles.secondary} accessibilityRole="button">
+                      <Text style={styles.secondaryText}>{t('task.toTomorrow')}</Text>
                     </Pressable>
-                  ))}
-                  {cur.status === 'pendiente' ? (
-                    <TextInput
-                      accessibilityLabel={t('sheet.addItem')}
-                      value={item}
-                      onChangeText={setItem}
-                      onSubmitEditing={addOne}
-                      blurOnSubmit={false}
-                      placeholder={t('sheet.addItem')}
-                      placeholderTextColor={colors.faint}
-                      returnKeyType="done"
-                      style={styles.field}
-                    />
-                  ) : null}
+                  ) : (
+                    <Pressable onPress={() => go(() => moveTo(cur.id, today))} style={styles.secondary} accessibilityRole="button">
+                      <Text style={styles.secondaryText}>{t('task.doToday')}</Text>
+                    </Pressable>
+                  )}
+                  <Pressable onPress={() => go(() => remove(cur.id))} style={[styles.secondary, styles.danger]} accessibilityRole="button" accessibilityLabel={t('task.delete')}>
+                    <TrashIcon size={18} />
+                  </Pressable>
                 </View>
-              ) : null}
-              {task.status === 'pendiente' ? (
-                <View style={{ gap: 8 }}>
-                  <Text style={type.muted}>
-                    {(() => {
-                      const est = estimate(task, learned);
-                      if (est.source === 'stated') return t('dur.set', { time: minutesLabel(est.minutes) });
-                      if (est.source === 'learned') return t('dur.learned', { time: minutesLabel(est.minutes) });
-                      return t('dur.guess', { time: minutesLabel(est.minutes) });
-                    })()}
-                  </Text>
-                  <View style={styles.chips}>
-                    {DURATIONS.map((m) => {
-                      const on = task.minutes === m;
-                      return (
-                        <Pressable
-                          key={m}
-                          accessibilityRole="button"
-                          accessibilityState={{ selected: on }}
-                          onPress={() => act(() => setMinutes(task.id, m))}
-                          style={[styles.chip, on && styles.chipOn]}
-                        >
-                          <Text style={[styles.chipText, on && { color: colors.white }]}>{minutesLabel(m)}</Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
-              ) : null}
-              <View>
-                {task.status === 'hecha' ? (
-                  <Option label={t('task.undo')} onPress={() => act(() => undoDone(task.id))} />
-                ) : (
-                  <>
-                    <Option
-                      label={t('focus.start')}
-                      onPress={() => act(() => router.push({ pathname: '/foco', params: { id: task.id } }))}
-                      strong
-                    />
-                    {requiresProof(cur) ? (
-                      <Option label={t('proof.take')} onPress={() => act(() => router.push({ pathname: '/prueba', params: { id: task.id } }))} />
-                    ) : (
-                      <Option label={t('task.markDone')} onPress={() => act(() => markDone(task.id))} />
-                    )}
-                    <Option label={cur.top ? t('top.unstar') : t('top.star')} onPress={() => act(() => toggleTop(task.id))} />
-                  </>
-                )}
-                {task.status === 'pendiente' && task.day > today ? (
-                  <Option label={t('task.doToday')} onPress={() => act(() => moveTo(task.id, today))} />
-                ) : null}
-                {task.status === 'pendiente' && task.day !== tomorrow ? (
-                  <Option label={t('task.toTomorrow')} onPress={() => act(() => moveTo(task.id, tomorrow))} />
-                ) : null}
-                <Option label={t('task.rename')} onPress={() => setEditing(true)} />
-                <Option label={t('task.delete')} onPress={() => act(() => remove(task.id))} danger last />
               </View>
-            </>
-          )}
+            ) : null}
+          </ScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>
   );
 }
 
-function Option({ label, onPress, strong, danger, last }: { label: string; onPress: () => void; strong?: boolean; danger?: boolean; last?: boolean }) {
-  return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.option, last && { borderBottomWidth: 0 }, pressed && { opacity: 0.6 }]}>
-      <Text style={[styles.optionText, strong && { color: colors.ink, fontFamily: fonts.semibold }, danger && { color: colors.danger }]}>{label}</Text>
-    </Pressable>
-  );
-}
-
-const DURATIONS = [15, 30, 45, 60, 90, 120, 180];
-
 const styles = StyleSheet.create({
-  meta: { fontFamily: fonts.medium, fontSize: 14, color: colors.muted, marginTop: -6 },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 16, backgroundColor: colors.soft },
-  toggleTitle: { fontFamily: fonts.medium, fontSize: 15, color: colors.ink },
-  toggleSub: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted },
-  field: { minHeight: 44, paddingHorizontal: 14, borderRadius: 14, backgroundColor: colors.soft, fontFamily: fonts.regular, fontSize: 15, color: colors.ink },
-  item: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 36 },
-  box: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: colors.faint },
-  boxOn: { backgroundColor: colors.accent, borderColor: colors.accent },
-  itemText: { flex: 1, fontFamily: fonts.regular, fontSize: 15, color: colors.ink },
-  itemDone: { color: colors.muted, textDecorationLine: 'line-through' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { minHeight: 40, paddingHorizontal: 14, borderRadius: 20, backgroundColor: colors.soft, justifyContent: 'center' },
-  chipOn: { backgroundColor: colors.accentDark },
-  chipText: { fontFamily: fonts.medium, fontSize: 14, color: colors.ink },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(10,10,10,0.4)' },
-  sheet: { backgroundColor: colors.white, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 24, paddingTop: 10, gap: 14 },
-  grabber: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: colors.line, marginBottom: 6 },
-  title: { fontSize: 24, lineHeight: 29 },
-  option: { minHeight: 56, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: colors.line },
-  optionText: { fontFamily: fonts.medium, fontSize: 17, color: colors.ink },
-  input: {
-    minHeight: 52,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    backgroundColor: colors.soft,
-    fontFamily: fonts.medium,
-    fontSize: 18,
-    color: colors.ink,
-  },
+  sheet: { maxHeight: '88%', backgroundColor: colors.white, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 22, paddingTop: 12 },
+  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  grabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: colors.line },
+  round: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' },
+  roundOn: { backgroundColor: colors.ink },
+  title: { fontSize: 28, lineHeight: 32 },
+  done: { color: colors.faint, textDecorationLine: 'line-through' },
+  metaRow: { gap: 6, marginTop: -4 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  metaText: { fontFamily: fonts.regular, fontSize: 14, color: colors.muted, textTransform: 'none' },
+  listBtn: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: 20, backgroundColor: colors.card },
+  listTitle: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
+  item: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 38 },
+  box: { width: 22, height: 22, borderRadius: 7, borderWidth: 1.5, borderColor: colors.faint, alignItems: 'center', justifyContent: 'center' },
+  boxOn: { backgroundColor: colors.ink, borderColor: colors.ink },
+  itemText: { flex: 1, fontFamily: fonts.medium, fontSize: 16, color: colors.ink },
+  itemDone: { color: colors.faint, textDecorationLine: 'line-through' },
+  actions: { flexDirection: 'row', gap: 12, alignItems: 'stretch', marginTop: 6 },
+  focusWrap: { flex: 1, borderRadius: 32, shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
+  focus: { height: 64, borderRadius: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  focusText: { fontFamily: fonts.semibold, fontSize: 18, color: colors.white },
+  photo: { width: 84, height: 64, borderRadius: 32, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  photoText: { fontFamily: fonts.medium, fontSize: 11, color: colors.ink },
+  settings: { gap: 10, marginTop: 8, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.line },
+  label: { fontFamily: fonts.medium, fontSize: 13, color: colors.muted, marginTop: 4 },
+  field: { minHeight: 46, paddingHorizontal: 14, borderRadius: 14, backgroundColor: colors.card, fontFamily: fonts.regular, fontSize: 15, color: colors.ink },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { minHeight: 38, paddingHorizontal: 14, borderRadius: 19, backgroundColor: colors.card, justifyContent: 'center' },
+  chipOn: { backgroundColor: colors.ink },
+  chipText: { fontFamily: fonts.medium, fontSize: 14, color: colors.ink },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 16, backgroundColor: colors.card },
+  toggleTitle: { fontFamily: fonts.medium, fontSize: 15, color: colors.ink },
+  rowBtns: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  secondary: { flex: 1, minHeight: 50, borderRadius: 25, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' },
+  secondaryText: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink },
+  danger: { flex: 0, width: 50 },
 });

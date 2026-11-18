@@ -22,7 +22,7 @@ import { lang, locale, t } from '@/i18n';
 import { lastVoiceError, transcribe } from '@/lib/ai';
 import { useMascot } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
-import { liveSpeechAvailable, pickLocale, requestLivePermission, startLive, type LiveSession } from '@/lib/voz';
+import { cleanFillers, liveSpeechAvailable, pickLocale, requestLivePermission, startLive, type LiveSession } from '@/lib/voz';
 import { useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
@@ -76,7 +76,7 @@ export default function Escuchando() {
         const speechLocale = await pickLocale(locale, lang);
         if (cancelled) return;
         session.current = startLive(speechLocale, {
-          onText: setHeard,
+          onText: (v) => setHeard(cleanFillers(v)),
           onLevel: setLiveLevel,
           onError: (code) => {
             console.warn('[voz]', code);
@@ -129,13 +129,20 @@ export default function Escuchando() {
     try {
       let text: string | null;
       if (live && session.current) {
-        text = (await session.current.finish()) || null;
+        const out = await session.current.finish();
         session.current = null;
+        text = out.text || null;
+        // Second, more accurate pass with Whisper on the server (like a proper dictation); the live text is the fallback.
+        if (out.uri && supabase) {
+          const precise = await transcribe(out.uri);
+          if (precise && precise.trim().length >= Math.min(8, (text ?? '').length / 2)) text = cleanFillers(precise);
+        }
       } else {
         await recorder.stop();
         await disableRecordingSession();
         const uri = recorder.uri;
         text = uri ? await transcribe(uri) : null;
+        if (text) text = cleanFillers(text);
         if (text) setHeard(text);
       }
       if (!text) {

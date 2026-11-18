@@ -1,12 +1,18 @@
 import { Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold, useFonts } from '@expo-google-fonts/geist';
 import * as Notifications from 'expo-notifications';
 import { router, Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/lib/auth';
+import { identifyUser, initMonitoring, initPurchases } from '@/lib/monitor';
+
+void SplashScreen.preventAutoHideAsync().catch(() => {});
+initMonitoring();
+initPurchases();
 import { clearTaskReminders, refreshReminders, snoozeTask, type TaskAlarm } from '@/lib/avisos';
 import { dayTimeline, refreshAgenda, useAgenda } from '@/lib/calendario';
 import { estimate } from '@/lib/duraciones';
@@ -32,6 +38,8 @@ export default function RootLayout() {
   }, [rollOver]);
 
   // After sign-in: this account's data (from the server if it exists) replaces anyone else's on this phone.
+  useEffect(() => identifyUser(userId), [userId]);
+
   useEffect(() => {
     if (!userId) return;
     let alive = true;
@@ -151,6 +159,10 @@ export default function RootLayout() {
     return () => sub.remove();
   }, [signedIn, calendarMode]);
 
+  useEffect(() => {
+    if (loaded && ready) void SplashScreen.hideAsync().catch(() => {});
+  }, [loaded, ready]);
+
   if (!loaded || !ready) return null;
 
   return (
@@ -170,6 +182,8 @@ export default function RootLayout() {
           <Stack.Screen name="rutina" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="rutinas" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="bienvenida" options={{ animation: 'fade', gestureEnabled: false }} />
+          <Stack.Screen name="compra" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="meta" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="no-puedo" options={{ presentation: 'transparentModal', animation: 'fade' }} />
           <Stack.Screen name="hecho" options={{ gestureEnabled: false }} />
           <Stack.Screen name="racha" options={{ animation: 'slide_from_right' }} />

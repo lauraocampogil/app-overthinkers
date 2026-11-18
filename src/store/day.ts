@@ -55,8 +55,11 @@ type DayState = {
   addParsed: (result: Pick<ParseResult, 'tasks' | 'goals'>) => AddResult & { goals: number };
   toggleItem: (taskId: string, itemId: string) => void;
   addItem: (taskId: string, text: string) => void;
+  setItemText: (taskId: string, itemId: string, text: string) => void;
+  removeItem: (taskId: string, itemId: string) => void;
   setDetails: (taskId: string, patch: Partial<Pick<Task, 'where' | 'at'>>) => void;
   archiveGoal: (goalId: string) => void;
+  updateGoal: (goalId: string, patch: Partial<Pick<Goal, 'title' | 'type' | 'due' | 'perWeek' | 'vision'>>) => void;
   addTitle: (title: string, day?: string) => void;
   rollOverIfNewDay: () => void;
   markDone: (id: string) => void;
@@ -259,10 +262,23 @@ export const useDay = create<DayState>()(
         toggleItem: (taskId, itemId) =>
           patch(taskId, (t) => ({ ...t, checklist: t.checklist.map((i) => (i.id === itemId ? { ...i, done: !i.done } : i)) })),
 
+        setItemText: (taskId, itemId, text) =>
+          patch(taskId, (t) => ({ ...t, checklist: t.checklist.map((i) => (i.id === itemId ? { ...i, text } : i)) })),
+
+        removeItem: (taskId, itemId) => patch(taskId, (t) => ({ ...t, checklist: t.checklist.filter((i) => i.id !== itemId) })),
+
         addItem: (taskId, text) =>
           patch(taskId, (t) => ({ ...t, checklist: [...t.checklist, ...items([text])] })),
 
         setDetails: (taskId, patchIn) => patch(taskId, (t) => ({ ...t, ...patchIn })),
+
+        updateGoal: (goalId, patchIn) => {
+          const goals = get().goals.map((g) => (g.id === goalId ? { ...g, ...patchIn } : g));
+          set({ goals });
+          // A weekly goal with more sessions now gets them this week.
+          const extra = goals.flatMap((g) => (g.id === goalId ? weeklyTasks(g, get().tasks, today()) : []));
+          commit([...get().tasks, ...extra]);
+        },
 
         archiveGoal: (goalId) => {
           set({ goals: get().goals.map((g) => (g.id === goalId ? { ...g, archived: true } : g)) });
