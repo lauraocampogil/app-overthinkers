@@ -1,23 +1,24 @@
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
-import { StyleSheet, useWindowDimensions } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Defs, Path, RadialGradient, Stop } from 'react-native-svg';
 
-import { MARK } from '@/components/Logo';
+import { BRAND_BLOB, BRAND_EYES } from '@/components/Logo';
 import { colors, fonts } from '@/theme';
 
-/** Same size as the native splash image (app.json → expo-splash-screen imageWidth), so the hand-over is invisible. */
+/** Same size as the native splash image (app.json → expo-splash-screen imageWidth): the hand-over is invisible. */
 const NATIVE = 220;
+const K = NATIVE / 1024;
 
 /**
- * After the static native splash: the arrow of the mark gives a little push, the mark slides left and
- * "getgo" appears next to it, then everything fades into the app. About 1.6 s.
+ * After the static native splash (the grey mascot): it squishes and bounces, blinks, moves up a little,
+ * "getgo" appears under it, then everything fades into the app. About 1.8 s.
  */
 export function SplashAnimado({ onDone }: { onDone: () => void }) {
-  const { width } = useWindowDimensions();
-  const push = useSharedValue(0);
-  const slide = useSharedValue(0);
+  const squish = useSharedValue(1);
+  const blink = useSharedValue(1);
+  const lift = useSharedValue(0);
   const word = useSharedValue(0);
   const out = useSharedValue(1);
   // The parent re-renders while the app boots: keep the latest callback without restarting the animation.
@@ -27,31 +28,39 @@ export function SplashAnimado({ onDone }: { onDone: () => void }) {
 
   useEffect(() => {
     void SplashScreen.hideAsync().catch(() => {});
-    push.value = withSequence(withTiming(1, { duration: 220, easing: Easing.out(Easing.quad) }), withSpring(0, { damping: 7, stiffness: 160 }));
-    slide.value = withDelay(320, withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) }));
-    word.value = withDelay(480, withTiming(1, { duration: 420 }));
-    out.value = withDelay(1250, withTiming(0, { duration: 380 }, (fin) => fin && runOnJS(finish)()));
+    squish.value = withSequence(withTiming(0.9, { duration: 160, easing: Easing.out(Easing.quad) }), withSpring(1, { damping: 6, stiffness: 180 }));
+    blink.value = withDelay(520, withSequence(withTiming(0.1, { duration: 80 }), withTiming(1, { duration: 120 })));
+    lift.value = withDelay(700, withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) }));
+    word.value = withDelay(820, withTiming(1, { duration: 420 }));
+    out.value = withDelay(1450, withTiming(0, { duration: 380 }, (fin) => fin && runOnJS(finish)()));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const shift = Math.min(96, width * 0.22);
-  const markStyle = useAnimatedStyle(() => ({ transform: [{ translateX: -shift * slide.value }, { scale: 1 - 0.18 * slide.value }] }));
-  const headStyle = useAnimatedStyle(() => ({ transform: [{ translateX: push.value * 10 }] }));
-  const wordStyle = useAnimatedStyle(() => ({ opacity: word.value, transform: [{ translateX: shift * 0.55 + (1 - word.value) * 18 }] }));
+  const bodyStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -46 * lift.value }, { scale: 1 - 0.12 * lift.value }, { scaleX: 2 - squish.value }, { scaleY: squish.value }],
+  }));
+  const eyesStyle = useAnimatedStyle(() => ({ transform: [{ scaleY: blink.value }] }));
+  const wordStyle = useAnimatedStyle(() => ({ opacity: word.value, transform: [{ translateY: 82 - (1 - word.value) * 12 }] }));
   const wrapStyle = useAnimatedStyle(() => ({ opacity: out.value }));
 
-  const stroke = { stroke: colors.ink, strokeWidth: MARK.stroke, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
+  const { cy, gap, w, h } = BRAND_EYES;
   return (
     <Animated.View style={[StyleSheet.absoluteFill, styles.wrap, wrapStyle]} pointerEvents="none">
-      <Animated.View style={[styles.center, markStyle]}>
+      <Animated.View style={[styles.box, bodyStyle]}>
         <Svg width={NATIVE} height={NATIVE} viewBox="0 0 1024 1024">
-          <Path d={MARK.arc} {...stroke} />
-          <Path d={MARK.bar} {...stroke} />
+          <Defs>
+            <RadialGradient id="sp" cx="36%" cy="28%" r="85%">
+              <Stop offset="0" stopColor="#F2F2F2" />
+              <Stop offset="0.55" stopColor="#D9D9D9" />
+              <Stop offset="1" stopColor="#A6A6A6" />
+            </RadialGradient>
+          </Defs>
+          <Path d={BRAND_BLOB} fill="url(#sp)" />
         </Svg>
-        <Animated.View style={[StyleSheet.absoluteFill, headStyle]}>
-          <Svg width={NATIVE} height={NATIVE} viewBox="0 0 1024 1024">
-            <Path d={MARK.head} {...stroke} />
-          </Svg>
+        <Animated.View style={[styles.eyes, { top: (cy - h / 2) * K, gap: gap * K }, eyesStyle]}>
+          {[0, 1].map((i) => (
+            <View key={i} style={{ width: w * K, height: h * K, borderRadius: 99, backgroundColor: colors.ink }} />
+          ))}
         </Animated.View>
       </Animated.View>
       <Animated.Text style={[styles.word, wordStyle]}>getgo</Animated.Text>
@@ -61,6 +70,7 @@ export function SplashAnimado({ onDone }: { onDone: () => void }) {
 
 const styles = StyleSheet.create({
   wrap: { backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center', zIndex: 100 },
-  center: { position: 'absolute', width: NATIVE, height: NATIVE },
+  box: { position: 'absolute', width: NATIVE, height: NATIVE },
+  eyes: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', justifyContent: 'center' },
   word: { position: 'absolute', fontFamily: fonts.bold, fontSize: 40, letterSpacing: -2, color: colors.ink },
 });
