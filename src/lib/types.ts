@@ -86,6 +86,8 @@ export type Task = Omit<RawTask, 'dueInDays' | 'checklist' | 'goal'> & {
   /** Local photo that proved it (file uri), and whether the AI could check it. */
   proofPhoto?: string;
   proofOffline?: boolean;
+  /** Comes from the person's fixed week (football training every Tue/Thu…): id of that item. */
+  fixedId?: string;
 };
 
 /** Morning or night routine: a fixed sequence the person runs through every day. */

@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { Redirect, router, useIsFocused, useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Anillo } from '@/components/Anillo';
@@ -8,6 +8,7 @@ import { ArrowRightIcon, CalendarIcon, CameraIcon, ChartIcon, ClockIcon, StarIco
 import { Mascota } from '@/components/Mascota';
 import { Ondas } from '@/components/Ondas';
 import { Barra } from '@/components/Barra';
+import { Celebracion } from '@/components/Celebracion';
 import { Deslizar } from '@/components/Deslizar';
 import { TaskSheet } from '@/components/TaskSheet';
 import { CheckIcon, FlameIcon, IconCircle, PersonIcon, Screen } from '@/components/ui';
@@ -90,6 +91,21 @@ export default function Inicio() {
   const [weight, setWeight] = useState('');
   const [sel, setSel] = useState(todayIso());
   const nudges = useDay((s) => s.nudges);
+  const [celebrate, setCelebrate] = useState(false);
+  const focused = useIsFocused();
+  // The moment the last task of today is ticked (not when opening an already finished day): celebrate once.
+  const todayAll = todayList(tasks);
+  const leftToday = todayAll.filter((x) => x.status === 'pendiente').length;
+  const prevLeft = useRef<number | null>(null);
+  useEffect(() => {
+    const prev = prevLeft.current;
+    prevLeft.current = leftToday;
+    if (prev && prev > 0 && leftToday === 0 && todayAll.length > 0 && useDay.getState().nudges.doneOn !== todayIso()) {
+      useDay.getState().setNudge({ doneOn: todayIso() });
+      setCelebrate(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leftToday]);
 
   const minutesOf = (task: Task) => estimate(task, learned).minutes;
   const durLabel = (task: Task) => {
@@ -279,7 +295,7 @@ export default function Inicio() {
   const popupKind = nudges.laterOn === today ? null : checkin ? 'checkin' : offer ? 'reto' : null;
   const snooze = () => useDay.getState().setNudge({ laterOn: today });
   const popup = (
-    <Modal visible={!!popupKind && !sheet} transparent animationType="fade" onRequestClose={snooze}>
+    <Modal visible={!!popupKind && !sheet && !celebrate && focused} transparent animationType="fade" onRequestClose={snooze}>
       <Pressable style={styles.popBack} onPress={snooze} accessibilityLabel={t('popup.later')} />
       <View style={styles.popCard}>
         {popupKind === 'checkin' && checkin ? (
@@ -498,6 +514,7 @@ export default function Inicio() {
       {dock}
       <TaskSheet task={sheet} onClose={() => setSheet(null)} />
       {popup}
+      <Celebracion visible={celebrate && focused} done={done.length} streak={streak.current} onClose={() => setCelebrate(false)} />
     </Screen>
   );
 }

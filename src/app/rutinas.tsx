@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
+import { SemanaFija } from '@/components/SemanaFija';
 import { BackIcon, IconCircle, Screen } from '@/components/ui';
 import { minutesLabel, t } from '@/i18n';
 import { defaultRoutine, routineOf } from '@/lib/rutinas';
@@ -20,6 +21,7 @@ export default function Rutinas() {
   const routines = useDay((s) => s.routines);
   const setRoutine = useDay((s) => s.setRoutine);
   const areas = useDay((s) => s.profile.areas);
+  const fixed = useDay((s) => s.profile.fixed);
 
   return (
     <Screen>
@@ -42,6 +44,11 @@ export default function Rutinas() {
             onChange={(r) => setRoutine(kind, r)}
           />
         ))}
+        <Text style={[type.title, { fontSize: 26, marginTop: 18 }]} accessibilityRole="header">
+          {t('ob.weekTitle')}
+        </Text>
+        <Text style={type.muted}>{t('fixed.intro')}</Text>
+        <SemanaFija items={fixed ?? []} onChange={(items) => useDay.getState().setFixed(items)} />
       </ScrollView>
     </Screen>
   );

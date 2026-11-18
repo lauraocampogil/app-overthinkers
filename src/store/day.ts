@@ -7,7 +7,7 @@ import { estimate, learn, type Learned } from '@/lib/duraciones';
 import { addDays, schedule } from '@/lib/planner';
 import { countToday, isoDay, START_FREEZES } from '@/lib/streak';
 import { syncDay } from '@/lib/sync';
-import { EMPTY_PROFILE, sameGoal, type Profile } from '@/lib/perfil';
+import { EMPTY_PROFILE, sameGoal, type FixedItem, type Profile } from '@/lib/perfil';
 import { RETOS, retoStepId, type Reto, type RetoId } from '@/lib/retos';
 import { defaultRoutine } from '@/lib/rutinas';
 import { t } from '@/i18n';
@@ -63,8 +63,8 @@ type DayState = {
   /** Week planned (to show "Planifica tu semana" only once a week). */
   weekPlannedOn: string | null;
   /** Pop-ups on Hoy: the day the last challenge was offered (one per day) and the day "later" was tapped. */
-  nudges: { retoOn?: string; laterOn?: string };
-  setNudge: (patch: { retoOn?: string; laterOn?: string }) => void;
+  nudges: { retoOn?: string; laterOn?: string; doneOn?: string };
+  setNudge: (patch: { retoOn?: string; laterOn?: string; doneOn?: string }) => void;
   toggleItem: (taskId: string, itemId: string) => void;
   addItem: (taskId: string, text: string) => void;
   setItemText: (taskId: string, itemId: string, text: string) => void;
@@ -91,6 +91,8 @@ type DayState = {
   proveDone: (id: string, photo: string, offline: boolean) => void;
   setRoutine: (kind: RoutineKind, routine: Routine) => void;
   setProfile: (patch: Partial<Profile>) => void;
+  /** Save the fixed week and put its tasks on the next 7 days. */
+  setFixed: (items: FixedItem[]) => void;
   offerReto: (id: RetoId, goalId: string | null) => void;
   /** Accept: it joins its routine. Decline: GetGo won't propose it again for two weeks. */
   answerReto: (id: RetoId, accept: boolean) => void;
@@ -135,7 +137,7 @@ const initial = {
   focusLog: {} as Record<string, number>,
   retos: [] as Reto[],
   weekPlannedOn: null as string | null,
-  nudges: {} as { retoOn?: string; laterOn?: string },
+  nudges: {} as { retoOn?: string; laterOn?: string; doneOn?: string },
 };
 
 const items = (list?: string[]): ChecklistItem[] =>
@@ -180,6 +182,27 @@ function weeklyTasks(goal: Goal, tasks: Task[], day: string): Task[] {
     day: spot(k),
     pinned: true,
   }));
+}
+
+/** Tasks of the fixed week for the 7 days from `from` that do not exist yet (each item once per matching day). */
+function fixedTasks(items: FixedItem[], tasks: Task[], from: string): Task[] {
+  const out: Task[] = [];
+  for (let i = 0; i < 7; i++) {
+    const day = addDays(from, i);
+    const dow = new Date(`${day}T12:00:00`).getDay();
+    for (const f of items) {
+      if (!f.days.includes(dow)) continue;
+      if (tasks.some((t) => t.fixedId === f.id && (t.status === 'pendiente' ? t.day : (t.doneOn ?? t.day)) === day)) continue;
+      out.push({
+        ...fromRaw({ title: f.text, minutes: f.minutes, dueInDays: null, energy: 'alta', kind: 'otro', importance: 2, where: null, at: f.at }, day),
+        fixedId: f.id,
+        day,
+        due: null,
+        pinned: true,
+      });
+    }
+  }
+  return out;
 }
 
 const daysBetweenIso = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00`) - Date.parse(`${a}T12:00:00`)) / 86_400_000);
@@ -384,7 +407,7 @@ export const useDay = create<DayState>()(
             if (routine.steps.some((s) => s.id === retoStepId(r.id) && s.text !== text))
               set({ routines: { ...get().routines, [def.routine]: { ...routine, steps: routine.steps.map((s) => (s.id === retoStepId(r.id) ? { ...s, text } : s)) } } });
           }
-          commit([...relinked, ...weekly]);
+          commit([...relinked, ...weekly, ...fixedTasks(get().profile.fixed ?? [], [...relinked, ...weekly], day)]);
         },
 
         markDone: (id) => {
@@ -463,6 +486,18 @@ export const useDay = create<DayState>()(
           get().markDone(id);
         },
 
+        setFixed: (items) => {
+          const day = today();
+          set({ profile: { ...EMPTY_PROFILE, ...get().profile, fixed: items } });
+          // Pending copies of removed items, or on days no longer chosen, go away; new ones are added.
+          const kept = get().tasks.filter((t) => {
+            if (!t.fixedId || t.status !== 'pendiente') return true;
+            const f = items.find((x) => x.id === t.fixedId);
+            return !!f && f.days.includes(new Date(`${t.day}T12:00:00`).getDay());
+          });
+          commit([...kept, ...fixedTasks(items, kept, day)]);
+          syncDay(get());
+        },
         setProfile: (patchIn) => {
           set({ profile: { ...EMPTY_PROFILE, ...get().profile, ...patchIn } });
           syncDay(get());

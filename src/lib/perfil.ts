@@ -39,7 +39,12 @@ export type Profile = {
   workTo: string | null;
   energy: 'manana' | 'tarde' | 'noche' | null;
   struggles: string[];
+  /** The fixed week: things that repeat every week and almost never change (training, classes, gym). */
+  fixed: FixedItem[];
 };
+
+/** One thing of the fixed week. days: 0 = Sunday … 6 = Saturday. */
+export type FixedItem = { id: string; text: string; days: number[]; at: string | null; minutes: number | null };
 
 export const EMPTY_PROFILE: Profile = {
   onboarded: false,
@@ -54,6 +59,7 @@ export const EMPTY_PROFILE: Profile = {
   workTo: null,
   energy: null,
   struggles: [],
+  fixed: [],
 };
 
 export type Question = { id: string; type: 'text' | 'chips' | 'multi' | 'days'; options?: string[] };
@@ -155,6 +161,11 @@ export function profileContext(p: Profile): string {
     p.workFrom && p.workTo ? `Trabaja o estudia de ${p.workFrom} a ${p.workTo} (días ${p.workDays.join(',')}, 0 = domingo).` : '',
     p.energy ? `Tiene más energía por la ${p.energy === 'manana' ? 'mañana' : p.energy}.` : '',
     p.country ? `País: ${p.country}.` : '',
+    p.fixed?.length
+      ? `Su semana fija (ya está en su horario, no la vuelvas a crear, planifica alrededor): ${p.fixed
+          .map((f) => `${f.text} (días ${f.days.join(',')}${f.at ? `, ${f.at}` : ''}${f.minutes ? `, ${f.minutes} min` : ''})`)
+          .join('; ')}.`
+      : '',
   ];
   return lines.filter(Boolean).join(' ');
 }

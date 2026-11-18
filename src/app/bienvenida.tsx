@@ -4,8 +4,10 @@ import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import Animated, { FadeInRight } from 'react-native-reanimated';
 
 import { Ondas } from '@/components/Ondas';
+import { SemanaFija } from '@/components/SemanaFija';
 import { BackIcon, CheckIcon, IconCircle, PrimaryButton, Screen, TextButton } from '@/components/ui';
 import { locale, t } from '@/i18n';
 import { useAuth } from '@/lib/auth';
@@ -21,7 +23,7 @@ import { colors, fonts, type } from '@/theme';
  * Onboarding: GetGo gets to know the person so it can decide for them.
  * One question per screen, things to tap rather than to type. Everything can be changed later in Cuenta.
  */
-const STEPS = ['intro', 'areas', 'details', 'stores', 'day', 'energy', 'routines', 'permissions', 'goal'] as const;
+const STEPS = ['intro', 'areas', 'details', 'stores', 'day', 'energy', 'routines', 'week', 'permissions', 'goal'] as const;
 type Step = (typeof STEPS)[number];
 
 const WAKE = ['06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '10:00'];
@@ -162,6 +164,7 @@ export default function Bienvenida() {
         steps: kept,
       });
     }
+    store.setFixed(p.fixed ?? []);
     if (editing && !goal.trim()) {
       router.back();
       return;
@@ -432,6 +435,14 @@ export default function Bienvenida() {
             })}
           </>
         );
+      case 'week':
+        return (
+          <>
+            <Text style={type.title} accessibilityRole="header">{t('ob.weekTitle')}</Text>
+            <Text style={[type.muted, styles.sub]}>{t('ob.weekBody')}</Text>
+            <SemanaFija items={p.fixed ?? []} onChange={(fixed) => set({ fixed })} />
+          </>
+        );
       case 'permissions':
         return (
           <>
@@ -505,7 +516,9 @@ export default function Bienvenida() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {header}
         <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          {body}
+          <Animated.View key={step} entering={FadeInRight.duration(320)} style={{ flexGrow: 1, gap: 12 }}>
+            {body}
+          </Animated.View>
         </ScrollView>
         <View style={styles.footer}>
           <PrimaryButton
@@ -514,6 +527,7 @@ export default function Bienvenida() {
             disabled={!canGo}
           />
           {step === 'goal' ? <TextButton label={t('ob.skip')} onPress={finish} /> : null}
+          {step === 'week' && !(p.fixed ?? []).length ? <TextButton label={t('ob.weekLater')} onPress={() => go(1)} /> : null}
         </View>
       </KeyboardAvoidingView>
     </Screen>
