@@ -45,7 +45,7 @@ export default function Foco() {
   const task =
     tasks.find((x) => x.id === params.id && x.status === 'pendiente') ??
     tasks.find((x) => x.id === session?.taskId && x.status === 'pendiente') ??
-    topThree(todayList(tasks), day)[0];
+    topThree(todayList(tasks), day, useDay.getState().profile.areas)[0];
 
   useEffect(() => {
     if (!task) return;

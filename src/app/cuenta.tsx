@@ -157,6 +157,10 @@ export default function Cuenta() {
           </Pressable>
         </View>
 
+        <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/bienvenida', params: { edit: '1' } })} style={styles.row}>
+          <Text style={styles.rowText}>{t('ob.editProfile')}</Text>
+        </Pressable>
+
         <Pressable accessibilityRole="button" onPress={() => router.push('/rutinas')} style={styles.row}>
           <Text style={styles.rowText}>{t('routine.title')}</Text>
         </Pressable>

@@ -63,7 +63,7 @@ async function getgoCalendarId(create: boolean): Promise<string | null> {
   return Calendar.createCalendarAsync({
     title: GETGO_TITLE,
     name: GETGO_TITLE,
-    color: '#8A5CFF',
+    color: '#0A0A0A',
     entityType: Calendar.EntityTypes.EVENT,
     sourceId: (source as { id?: string }).id,
     source: source as Calendar.Source,

@@ -56,7 +56,7 @@ export default function RootLayout() {
       const pending = today.filter((x) => x.status === 'pendiente');
       const minutesOf = (x: (typeof tasks)[number]) => estimate(x, learned).minutes;
       const timeline = useAgenda.getState().status === 'on' ? dayTimeline(day, pending, minutesOf, settings) : null;
-      const top = topThree(today, day).map((x) => x.id);
+      const top = topThree(today, day, useDay.getState().profile.areas).map((x) => x.id);
       const at = (hhmm: string) => {
         const [h, m] = hhmm.split(':').map(Number);
         const d = new Date();
@@ -118,7 +118,7 @@ export default function RootLayout() {
   // Home-screen widget: mirror today's list, and apply ticks made on the widget when coming back.
   useEffect(() => {
     if (!signedIn) return;
-    syncWidget({ today: todayList(tasks), seed: userId ?? 'getgo', day: todayIso() });
+    syncWidget({ today: todayList(tasks), seed: userId ?? 'getgo', day: todayIso(), areas: useDay.getState().profile.areas });
   }, [signedIn, tasks, userId]);
   useEffect(() => {
     if (!signedIn) return;
@@ -169,6 +169,7 @@ export default function RootLayout() {
           <Stack.Screen name="prueba" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
           <Stack.Screen name="rutina" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="rutinas" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="bienvenida" options={{ animation: 'fade', gestureEnabled: false }} />
           <Stack.Screen name="no-puedo" options={{ presentation: 'transparentModal', animation: 'fade' }} />
           <Stack.Screen name="hecho" options={{ gestureEnabled: false }} />
           <Stack.Screen name="racha" options={{ animation: 'slide_from_right' }} />

@@ -7,6 +7,7 @@ import { estimate, learn, type Learned } from '@/lib/duraciones';
 import { addDays, schedule } from '@/lib/planner';
 import { countToday, isoDay, START_FREEZES } from '@/lib/streak';
 import { syncDay } from '@/lib/sync';
+import { EMPTY_PROFILE, type Profile } from '@/lib/perfil';
 import type { ChecklistItem, Goal, ParseResult, RawGoal, RawTask, Routine, RoutineKind, Settings, Streak, Task } from '@/lib/types';
 
 /**
@@ -44,6 +45,8 @@ type DayState = {
   routines: Partial<Record<RoutineKind, Routine>>;
   /** Steps ticked per day and routine: { '2026-11-18': { manana: ['id1'] } }. */
   routineLog: Record<string, Partial<Record<RoutineKind, string[]>>>;
+  /** Filled in the onboarding: the 3 areas of life, stores, day window, energy… */
+  profile: Profile;
 
   setDraft: (text: string) => void;
   /** New tasks from voice / text / screenshot: GetGo places them on the right days. */
@@ -70,6 +73,7 @@ type DayState = {
   /** Done with a photo that proves it (checked by the AI before calling this). */
   proveDone: (id: string, photo: string, offline: boolean) => void;
   setRoutine: (kind: RoutineKind, routine: Routine) => void;
+  setProfile: (patch: Partial<Profile>) => void;
   toggleRoutineStep: (kind: RoutineKind, stepId: string) => void;
   /** Re-plan with the latest calendar and durations. */
   replan: () => void;
@@ -80,7 +84,7 @@ type DayState = {
   adoptUser: (userId: string, remote: RemoteSnapshot | null) => void;
 };
 
-export type RemoteSnapshot = Partial<Pick<DayState, 'settings' | 'streak' | 'tasks' | 'history' | 'learned' | 'goals' | 'routines'>>;
+export type RemoteSnapshot = Partial<Pick<DayState, 'settings' | 'streak' | 'tasks' | 'history' | 'learned' | 'goals' | 'routines' | 'profile'>>;
 
 export const DEFAULT_SETTINGS: Settings = {
   level: 'equilibrado',
@@ -107,6 +111,7 @@ const initial = {
   goals: [] as Goal[],
   routines: {} as Partial<Record<RoutineKind, Routine>>,
   routineLog: {} as Record<string, Partial<Record<RoutineKind, string[]>>>,
+  profile: EMPTY_PROFILE,
 };
 
 const items = (list?: string[]): ChecklistItem[] =>
@@ -357,6 +362,11 @@ export const useDay = create<DayState>()(
           get().markDone(id);
         },
 
+        setProfile: (patchIn) => {
+          set({ profile: { ...EMPTY_PROFILE, ...get().profile, ...patchIn } });
+          syncDay(get());
+        },
+
         setRoutine: (kind, routine) => {
           set({ routines: { ...get().routines, [kind]: routine } });
           syncDay(get());
@@ -396,6 +406,8 @@ export const useDay = create<DayState>()(
               learned: { ...remote.learned, ...get().learned },
               goals: [...get().goals, ...(remote.goals ?? []).filter((g) => !get().goals.some((x) => x.id === g.id))],
               routines: { ...remote.routines, ...get().routines },
+              // A finished onboarding on any device counts.
+              profile: get().profile.onboarded ? get().profile : { ...EMPTY_PROFILE, ...(remote.profile ?? get().profile) },
               streak: remote.streak ?? get().streak,
               history: { ...remote.history, ...get().history },
               tasks: [...local, ...(remote.tasks ?? []).filter((t) => !ids.has(t.id))].map(normalize),
@@ -408,10 +420,11 @@ export const useDay = create<DayState>()(
     },
     {
       name: 'getgo-day',
-      version: 5,
+      version: 6,
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: ({ settings, streak, tasks, lastDay, history, owner, learned, focus, goals, routines, routineLog }) => ({
+      partialize: ({ settings, streak, tasks, lastDay, history, owner, learned, focus, goals, routines, routineLog, profile }) => ({
         goals,
+        profile,
         routines,
         routineLog,
         settings,
@@ -434,6 +447,7 @@ export const useDay = create<DayState>()(
             goals: s.goals ?? [],
             routines: s.routines ?? {},
             routineLog: s.routineLog ?? {},
+            profile: { ...EMPTY_PROFILE, ...((s.profile as Partial<Profile>) ?? {}) },
             tasks: ((s.tasks as Task[]) ?? []).map(normalize),
           } as never;
         const day = (s.planDate as string | null) ?? today();

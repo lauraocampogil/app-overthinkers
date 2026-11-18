@@ -2,6 +2,7 @@ import { requireOptionalNativeModule } from 'expo';
 
 import { t } from '../i18n';
 import { mascotTraits } from '../components/Mascota';
+import type { Area } from './perfil';
 import { requiresProof, topThree } from './prioridad';
 import type { Task } from './types';
 import type { WidgetProps } from '../widgets/GetGoWidget';
@@ -35,7 +36,7 @@ const toWidget = (x: Task) => ({
   time: x.at ?? undefined,
 });
 
-export function syncWidget(opts: { today: Task[]; seed: string; day: string }) {
+export function syncWidget(opts: { today: Task[]; seed: string; day: string; areas?: Area[] }) {
   if (!widget) return;
   try {
     const list = opts.today;
@@ -43,7 +44,7 @@ export function syncWidget(opts: { today: Task[]; seed: string; day: string }) {
     const done = list.filter((x) => x.status === 'hecha');
     const tr = mascotTraits(opts.seed);
     // The 3 priorities, plus the starred ones already done today so the widget shows "2/3".
-    const top = [...done.filter((x) => x.top), ...topThree(list, opts.day)].slice(0, 3);
+    const top = [...done.filter((x) => x.top), ...topThree(list, opts.day, opts.areas)].slice(0, 3);
     widget.updateSnapshot({
       left: pending.length,
       total: list.length,

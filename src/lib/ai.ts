@@ -1,6 +1,8 @@
 import { File } from 'expo-file-system';
 
+import { useDay } from '../store/day';
 import { parseLocal } from './parse-local';
+import { profileContext } from './perfil';
 import { lang } from '../i18n';
 import { isoDay } from './streak';
 import { ensureSession, supabase } from './supabase';
@@ -59,7 +61,7 @@ export async function parseBrainDump(text: string): Promise<ParseResult & { sour
       await ensureSession();
       const now = new Date();
       const { data, error } = await supabase.functions.invoke('plan-day', {
-        body: { text, today: isoDay(now), weekday: now.getDay(), lang },
+        body: { text, today: isoDay(now), weekday: now.getDay(), lang, profile: profileContext(useDay.getState().profile) },
       });
       if (error) throw error;
       const tasks = (Array.isArray(data?.tasks) ? data.tasks : []).map(sanitize).filter(Boolean) as RawTask[];

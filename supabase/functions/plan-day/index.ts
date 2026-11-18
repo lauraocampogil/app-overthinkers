@@ -37,6 +37,8 @@ METAS (algo que quiere lograr, no una sola acción: "aprobar el examen del jueve
 - "template": para "semanal", los datos de cada sesión si los dice: {"title","minutes","where","at","kind","sport","checklist"}; si no, {}.
 Las tareas que pertenecen a una meta van en "steps" de esa meta, no en "tasks".
 
+Si hay PERFIL, úsalo: "where" de la compra = su tienda favorita si no dice otra; "where" del gym = su gimnasio; las tareas de sus áreas importantes valen "importance" 3; para metas de salud o peso, ritmo seguro. Si el texto describe sus áreas (por ejemplo "Gimnasio (perWeek: 4)"), crea metas semanales con esa frecuencia.
+
 - "tired": true si dice que está cansada o sin energía.
 Si recibes una CAPTURA de mensajes o mails, extrae solo lo que la persona TIENE QUE HACER (peticiones, citas, fechas, lugares, horas).
 Responde SOLO con JSON: {"tasks":[...],"goals":[...],"tired":boolean}`;
@@ -49,7 +51,7 @@ const cors = {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
-    const { text, today, weekday, lang, image, mediaType } = await req.json();
+    const { text, today, weekday, lang, image, mediaType, profile } = await req.json();
     const hasImage = typeof image === 'string' && image.length > 0;
     if (!hasImage && (typeof text !== 'string' || !text.trim())) {
         return Response.json({ error: 'text or image is required' }, { status: 400, headers: cors });
@@ -63,7 +65,8 @@ Deno.serve(async (req) => {
     if (!provider) return Response.json({ error: 'no AI key set (GROQ_API_KEY or ANTHROPIC_API_KEY)' }, { status: 500, headers: cors });
 
     const dayName = typeof weekday === 'number' ? WEEKDAYS[weekday] : '';
-    const intro = `Hoy es ${dayName} ${today ?? ''}. Idioma del móvil: ${lang ?? 'es'}.`;
+    const perfil = typeof profile === 'string' && profile.trim() ? `\nPERFIL de la persona: ${profile.slice(0, 1200)}` : '';
+    const intro = `Hoy es ${dayName} ${today ?? ''}. Idioma del móvil: ${lang ?? 'es'}.${perfil}`;
     const prompt = hasImage
       ? `${intro} Esta es una captura de mis mensajes o mails: ¿qué tengo que hacer? Responde en JSON.`
       : `${intro}\n\nLo que tengo en la cabeza:\n${String(text).slice(0, 4000)}`;

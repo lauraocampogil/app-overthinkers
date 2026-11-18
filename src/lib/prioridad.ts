@@ -1,4 +1,5 @@
 import { daysBetween } from './planner';
+import { areaWeight, type Area } from './perfil';
 import type { Task } from './types';
 
 /**
@@ -6,8 +7,10 @@ import type { Task } from './types';
  * Stars set by the person come first; the rest is filled by a score.
  * The idea for overthinkers: if these 3 are done, the day counts, whatever else happens.
  */
-export function priorityScore(task: Task, today: string) {
+export function priorityScore(task: Task, today: string, areas: Area[] = []) {
   let s = task.importance * 10;
+  // What matters most to this person: their first area weighs most.
+  s += areaWeight(task, areas) * 6;
   if (task.due) {
     const d = daysBetween(today, task.due);
     if (d <= 0) s += 12;
@@ -20,12 +23,12 @@ export function priorityScore(task: Task, today: string) {
   return s;
 }
 
-export function topThree(today: Task[], day: string): Task[] {
+export function topThree(today: Task[], day: string, areas: Area[] = []): Task[] {
   const pending = today.filter((t) => t.status === 'pendiente');
   const starred = pending.filter((t) => t.top);
   const rest = pending
     .filter((t) => !t.top)
-    .sort((a, b) => priorityScore(b, day) - priorityScore(a, day));
+    .sort((a, b) => priorityScore(b, day, areas) - priorityScore(a, day, areas));
   return [...starred, ...rest].slice(0, 3);
 }
 

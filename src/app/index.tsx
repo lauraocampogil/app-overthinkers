@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -13,7 +13,7 @@ import { requiresProof, topThree } from '@/lib/prioridad';
 import { routineNow, routineOf } from '@/lib/rutinas';
 import { locale, minutesLabel, t } from '@/i18n';
 import { useAtajos } from '@/lib/atajos';
-import { useMascot } from '@/lib/auth';
+import { useAuth, useMascot } from '@/lib/auth';
 import { connectCalendar, dayTimeline, defaultCalendarId, refreshAgenda, useAgenda } from '@/lib/calendario';
 import { estimate } from '@/lib/duraciones';
 import { daysBetween } from '@/lib/planner';
@@ -88,7 +88,11 @@ export default function Inicio() {
   const routines = useDay((s) => s.routines);
   const routineLog = useDay((s) => s.routineLog);
   const toggleTop = useDay((s) => s.toggleTop);
+  const areas = useDay((s) => s.profile.areas);
   useAtajos();
+  const onboarded = useDay((s) => s.profile.onboarded);
+  const owner = useDay((s) => s.owner);
+  const userId = useAuth((s) => s.session?.user.id ?? null);
   const [sheet, setSheet] = useState<Task | null>(null);
   const [showDone, setShowDone] = useState(false);
 
@@ -137,7 +141,7 @@ export default function Inicio() {
     return b ? { start: b.start, end: b.end } : null;
   };
   // Lo más importante: 3 tasks. If these get done, the day counts.
-  const top = topThree(active, today);
+  const top = topThree(active, today, areas);
   const topDone = done.filter((x) => x.top);
   const topRows = [...topDone, ...top].slice(0, 3);
   // "Ahora" = the first priority, else the next in the day's order.
@@ -188,6 +192,10 @@ export default function Inicio() {
       <Dock onWrite={() => router.push('/escribir')} onSpeak={() => router.push('/escuchando')} />
     </View>
   );
+
+  // Wait for this account's data, then send new people through the onboarding.
+  if (userId && owner !== userId) return <Screen>{null}</Screen>;
+  if (!onboarded) return <Redirect href="/bienvenida" />;
 
   // Nothing yet: the brain-dump invitation.
   if (!tasks.some((x) => x.status === 'pendiente' || x.doneOn === today) && !goals.some((g) => !g.archived)) {

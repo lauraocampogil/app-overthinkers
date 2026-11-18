@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { requiresProof, topThree } from '../prioridad';
+import type { Area } from '../perfil';
 import type { Task } from '../types';
 
 const TODAY = '2026-11-18';
@@ -57,5 +58,16 @@ describe('proof', () => {
     expect(requiresProof(task({ needsProof: true }))).toBe(true);
     expect(requiresProof(task({ needsProof: true, proofPhoto: 'file://x.jpg' }))).toBe(false);
     expect(requiresProof(task({ needsProof: false }))).toBe(false);
+  });
+});
+
+describe('areas', () => {
+  it("a task in the person's first area comes before a normal one", () => {
+    const work = task({ title: 'Mandar el informe', kind: 'trabajo' });
+    const football = task({ title: 'Entreno de fútbol', kind: 'deporte' });
+    const laura: Area[] = [{ id: 'deporte', answers: { sport: 'futbol' } }, { id: 'comer_bien', answers: {} }];
+    expect(topThree([work, football], TODAY, laura)[0].id).toBe(football.id);
+    const lorena: Area[] = [{ id: 'trabajo', answers: {} }];
+    expect(topThree([football, work], TODAY, lorena)[0].id).toBe(work.id);
   });
 });
