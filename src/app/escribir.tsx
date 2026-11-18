@@ -2,7 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
@@ -20,6 +20,7 @@ import Svg, { Path, Rect } from 'react-native-svg';
 import { CloseIcon, IconCircle, PrimaryButton, Screen } from '@/components/ui';
 import { t } from '@/i18n';
 import { tasksFromImage } from '@/lib/ai';
+import { CameraIcon } from '@/components/Iconos';
 import { supabase } from '@/lib/supabase';
 import { useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
@@ -41,7 +42,7 @@ const join = (current: string, extra: string) => (current.trim() ? `${current.tr
 
 export default function Escribir() {
   const setDraft = useDay((s) => s.setDraft);
-  const { meta } = useLocalSearchParams<{ meta?: string }>();
+  const { meta, snap } = useLocalSearchParams<{ meta?: string; snap?: string }>();
   const goalMode = meta === '1';
   // Always start empty: the previous dump was already turned into tasks.
   const [text, setText] = useState('');
@@ -74,14 +75,35 @@ export default function Escribir() {
     setText((cur) => join(cur, copied));
   };
 
-  const fromScreenshot = async () => {
+  // Long-press on "+" opens the camera straight away (Snap).
+  const snapped = useRef(false);
+  useEffect(() => {
+    if (snap === '1' && !snapped.current) {
+      snapped.current = true;
+      void fromScreenshot('camera');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snap]);
+
+  /** Snap: a photo of a notebook, whiteboard, receipt, fridge list or letter, or a screenshot → tasks. */
+  const fromScreenshot = async (source: 'library' | 'camera' = 'library') => {
     setNotice(null);
     Keyboard.dismiss();
     if (!supabase) {
       setNotice(t('write.needServer'));
       return;
     }
-    const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
+    if (source === 'camera') {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        setNotice(t('write.cameraDenied'));
+        return;
+      }
+    }
+    const picked =
+      source === 'camera'
+        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.9 })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
     const asset = picked.canceled ? null : picked.assets[0];
     if (!asset?.uri) return;
     setReading(true);
@@ -140,9 +162,13 @@ export default function Escribir() {
                   <PasteIcon />
                   <Text style={styles.chipText}>{t('write.paste')}</Text>
                 </Pressable>
-                <Pressable accessibilityRole="button" onPress={fromScreenshot} style={styles.chip} disabled={reading}>
-                  {reading ? <ActivityIndicator size="small" color={colors.accent} /> : <ImageIcon />}
-                  <Text style={styles.chipText}>{t(reading ? 'write.reading' : 'write.screenshot')}</Text>
+                <Pressable accessibilityRole="button" onPress={() => void fromScreenshot('camera')} style={styles.chip} disabled={reading}>
+                  {reading ? <ActivityIndicator size="small" color={colors.accent} /> : <CameraIcon size={18} color={colors.ink} />}
+                  <Text style={styles.chipText}>{t(reading ? 'write.reading' : 'write.snap')}</Text>
+                </Pressable>
+                <Pressable accessibilityRole="button" onPress={() => void fromScreenshot('library')} style={styles.chip} disabled={reading}>
+                  <ImageIcon />
+                  <Text style={styles.chipText}>{t('write.screenshot')}</Text>
                 </Pressable>
               </View>
               {notice && <Text style={styles.notice}>{notice}</Text>}

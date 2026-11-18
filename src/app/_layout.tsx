@@ -4,6 +4,8 @@ import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 
 import { SplashAnimado } from '@/components/SplashAnimado';
+import { unblockAll } from '@/lib/bloqueo';
+import { useFoco } from '@/lib/foco';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
@@ -164,6 +166,10 @@ export default function RootLayout() {
 
   // The native splash stays until the animated one is on screen; that one hides it and plays its intro.
   const [intro, setIntro] = useState(true);
+  // If the app was closed in the middle of a focus session, its apps may still be blocked: lift them unless one still runs.
+  useEffect(() => {
+    if (!useFoco.getState().session) unblockAll();
+  }, []);
 
   if (!loaded || !ready) return null;
 
@@ -190,6 +196,7 @@ export default function RootLayout() {
           <Stack.Screen name="compra" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="meta" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="semana" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="bloqueo" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="pro" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
           <Stack.Screen name="no-puedo" options={{ presentation: 'transparentModal', animation: 'fade' }} />
           <Stack.Screen name="hecho" options={{ gestureEnabled: false }} />

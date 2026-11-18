@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
     const perfil = typeof profile === 'string' && profile.trim() ? `\nPERFIL de la persona: ${profile.slice(0, 1200)}` : '';
     const intro = `Hoy es ${dayName} ${today ?? ''}. Idioma del móvil: ${lang ?? 'es'}.${perfil}`;
     const prompt = hasImage
-      ? `${intro} Esta es una captura de mis mensajes o mails: ¿qué tengo que hacer? Responde en JSON.`
+      ? `${intro} Esta es una imagen: puede ser una captura de mis mensajes o mails, o una foto de mis notas, una libreta, una pizarra, un post-it, una lista de la nevera, un ticket, una carta o un papel del colegio. Lee todo el texto (también a mano) y dime qué tengo que hacer, con fechas, horas y lugares si aparecen. Una lista de compra va como una sola tarea con la lista. Responde en JSON.`
       : `${intro}\n\nLo que tengo en la cabeza:\n${String(text).slice(0, 4000)}`;
     const type = typeof mediaType === 'string' ? mediaType : 'image/jpeg';
 

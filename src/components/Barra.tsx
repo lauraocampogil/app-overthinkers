@@ -70,6 +70,11 @@ export function Barra({ active, onWrite }: { active: Tab; onWrite?: () => void }
             void Haptics.selectionAsync().catch(() => {});
             (onWrite ?? (() => router.push('/escribir')))();
           }}
+          onLongPress={() => {
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+            router.push({ pathname: '/escribir', params: { snap: '1' } });
+          }}
+          accessibilityHint={t('write.snapHint')}
           style={({ pressed }) => pressed && { transform: [{ scale: 0.95 }] }}
         >
           <Glass style={styles.round}>

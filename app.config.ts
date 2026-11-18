@@ -28,8 +28,25 @@ function withGoogle(cfg: ExpoConfig): ExpoConfig {
   return { ...cfg, plugins: [...(cfg.plugins ?? []), ['@react-native-google-signin/google-signin', { iosUrlScheme }]] };
 }
 
+/**
+ * Blocking apps during a focus session (Screen Time / Family Controls). Only with a paid Apple account,
+ * the Family Controls entitlement approved by Apple, and APPLE_TEAM_ID set: otherwise the build would fail to sign.
+ * Adds the ActivityMonitor, ShieldAction and ShieldConfiguration extensions.
+ */
+function withBlocking(cfg: ExpoConfig): ExpoConfig {
+  const team = process.env.APPLE_TEAM_ID;
+  if (!team || process.env.GETGO_FREE_SIGNING === '1') return cfg;
+  const bundle = cfg.ios?.bundleIdentifier ?? 'com.unixcreative.getgo';
+  return {
+    ...cfg,
+    ios: { ...cfg.ios, appleTeamId: team },
+    extra: { ...cfg.extra, appBlocking: true },
+    plugins: [...(cfg.plugins ?? []), ['react-native-device-activity', { appleTeamId: team, appGroup: `group.${bundle}` }]],
+  };
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => {
-  const base = withGoogle(config as ExpoConfig);
+  const base = withBlocking(withGoogle(config as ExpoConfig));
   if (process.env.GETGO_FREE_SIGNING !== '1') return base;
 
   const skip = new Set(['expo-notifications', 'expo-widgets', 'expo-apple-authentication']);

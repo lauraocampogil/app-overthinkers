@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { PinIcon } from '@/components/Iconos';
+import { LockIcon, PinIcon } from '@/components/Iconos';
 import { Mascota } from '@/components/Mascota';
 import { Ondas } from '@/components/Ondas';
 import { t } from '@/i18n';
 import { useMascot } from '@/lib/auth';
+import { blockingAuthorized, blockingAvailable, useBloqueo } from '@/lib/bloqueo';
 import { estimate } from '@/lib/duraciones';
 import { addMinutes, elapsedMs, endFocus, endsAt, pauseFocus, resumeFocus, startFocus, useFoco } from '@/lib/foco';
 import { useVoz } from '@/lib/paleta';
@@ -31,6 +32,8 @@ const fmt = (ms: number) => {
  * "Hecho" asks for the photo first when the task needs proof.
  */
 export default function Foco() {
+  const bloqueo = useBloqueo();
+  const blocking = blockingAvailable() && blockingAuthorized() && bloqueo.enabled && bloqueo.picked > 0;
   const params = useLocalSearchParams<{ id?: string }>();
   const tasks = useDay((s) => s.tasks);
   const learned = useDay((s) => s.learned);
@@ -156,6 +159,17 @@ export default function Foco() {
               <Text style={styles.sub}>{task.where}</Text>
             </View>
           ) : null}
+          {blocking ? (
+            <View style={styles.lockLine}>
+              <LockIcon color="#9A9A9A" size={14} />
+              <Text style={styles.sub}>{t('block.active')}</Text>
+            </View>
+          ) : (
+            <Pressable onPress={() => router.push('/bloqueo')} style={styles.lockLine} accessibilityRole="button">
+              <LockIcon color="#6E6E6E" size={14} />
+              <Text style={[styles.sub, { color: '#6E6E6E', textDecorationLine: 'underline' }]}>{t('block.offer')}</Text>
+            </Pressable>
+          )}
           {task.checklist.length ? (
             <View style={styles.chips}>
               {task.checklist.map((i) => (
@@ -208,6 +222,7 @@ const styles = StyleSheet.create({
   bar: { width: '70%', height: 4, borderRadius: 2, backgroundColor: '#262626', overflow: 'hidden' },
   barFill: { height: 4, borderRadius: 2 },
   title: { fontFamily: fonts.semibold, fontSize: 24, lineHeight: 29, letterSpacing: -0.6, color: colors.white, textAlign: 'center', marginTop: 6 },
+  lockLine: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
   sub: { fontFamily: fonts.regular, fontSize: 15, color: '#9A9A9A', textAlign: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 4 },
   chip: { minHeight: 34, paddingHorizontal: 12, borderRadius: 17, backgroundColor: '#1C1C1C', justifyContent: 'center' },

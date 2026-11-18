@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { t } from '../i18n';
+import { blockForFocus, unblockAll } from './bloqueo';
 import type { FocoProps } from '../widgets/FocoActividad';
 
 /**
@@ -97,6 +98,7 @@ export function startFocus(task: { id: string; title: string }, minutes: number,
   const session: Session = { taskId: task.id, title: task.title, startedAt: Date.now(), minutes, pausedAt: null, pausedMs: 0, color, colorSoft };
   useFoco.setState({ session });
   pushActivity(session);
+  blockForFocus();
   return session;
 }
 
@@ -128,6 +130,7 @@ export function addMinutes(n: number) {
 export function endFocus(): number {
   const s = useFoco.getState().session;
   useFoco.setState({ session: null });
+  unblockAll();
   try {
     for (const a of factory?.getInstances() ?? []) void a.end('immediate');
   } catch {
