@@ -172,11 +172,11 @@ export default function Escribir() {
 
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginTop: 8, height: 44 },
-  doneBtn: { height: 40, paddingHorizontal: 18, borderRadius: 20, backgroundColor: colors.white, justifyContent: 'center' },
+  doneBtn: { height: 40, paddingHorizontal: 18, borderRadius: 20, backgroundColor: colors.card, justifyContent: 'center' },
   doneText: { fontFamily: fonts.medium, fontSize: 15, color: colors.accentDark },
   body: { flex: 1, paddingHorizontal: 24, marginTop: 20, gap: 12 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 40, paddingHorizontal: 14, borderRadius: 20, backgroundColor: colors.white },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 40, paddingHorizontal: 14, borderRadius: 20, backgroundColor: colors.card },
   chipText: { fontFamily: fonts.medium, fontSize: 14, color: colors.ink },
   notice: { fontFamily: fonts.regular, fontSize: 14, color: colors.muted },
   input: {
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     minHeight: 120,
     padding: 18,
     borderRadius: 24,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     fontFamily: fonts.regular,
     fontSize: 18,
     lineHeight: 26,

@@ -3,45 +3,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Path, Rect } from 'react-native-svg';
 
 import { t } from '@/i18n';
-import { colors, fonts, gradients } from '@/theme';
+import { useVoz } from '@/lib/paleta';
+import { colors, fonts } from '@/theme';
 
 export function Screen({ children, style }: { children: ReactNode; style?: ViewStyle }) {
   return (
-    <LinearGradient colors={gradients.background} locations={[0, 0.45, 1]} style={{ flex: 1 }}>
-      <Glows />
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <SafeAreaView style={[{ flex: 1 }, style]} edges={['top', 'bottom']}>
         {children}
       </SafeAreaView>
-    </LinearGradient>
-  );
-}
-
-/** Two soft, static colour glows (peach and pink) at the top, like the voice screen but calmer. */
-function Glows() {
-  return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Svg width="100%" height="100%">
-        <Defs>
-          <RadialGradient id="glowPeach" cx="85%" cy="4%" r="55%">
-            <Stop offset="0" stopColor={colors.peach} stopOpacity="0.45" />
-            <Stop offset="1" stopColor={colors.peach} stopOpacity="0" />
-          </RadialGradient>
-          <RadialGradient id="glowPink" cx="5%" cy="18%" r="60%">
-            <Stop offset="0" stopColor={colors.pink} stopOpacity="0.32" />
-            <Stop offset="1" stopColor={colors.pink} stopOpacity="0" />
-          </RadialGradient>
-          <RadialGradient id="glowLilac" cx="60%" cy="100%" r="65%">
-            <Stop offset="0" stopColor={colors.lilac} stopOpacity="0.28" />
-            <Stop offset="1" stopColor={colors.lilac} stopOpacity="0" />
-          </RadialGradient>
-        </Defs>
-        <Rect width="100%" height="100%" fill="url(#glowPeach)" />
-        <Rect width="100%" height="100%" fill="url(#glowPink)" />
-        <Rect width="100%" height="100%" fill="url(#glowLilac)" />
-      </Svg>
     </View>
   );
 }
@@ -62,15 +35,9 @@ export function PrimaryButton({ label, onPress, dark = false, disabled = false }
       }}
       style={({ pressed }) => [styles.primaryWrap, { opacity: disabled ? 0.5 : pressed ? 0.9 : 1 }]}
     >
-      {dark ? (
-        <View style={[styles.primary, { backgroundColor: colors.ink }]}>
-          <Text style={styles.primaryText}>{label}</Text>
-        </View>
-      ) : (
-        <LinearGradient colors={gradients.action} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primary}>
-          <Text style={styles.primaryText}>{label}</Text>
-        </LinearGradient>
-      )}
+      <View style={[styles.primary, { backgroundColor: dark ? colors.accentLight : colors.ink }]}>
+        <Text style={styles.primaryText}>{label}</Text>
+      </View>
     </Pressable>
   );
 }
@@ -92,7 +59,7 @@ export function IconCircle({ label, onPress, children, size = 44 }: {
       accessibilityLabel={label}
       onPress={onPress}
       style={({ pressed }) => [
-        { width: size, height: size, borderRadius: size / 2, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.8 : 1 },
+        { width: size, height: size, borderRadius: size / 2, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1 },
       ]}
     >
       {children}
@@ -102,6 +69,7 @@ export function IconCircle({ label, onPress, children, size = 44 }: {
 
 /** The floating glass navbar: write (+) and speak (gradient mic). */
 export function Dock({ onWrite, onSpeak }: { onWrite: () => void; onSpeak: () => void }) {
+  const voz = useVoz();
   return (
     <View style={styles.dock}>
         <Pressable
@@ -124,7 +92,7 @@ export function Dock({ onWrite, onSpeak }: { onWrite: () => void; onSpeak: () =>
           }}
           style={({ pressed }) => [pressed && { opacity: 0.9 }]}
         >
-          <LinearGradient colors={gradients.mic} style={[styles.dockBtn, styles.dockMic]}>
+          <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.dockBtn, styles.dockMic]}>
             <MicIcon />
           </LinearGradient>
         </Pressable>
@@ -165,7 +133,7 @@ export const CheckIcon = ({ color = colors.accent, size = 18 }: { color?: string
 
 export const ChevronIcon = ({ down = false }: { down?: boolean }) => (
   <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-    <Path d={down ? 'M6 9l6 6 6-6' : 'M9 6l6 6-6 6'} stroke={down ? colors.ink : colors.accent} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    <Path d={down ? 'M6 9l6 6 6-6' : 'M9 6l6 6-6 6'} stroke={down ? colors.ink : colors.muted} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
 
@@ -176,12 +144,12 @@ export const FlameIcon = () => (
 );
 
 const styles = StyleSheet.create({
-  primaryWrap: { borderRadius: 29, shadowColor: colors.accentDark, shadowOpacity: 0.3, shadowRadius: 13, shadowOffset: { width: 0, height: 10 }, elevation: 6 },
+  primaryWrap: { borderRadius: 29 },
   primary: { height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center' },
-  primaryText: { fontFamily: fonts.medium, fontSize: 17, color: colors.white },
+  primaryText: { fontFamily: fonts.semibold, fontSize: 17, color: colors.white },
   textButton: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   textButtonLabel: { fontFamily: fonts.regular, fontSize: 15 },
-  dockShadow: { alignSelf: 'center', borderRadius: 40, shadowColor: '#503CC8', shadowOpacity: 0.18, shadowRadius: 17, shadowOffset: { width: 0, height: 14 }, elevation: 8 },
+  dockShadow: { alignSelf: 'center', borderRadius: 40, shadowColor: '#000000', shadowOpacity: 0.18, shadowRadius: 17, shadowOffset: { width: 0, height: 14 }, elevation: 8 },
   // The two buttons float on the background: no box behind them.
   dock: { flexDirection: 'row', gap: 14, alignSelf: 'center' },
   dockBtn: {
@@ -190,14 +158,14 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#503CC8',
-    shadowOpacity: 0.22,
-    shadowRadius: 14,
+    shadowColor: '#000000',
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
     elevation: 6,
   },
-  dockWrite: { backgroundColor: colors.white },
-  dockMic: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.55)' },
+  dockWrite: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line },
+  dockMic: {},
 });
 
 export const PersonIcon = ({ color = colors.ink }: { color?: string }) => (

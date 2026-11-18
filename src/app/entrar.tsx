@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     borderWidth: 1,
-    borderColor: 'rgba(31,26,61,0.08)',
+    borderColor: 'rgba(10,10,10,0.08)',
   },
   googleText: { fontFamily: fonts.semibold, fontSize: 17, color: colors.ink },
   legal: { ...type.muted, fontSize: 12, textAlign: 'center', marginTop: 4 },

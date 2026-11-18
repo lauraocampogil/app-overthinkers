@@ -10,6 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Ellipse, Path, RadialGradient, Stop } from 'react-native-svg';
 
+import { useVoz } from '@/lib/paleta';
 import { colors } from '@/theme';
 
 export type OndasMode = 'calma' | 'habla' | 'orden' | 'hecho';
@@ -66,6 +67,8 @@ function Wave({ width, height, amp, phase, speed, stroke, opacity }: {
 export function Ondas({ mode, height = 300, level = 0, fadeTo = 'transparent' }: Props) {
   const { width } = useWindowDimensions();
   const cfg = CONFIG[mode];
+  // The band is the person's voice colour: grey at first, their mascot's gradient after a week.
+  const voz = useVoz();
   const boost = 1 + Math.min(1, Math.max(0, level)) * 1.4;
 
   const breathe = useSharedValue(1);
@@ -87,10 +90,10 @@ export function Ondas({ mode, height = 300, level = 0, fadeTo = 'transparent' }:
         <Svg width={width} height={height}>
           <Defs>
             <RadialGradient id="band" cx="50%" cy="50%" rx="50%" ry="50%">
-              <Stop offset="0" stopColor="#6E5BFF" stopOpacity={1} />
-              <Stop offset="0.35" stopColor="#8F7DFF" stopOpacity={0.95} />
-              <Stop offset="0.7" stopColor="#B4C2FF" stopOpacity={0.6} />
-              <Stop offset="1" stopColor="#BECCFF" stopOpacity={0} />
+              <Stop offset="0" stopColor={voz.mic[2]} stopOpacity={1} />
+              <Stop offset="0.35" stopColor={voz.mic[1]} stopOpacity={0.95} />
+              <Stop offset="0.7" stopColor={voz.mic[0]} stopOpacity={0.6} />
+              <Stop offset="1" stopColor={voz.mic[0]} stopOpacity={0} />
             </RadialGradient>
             <RadialGradient id="core" cx="50%" cy="50%" rx="50%" ry="50%">
               <Stop offset="0" stopColor="#FFFFFF" stopOpacity={cfg.core} />

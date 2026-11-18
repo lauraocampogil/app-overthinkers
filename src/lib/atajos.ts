@@ -22,7 +22,7 @@ export function useAtajos() {
     void QuickActions.setItems([
       { id: 'hablar', title: t('atajo.speak'), icon: 'symbol:mic.fill', params: { href: '/escuchando' } },
       { id: 'escribir', title: t('atajo.write'), icon: 'symbol:square.and.pencil', params: { href: '/escribir' } },
-      { id: 'siguiente', title: t('atajo.next'), icon: 'symbol:checkmark.circle', params: { href: '/ahora' } },
+      { id: 'siguiente', title: t('atajo.next'), icon: 'symbol:checkmark.circle', params: { href: '/foco' } },
     ]).catch(() => {});
     if (!handledInitial && QuickActions.initial) {
       handledInitial = true;

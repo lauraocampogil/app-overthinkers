@@ -76,8 +76,8 @@ export default function Racha() {
                     style={[
                       styles.cell,
                       c.state === 'done' && { backgroundColor: colors.accent },
-                      c.state === 'freeze' && { backgroundColor: '#C9BEFF' },
-                      c.state === 'missed' && { backgroundColor: '#ECE9F7' },
+                      c.state === 'freeze' && { backgroundColor: '#9A9A9A' },
+                      c.state === 'missed' && { backgroundColor: colors.soft },
                       c.state === 'future' && { borderWidth: 1, borderColor: colors.line },
                       c.today && { borderWidth: 2, borderColor: colors.ink },
                     ]}
@@ -94,7 +94,7 @@ export default function Racha() {
               <Text style={styles.legendText}>{t('streak.legendDone')}</Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#C9BEFF' }]} />
+              <View style={[styles.legendDot, { backgroundColor: '#9A9A9A' }]} />
               <Text style={styles.legendText}>{t('streak.legendFreeze')}</Text>
             </View>
           </View>
@@ -110,10 +110,10 @@ const styles = StyleSheet.create({
   hero: { alignItems: 'center', paddingVertical: 12 },
   big: { fontFamily: fonts.medium, fontSize: 88, lineHeight: 96, letterSpacing: -3, color: colors.accentDark },
   cards: { flexDirection: 'row', gap: 12 },
-  card: { flex: 1, padding: 16, borderRadius: 20, backgroundColor: colors.white, gap: 2 },
+  card: { flex: 1, padding: 16, borderRadius: 20, backgroundColor: colors.card, gap: 2 },
   cardValue: { fontFamily: fonts.medium, fontSize: 28, color: colors.ink },
   cardLabel: { fontFamily: fonts.regular, fontSize: 14, color: colors.muted },
-  calendar: { padding: 16, borderRadius: 24, backgroundColor: colors.white, gap: 12 },
+  calendar: { padding: 16, borderRadius: 24, backgroundColor: colors.card, gap: 12 },
   month: { fontFamily: fonts.medium, fontSize: 16, color: colors.ink },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   weekday: { width: `${100 / 7}%`, textAlign: 'center', fontFamily: fonts.regular, fontSize: 12, color: colors.muted, marginBottom: 6 },

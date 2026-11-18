@@ -25,6 +25,7 @@ TAREAS (cosas concretas que hacer):
 - "kind": "trabajo" | "estudio" | "deporte" | "casa" | "otro".
 - "importance": 3 importante (fecha cercana, consecuencias, alguien lo espera), 2 normal, 1 puede esperar.
 - "sport": "fuerza" | "cardio" | null. "Gym y cardio" son DOS tareas.
+- "proof": si la tarea deja algo que se puede FOTOGRAFIAR para demostrar que está hecha, describe en 2-6 palabras qué foto ("Foto de la compra", "Foto corriendo o del reloj", "Foto de la cocina limpia", "Captura del mail enviado"). null si no hay nada visible (pensar, decidir).
 - "goal": título de la meta a la que pertenece, si pertenece a una de las metas de abajo; si no, null.
 
 METAS (algo que quiere lograr, no una sola acción: "aprobar el examen del jueves", "ir al gym 3 veces por semana", "lanzar mi app en marzo", "ahorrar 2000 €"):
@@ -123,7 +124,10 @@ Deno.serve(async (req) => {
       raw = data?.choices?.[0]?.message?.content ?? '{}';
     }
     const json = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
-    return Response.json({ tasks: Array.isArray(json.tasks) ? json.tasks : [], tired: Boolean(json.tired) }, { headers: cors });
+    return Response.json(
+      { tasks: Array.isArray(json.tasks) ? json.tasks : [], goals: Array.isArray(json.goals) ? json.goals : [], tired: Boolean(json.tired) },
+      { headers: cors },
+    );
   } catch (e) {
     console.error(e);
     return Response.json({ error: 'bad_request', detail: String(e).slice(0, 300) }, { status: 400, headers: cors });

@@ -45,7 +45,7 @@ export default function Hecho() {
             <View
               style={[
                 styles.dot,
-                { backgroundColor: d.filled ? colors.accent : '#E4E0F5' },
+                { backgroundColor: d.filled ? colors.accent : colors.line },
                 d.today && { borderWidth: 3, borderColor: colors.bgTop, outlineColor: colors.accent, outlineWidth: 1, outlineStyle: 'solid' },
               ]}
             />

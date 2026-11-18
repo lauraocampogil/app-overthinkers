@@ -156,6 +156,10 @@ export default function Cuenta() {
           </Pressable>
         </View>
 
+        <Pressable accessibilityRole="button" onPress={() => router.push('/rutinas')} style={styles.row}>
+          <Text style={styles.rowText}>{t('routine.title')}</Text>
+        </Pressable>
+
         <Pressable accessibilityRole="button" onPress={() => void signOut()} style={styles.row}>
           <Text style={styles.rowText}>{t('account.signOut')}</Text>
         </Pressable>
@@ -173,21 +177,21 @@ export default function Cuenta() {
 const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, height: 52, justifyContent: 'center', marginTop: 4 },
   body: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 16 },
-  card: { backgroundColor: colors.white, borderRadius: 24, padding: 20, gap: 4, marginTop: 8 },
+  card: { backgroundColor: colors.card, borderRadius: 24, padding: 20, gap: 4, marginTop: 8 },
   name: { fontFamily: fonts.semibold, fontSize: 18, color: colors.ink },
   email: { ...type.body, color: colors.ink },
   provider: { ...type.muted, fontSize: 13, marginTop: 4 },
-  row: { backgroundColor: colors.white, borderRadius: 20, minHeight: 56, justifyContent: 'center', paddingHorizontal: 20 },
+  row: { backgroundColor: colors.card, borderRadius: 20, minHeight: 56, justifyContent: 'center', paddingHorizontal: 20 },
   rowText: { fontFamily: fonts.medium, fontSize: 16, color: colors.ink },
   spacer: { flex: 1 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { minHeight: 38, paddingHorizontal: 14, borderRadius: 19, backgroundColor: colors.soft, justifyContent: 'center' },
+  chip: { minHeight: 38, paddingHorizontal: 14, borderRadius: 19, backgroundColor: colors.white, justifyContent: 'center' },
   chipOn: { backgroundColor: colors.accentDark },
   calChip: { flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: '100%' },
   calDot: { width: 8, height: 8, borderRadius: 4 },
   chipText: { fontFamily: fonts.medium, fontSize: 14, color: colors.accentDark },
-  copy: { alignSelf: 'flex-start', minHeight: 40, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 20, backgroundColor: colors.soft },
+  copy: { alignSelf: 'flex-start', minHeight: 40, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 20, backgroundColor: colors.white },
   copyText: { fontFamily: fonts.medium, fontSize: 14, color: colors.accentDark },
   danger: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', marginBottom: 12 },
-  dangerText: { fontFamily: fonts.medium, fontSize: 15, color: '#C2364B' },
+  dangerText: { fontFamily: fonts.medium, fontSize: 15, color: colors.danger },
 });

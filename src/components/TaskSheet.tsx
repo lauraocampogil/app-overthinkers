@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { router } from 'expo-router';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { minutesLabel, t } from '@/i18n';
 import { estimate } from '@/lib/duraciones';
 import { addDays } from '@/lib/planner';
+import { requiresProof } from '@/lib/prioridad';
 import type { Task } from '@/lib/types';
 import { todayIso, useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
 /** Bottom sheet with what you can do with one task: tick, today, tomorrow, rename, delete. */
 export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () => void }) {
-  const { markDone, undoDone, moveTo, rename, remove, setMinutes, toggleItem, addItem, setDetails } = useDay.getState();
+  const { markDone, undoDone, moveTo, rename, remove, setMinutes, toggleItem, addItem, setDetails, toggleTop, setNeedsProof } = useDay.getState();
   const learned = useDay((s) => s.learned);
   const goals = useDay((s) => s.goals);
   // Read the live task so checklist ticks show up while the sheet is open.
@@ -94,6 +96,20 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
                   style={styles.field}
                 />
               ) : null}
+              {cur.status === 'pendiente' ? (
+                <View style={styles.toggleRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.toggleTitle}>{t('proof.toggle')}</Text>
+                    <Text style={styles.toggleSub}>{cur.proof ?? t('proof.anyPhoto')}</Text>
+                  </View>
+                  <Switch
+                    value={Boolean(cur.needsProof)}
+                    onValueChange={(on) => setNeedsProof(cur.id, on)}
+                    trackColor={{ true: colors.ink, false: colors.line }}
+                    accessibilityLabel={t('proof.toggle')}
+                  />
+                </View>
+              ) : null}
               {cur.checklist.length || cur.status === 'pendiente' ? (
                 <View style={{ gap: 6 }}>
                   {cur.checklist.map((c) => (
@@ -155,7 +171,19 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
                 {task.status === 'hecha' ? (
                   <Option label={t('task.undo')} onPress={() => act(() => undoDone(task.id))} />
                 ) : (
-                  <Option label={t('task.markDone')} onPress={() => act(() => markDone(task.id))} strong />
+                  <>
+                    <Option
+                      label={t('focus.start')}
+                      onPress={() => act(() => router.push({ pathname: '/foco', params: { id: task.id } }))}
+                      strong
+                    />
+                    {requiresProof(cur) ? (
+                      <Option label={t('proof.take')} onPress={() => act(() => router.push({ pathname: '/prueba', params: { id: task.id } }))} />
+                    ) : (
+                      <Option label={t('task.markDone')} onPress={() => act(() => markDone(task.id))} />
+                    )}
+                    <Option label={cur.top ? t('top.unstar') : t('top.star')} onPress={() => act(() => toggleTop(task.id))} />
+                  </>
                 )}
                 {task.status === 'pendiente' && task.day > today ? (
                   <Option label={t('task.doToday')} onPress={() => act(() => moveTo(task.id, today))} />
@@ -177,7 +205,7 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
 function Option({ label, onPress, strong, danger, last }: { label: string; onPress: () => void; strong?: boolean; danger?: boolean; last?: boolean }) {
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.option, last && { borderBottomWidth: 0 }, pressed && { opacity: 0.6 }]}>
-      <Text style={[styles.optionText, strong && { color: colors.accentDark, fontFamily: fonts.semibold }, danger && { color: '#C2364B' }]}>{label}</Text>
+      <Text style={[styles.optionText, strong && { color: colors.ink, fontFamily: fonts.semibold }, danger && { color: colors.danger }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -185,22 +213,25 @@ function Option({ label, onPress, strong, danger, last }: { label: string; onPre
 const DURATIONS = [15, 30, 45, 60, 90, 120, 180];
 
 const styles = StyleSheet.create({
-  meta: { fontFamily: fonts.medium, fontSize: 14, color: colors.accentDark, marginTop: -6 },
+  meta: { fontFamily: fonts.medium, fontSize: 14, color: colors.muted, marginTop: -6 },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 16, backgroundColor: colors.soft },
+  toggleTitle: { fontFamily: fonts.medium, fontSize: 15, color: colors.ink },
+  toggleSub: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted },
   field: { minHeight: 44, paddingHorizontal: 14, borderRadius: 14, backgroundColor: colors.soft, fontFamily: fonts.regular, fontSize: 15, color: colors.ink },
   item: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 36 },
-  box: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: '#D9CCF5' },
+  box: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: colors.faint },
   boxOn: { backgroundColor: colors.accent, borderColor: colors.accent },
   itemText: { flex: 1, fontFamily: fonts.regular, fontSize: 15, color: colors.ink },
   itemDone: { color: colors.muted, textDecorationLine: 'line-through' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { minHeight: 40, paddingHorizontal: 14, borderRadius: 20, backgroundColor: colors.soft, justifyContent: 'center' },
   chipOn: { backgroundColor: colors.accentDark },
-  chipText: { fontFamily: fonts.medium, fontSize: 14, color: colors.accentDark },
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(31,26,61,0.35)' },
+  chipText: { fontFamily: fonts.medium, fontSize: 14, color: colors.ink },
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(10,10,10,0.4)' },
   sheet: { backgroundColor: colors.white, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 24, paddingTop: 10, gap: 14 },
   grabber: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: colors.line, marginBottom: 6 },
   title: { fontSize: 24, lineHeight: 29 },
-  option: { minHeight: 56, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: 'rgba(31,26,61,0.06)' },
+  option: { minHeight: 56, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: colors.line },
   optionText: { fontFamily: fonts.medium, fontSize: 17, color: colors.ink },
   input: {
     minHeight: 52,

@@ -2,6 +2,7 @@ import { requireOptionalNativeModule } from 'expo';
 
 import { t } from '../i18n';
 import { mascotTraits } from '../components/Mascota';
+import { requiresProof, topThree } from './prioridad';
 import type { Task } from './types';
 import type { WidgetProps } from '../widgets/GetGoWidget';
 
@@ -26,17 +27,28 @@ if (requireOptionalNativeModule('ExpoWidgets')) {
 
 const BODY = 116; // mascot body diameter in the Mascota viewBox
 
-export function syncWidget(opts: { today: Task[]; seed: string }) {
+const toWidget = (x: Task) => ({
+  id: x.id,
+  title: x.title,
+  done: x.status === 'hecha',
+  proof: requiresProof(x),
+  time: x.at ?? undefined,
+});
+
+export function syncWidget(opts: { today: Task[]; seed: string; day: string }) {
   if (!widget) return;
   try {
     const list = opts.today;
     const pending = list.filter((x) => x.status === 'pendiente');
     const done = list.filter((x) => x.status === 'hecha');
     const tr = mascotTraits(opts.seed);
+    // The 3 priorities, plus the starred ones already done today so the widget shows "2/3".
+    const top = [...done.filter((x) => x.top), ...topThree(list, opts.day)].slice(0, 3);
     widget.updateSnapshot({
       left: pending.length,
       total: list.length,
-      tasks: [...pending, ...done].slice(0, 7).map((x) => ({ id: x.id, title: x.title, done: x.status === 'hecha' })),
+      top: top.map(toWidget),
+      tasks: [...pending, ...done].slice(0, 8).map(toWidget),
       mascot: {
         core: tr.palette.core,
         mid: tr.palette.mid,
@@ -50,6 +62,8 @@ export function syncWidget(opts: { today: Task[]; seed: string }) {
         none: t('widget.none'),
         allDone: t('hoy.doneTitle'),
         empty: t('widget.empty'),
+        top: t('top.title'),
+        then: t('top.then'),
       },
     });
   } catch (e) {
@@ -63,7 +77,9 @@ export async function widgetChanges(): Promise<{ id: string; done: boolean }[]> 
   try {
     const entries = await widget.getTimeline();
     const last = entries[entries.length - 1];
-    return last ? last.props.tasks.map((x) => ({ id: x.id, done: x.done })) : [];
+    if (!last) return [];
+    const all = [...(last.props.top ?? []), ...last.props.tasks];
+    return [...new Map(all.map((x) => [x.id, { id: x.id, done: x.done }])).values()];
   } catch {
     return [];
   }

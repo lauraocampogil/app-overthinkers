@@ -13,11 +13,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 
+import { useVoz } from '@/lib/paleta';
+
 /**
  * Full-screen, slowly drifting mesh gradient for the listening screen.
  * Soft colour clouds float around; they swell a little with the voice level.
  */
 
+/** Positions and motion of the clouds; their colours come from the person's voice palette. */
 const BLOBS = [
   { color: '#FF9EC4', x: 0.1, y: 0.1, r: 0.95, dx: 0.18, dy: 0.12, ms: 9000 }, // pink
   { color: '#FFB48A', x: 0.85, y: 0.05, r: 0.8, dx: -0.15, dy: 0.18, ms: 11000 }, // peach
@@ -57,6 +60,7 @@ function Blob({ color, x, y, r, dx, dy, ms, i, w, h, level }: (typeof BLOBS)[num
 }
 
 export function Degradado({ level = 0 }: { level?: number }) {
+  const voz = useVoz();
   const { width: w, height: h } = useWindowDimensions();
   const lv = useSharedValue(0);
   useEffect(() => {
@@ -65,9 +69,9 @@ export function Degradado({ level = 0 }: { level?: number }) {
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <LinearGradient colors={['#B48CFF', '#9A6BFF', '#7C4DFF']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
       {BLOBS.map((b, i) => (
-        <Blob key={i} {...b} i={i} w={w} h={h} level={lv} />
+        <Blob key={i} {...b} color={voz.clouds[i] ?? b.color} i={i} w={w} h={h} level={lv} />
       ))}
       {/* Frosted glass on top: melts the colour clouds together and keeps the text readable. */}
       <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />

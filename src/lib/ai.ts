@@ -28,7 +28,8 @@ function sanitize(raw: unknown): RawTask | null {
   const where = typeof r.where === 'string' && r.where.trim() ? r.where.trim().slice(0, 80) : null;
   const at = typeof r.at === 'string' && /^([01]?\d|2[0-3]):[0-5]\d$/.test(r.at.trim()) ? r.at.trim().padStart(5, '0') : null;
   const goal = typeof r.goal === 'string' && r.goal.trim() ? r.goal.trim() : null;
-  return { title, minutes, dueInDays: Number.isNaN(due) ? null : due, energy, kind, sport, importance, checklist, where, at, goal };
+  const proof = typeof r.proof === 'string' && r.proof.trim() ? r.proof.trim().slice(0, 60) : null;
+  return { title, minutes, dueInDays: Number.isNaN(due) ? null : due, energy, kind, sport, importance, checklist, where, at, goal, proof };
 }
 
 function sanitizeGoal(raw: unknown): RawGoal | null {
@@ -128,5 +129,26 @@ export async function transcribe(uri: string): Promise<string | null> {
     lastVoiceError = String(e).slice(0, 160);
     console.warn('[ai] transcribe failed', e);
     return null;
+  }
+}
+
+export type ProofCheck = { ok: boolean; reason: string; offline?: boolean };
+
+/**
+ * Photo proof: the AI checks that the picture really shows the task done.
+ * Without connection the photo is accepted (marked offline) so nobody gets stuck.
+ */
+export async function verifyProof(base64: string, task: string, hint: string | null | undefined): Promise<ProofCheck> {
+  if (!supabase) return { ok: true, reason: '', offline: true };
+  try {
+    await ensureSession();
+    const { data, error } = await supabase.functions.invoke('verify-proof', {
+      body: { image: base64, mediaType: 'image/jpeg', task, hint: hint ?? null, lang },
+    });
+    if (error) throw error;
+    return { ok: Boolean(data?.ok), reason: typeof data?.reason === 'string' ? data.reason : '' };
+  } catch (e) {
+    console.warn('[ai] proof check failed', e);
+    return { ok: true, reason: '', offline: true };
   }
 }

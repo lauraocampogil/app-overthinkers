@@ -1,43 +1,39 @@
 import { type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Circle } from 'react-native-svg';
 
 import { colors, fonts } from '@/theme';
 
-/** Circular progress ring (pink → purple), optionally with something inside (the mascot, a percentage). */
+/** Circular progress ring (black, or the person's colour), optionally with something inside (the mascot, a percentage). */
 export function Anillo({
   progress,
   size = 96,
   stroke = 8,
   children,
   label,
+  color = colors.ink,
 }: {
   progress: number;
   size?: number;
   stroke?: number;
   children?: ReactNode;
   label?: string;
+  /** Ring colour: black by default, the person's colour around the mascot. */
+  color?: string;
 }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const p = Math.max(0, Math.min(1, progress));
-  const id = `ring${size}${stroke}`;
   return (
     <View style={{ width: size, height: size }} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: Math.round(p * 100) }}>
       <Svg width={size} height={size}>
-        <Defs>
-          <LinearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor="#F59ACB" />
-            <Stop offset="1" stopColor="#7C4DFF" />
-          </LinearGradient>
-        </Defs>
-        <Circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(255,255,255,0.8)" strokeWidth={stroke} fill="none" />
+        <Circle cx={size / 2} cy={size / 2} r={r} stroke={colors.line} strokeWidth={stroke} fill="none" />
         {p > 0 ? (
           <Circle
             cx={size / 2}
             cy={size / 2}
             r={r}
-            stroke={`url(#${id})`}
+            stroke={color}
             strokeWidth={stroke}
             fill="none"
             strokeLinecap="round"

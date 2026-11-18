@@ -127,7 +127,7 @@ export async function deleteAccount(): Promise<boolean> {
   return true;
 }
 
-const MASCOT_AFTER_DAYS = 7;
+export const MASCOT_AFTER_DAYS = 7;
 
 /**
  * The halo turns into the person's own mascot one week after the account was created.
@@ -142,5 +142,6 @@ export function useMascot() {
     seed: user?.id ?? 'getgo',
     unlocked: preview || days >= MASCOT_AFTER_DAYS,
     daysLeft: Math.max(0, MASCOT_AFTER_DAYS - days),
+    days,
   };
 }

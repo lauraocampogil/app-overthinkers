@@ -7,7 +7,7 @@ import { estimate, learn, type Learned } from '@/lib/duraciones';
 import { addDays, schedule } from '@/lib/planner';
 import { countToday, isoDay, START_FREEZES } from '@/lib/streak';
 import { syncDay } from '@/lib/sync';
-import type { ChecklistItem, Goal, ParseResult, RawGoal, RawTask, Settings, Streak, Task } from '@/lib/types';
+import type { ChecklistItem, Goal, ParseResult, RawGoal, RawTask, Routine, RoutineKind, Settings, Streak, Task } from '@/lib/types';
 
 /**
  * One list for everything. Every task has a day; GetGo decides it (planner.schedule)
@@ -40,6 +40,10 @@ type DayState = {
   /** Task in focus mode and when it was started, to measure real durations. */
   focus: { id: string; startedAt: number } | null;
   goals: Goal[];
+  /** Morning / night routines the person edited (missing = the default one, see routineOf). */
+  routines: Partial<Record<RoutineKind, Routine>>;
+  /** Steps ticked per day and routine: { '2026-11-18': { manana: ['id1'] } }. */
+  routineLog: Record<string, Partial<Record<RoutineKind, string[]>>>;
 
   setDraft: (text: string) => void;
   /** New tasks from voice / text / screenshot: GetGo places them on the right days. */
@@ -60,6 +64,13 @@ type DayState = {
   /** The person sets how long a task takes; it also teaches GetGo for next time. */
   setMinutes: (id: string, minutes: number) => void;
   startFocus: (id: string) => void;
+  /** Star / unstar a task as one of today's 3 most important. */
+  toggleTop: (id: string) => void;
+  setNeedsProof: (id: string, on: boolean) => void;
+  /** Done with a photo that proves it (checked by the AI before calling this). */
+  proveDone: (id: string, photo: string, offline: boolean) => void;
+  setRoutine: (kind: RoutineKind, routine: Routine) => void;
+  toggleRoutineStep: (kind: RoutineKind, stepId: string) => void;
   /** Re-plan with the latest calendar and durations. */
   replan: () => void;
   setSettings: (patch: Partial<Settings>) => void;
@@ -69,7 +80,7 @@ type DayState = {
   adoptUser: (userId: string, remote: RemoteSnapshot | null) => void;
 };
 
-export type RemoteSnapshot = Partial<Pick<DayState, 'settings' | 'streak' | 'tasks' | 'history' | 'learned' | 'goals'>>;
+export type RemoteSnapshot = Partial<Pick<DayState, 'settings' | 'streak' | 'tasks' | 'history' | 'learned' | 'goals' | 'routines'>>;
 
 export const DEFAULT_SETTINGS: Settings = {
   level: 'equilibrado',
@@ -94,6 +105,8 @@ const initial = {
   learned: {} as Learned,
   focus: null as { id: string; startedAt: number } | null,
   goals: [] as Goal[],
+  routines: {} as Partial<Record<RoutineKind, Routine>>,
+  routineLog: {} as Record<string, Partial<Record<RoutineKind, string[]>>>,
 };
 
 const items = (list?: string[]): ChecklistItem[] =>
@@ -141,6 +154,8 @@ function fromRaw(r: RawTask, day: string): Task {
     ...rest,
     where: r.where ?? null,
     at: r.at ?? null,
+    proof: r.proof ?? null,
+    needsProof: Boolean(r.proof),
     checklist: items(checklist),
     goalId: null,
     id: newId(),
@@ -322,6 +337,42 @@ export const useDay = create<DayState>()(
           if (get().focus?.id !== id) set({ focus: { id, startedAt: Date.now() } });
         },
 
+        toggleTop: (id) => {
+          const day = today();
+          const task = get().tasks.find((t) => t.id === id);
+          if (!task) return;
+          // Only 3 stars a day: starring a 4th takes the star off the oldest one.
+          let tasks = get().tasks;
+          if (!task.top) {
+            const starred = tasks.filter((t) => t.top && t.status === 'pendiente' && t.day <= day);
+            if (starred.length >= 3) tasks = tasks.map((t) => (t.id === starred[0].id ? { ...t, top: false } : t));
+          }
+          commit(tasks.map((t) => (t.id === id ? { ...t, top: !t.top, ...(t.day > day && !t.top ? { day, pinned: true } : {}) } : t)));
+        },
+
+        setNeedsProof: (id, on) => patch(id, (t) => ({ ...t, needsProof: on })),
+
+        proveDone: (id, photo, offline) => {
+          set({ tasks: get().tasks.map((t) => (t.id === id ? { ...t, proofPhoto: photo, proofOffline: offline } : t)) });
+          get().markDone(id);
+        },
+
+        setRoutine: (kind, routine) => {
+          set({ routines: { ...get().routines, [kind]: routine } });
+          syncDay(get());
+        },
+
+        toggleRoutineStep: (kind, stepId) => {
+          const day = today();
+          const log = get().routineLog;
+          const doneIds = log[day]?.[kind] ?? [];
+          const next = doneIds.includes(stepId) ? doneIds.filter((x) => x !== stepId) : [...doneIds, stepId];
+          // Keep two weeks of routine history.
+          const oldest = addDays(day, -14);
+          const kept = Object.fromEntries(Object.entries(log).filter(([d]) => d >= oldest));
+          set({ routineLog: { ...kept, [day]: { ...kept[day], [kind]: next } } });
+        },
+
         replan: () => commit(get().tasks),
 
         setSettings: (patch) => {
@@ -344,6 +395,7 @@ export const useDay = create<DayState>()(
               settings: withDefaults({ ...get().settings, ...remote.settings }),
               learned: { ...remote.learned, ...get().learned },
               goals: [...get().goals, ...(remote.goals ?? []).filter((g) => !get().goals.some((x) => x.id === g.id))],
+              routines: { ...remote.routines, ...get().routines },
               streak: remote.streak ?? get().streak,
               history: { ...remote.history, ...get().history },
               tasks: [...local, ...(remote.tasks ?? []).filter((t) => !ids.has(t.id))].map(normalize),
@@ -356,10 +408,12 @@ export const useDay = create<DayState>()(
     },
     {
       name: 'getgo-day',
-      version: 4,
+      version: 5,
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: ({ settings, streak, tasks, lastDay, history, owner, learned, focus, goals }) => ({
+      partialize: ({ settings, streak, tasks, lastDay, history, owner, learned, focus, goals, routines, routineLog }) => ({
         goals,
+        routines,
+        routineLog,
         settings,
         streak,
         tasks,
@@ -378,6 +432,8 @@ export const useDay = create<DayState>()(
             settings: withDefaults(s.settings as Partial<Settings>),
             learned: s.learned ?? {},
             goals: s.goals ?? [],
+            routines: s.routines ?? {},
+            routineLog: s.routineLog ?? {},
             tasks: ((s.tasks as Task[]) ?? []).map(normalize),
           } as never;
         const day = (s.planDate as string | null) ?? today();

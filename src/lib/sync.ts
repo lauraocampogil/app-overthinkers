@@ -1,6 +1,6 @@
 import { ensureSession, supabase } from './supabase';
 import type { Learned } from './duraciones';
-import type { Settings, Streak, Task } from './types';
+import type { Goal, Routine, RoutineKind, Settings, Streak, Task } from './types';
 
 type Snapshot = {
   tasks: Task[];
@@ -8,6 +8,8 @@ type Snapshot = {
   settings: Settings;
   history: Record<string, 'done' | 'freeze'>;
   learned: Learned;
+  goals: Goal[];
+  routines: Partial<Record<RoutineKind, Routine>>;
 };
 
 let timer: ReturnType<typeof setTimeout> | null = null;
@@ -16,7 +18,7 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 export function syncDay(s: Snapshot) {
   if (!supabase) return;
   if (timer) clearTimeout(timer);
-  const snapshot = { tasks: s.tasks, streak: s.streak, settings: s.settings, history: s.history, learned: s.learned };
+  const snapshot = { tasks: s.tasks, streak: s.streak, settings: s.settings, history: s.history, learned: s.learned, goals: s.goals, routines: s.routines };
   timer = setTimeout(() => void push(snapshot), 800);
 }
 
@@ -34,7 +36,8 @@ async function push(s: Snapshot) {
       tasks: s.tasks,
       history: s.history,
       learned: s.learned,
-      prefs: { calendar: s.settings.calendar, dayStart: s.settings.dayStart, dayEnd: s.settings.dayEnd },
+      // Goals and routines live in prefs (jsonb), so no new column is needed.
+      prefs: { calendar: s.settings.calendar, dayStart: s.settings.dayStart, dayEnd: s.settings.dayEnd, goals: s.goals, routines: s.routines },
       updated_at: new Date().toISOString(),
     });
     if (error) console.warn('[sync]', error.message);
@@ -54,8 +57,11 @@ export async function pullDay(userId: string): Promise<Partial<Snapshot> | null>
       .maybeSingle();
     if (error) console.warn('[sync] pull', error.message);
     if (!p) return null;
+    const { goals, routines, ...prefs } = (p.prefs ?? {}) as Record<string, unknown>;
     return {
-      settings: { level: p.level, freeMinutes: p.free_minutes, notifyAt: p.notify_at, ...(p.prefs ?? {}) } as Settings,
+      settings: { level: p.level, freeMinutes: p.free_minutes, notifyAt: p.notify_at, ...prefs } as Settings,
+      goals: (goals ?? []) as Goal[],
+      routines: (routines ?? {}) as Snapshot['routines'],
       learned: (p.learned ?? {}) as Learned,
       streak: p.streak as Streak,
       tasks: (p.tasks ?? []) as Task[],

@@ -23,6 +23,8 @@ export type RawTask = {
   at?: string | null;
   /** Title of the goal this task belongs to, if any (matched to a Goal when added). */
   goal?: string | null;
+  /** What photo proves it is done ("Foto de la compra"). null = nothing visible to photograph. */
+  proof?: string | null;
 };
 
 /** A goal the person wants to reach. GetGo breaks it into tasks and keeps them on the calendar. */
@@ -71,7 +73,19 @@ export type Task = Omit<RawTask, 'dueInDays' | 'checklist' | 'goal'> & {
   doneOn?: string;
   /** i18n keys (why.*) explaining why it is in this position. */
   why: string[];
+  /** Starred by the person as one of today's 3 most important. */
+  top?: boolean;
+  /** Proof requested before it can be ticked (true when `proof` is set; the person can switch it off). */
+  needsProof?: boolean;
+  /** Local photo that proved it (file uri), and whether the AI could check it. */
+  proofPhoto?: string;
+  proofOffline?: boolean;
 };
+
+/** Morning or night routine: a fixed sequence the person runs through every day. */
+export type RoutineStep = { id: string; text: string; minutes: number };
+export type Routine = { enabled: boolean; at: string; steps: RoutineStep[] };
+export type RoutineKind = 'manana' | 'noche';
 
 /** Kept as an alias so older imports keep compiling. */
 export type PlannedTask = Task;

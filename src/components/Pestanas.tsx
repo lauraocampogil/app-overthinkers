@@ -23,7 +23,7 @@ export function Pestanas({ active }: { active: 'hoy' | 'metas' }) {
             style={[styles.tab, on && styles.on]}
             hitSlop={4}
           >
-            <Text style={[styles.text, on && { color: colors.ink }]}>{tab.label}</Text>
+            <Text style={[styles.text, on && { color: colors.white }]}>{tab.label}</Text>
           </Pressable>
         );
       })}
@@ -32,8 +32,8 @@ export function Pestanas({ active }: { active: 'hoy' | 'metas' }) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { flexDirection: 'row', gap: 4, padding: 4, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.55)' },
+  wrap: { flexDirection: 'row', gap: 4, padding: 4, borderRadius: 22, backgroundColor: colors.card },
   tab: { minHeight: 36, paddingHorizontal: 16, borderRadius: 18, justifyContent: 'center' },
-  on: { backgroundColor: colors.white },
+  on: { backgroundColor: colors.ink },
   text: { fontFamily: fonts.semibold, fontSize: 14, color: colors.muted },
 });

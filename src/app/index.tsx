@@ -1,4 +1,3 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -9,6 +8,9 @@ import { Ondas } from '@/components/Ondas';
 import { Pestanas } from '@/components/Pestanas';
 import { TaskSheet } from '@/components/TaskSheet';
 import { CheckIcon, Dock, FlameIcon, IconCircle, PersonIcon, Screen } from '@/components/ui';
+import { useVoz } from '@/lib/paleta';
+import { requiresProof, topThree } from '@/lib/prioridad';
+import { routineNow, routineOf } from '@/lib/rutinas';
 import { locale, minutesLabel, t } from '@/i18n';
 import { useAtajos } from '@/lib/atajos';
 import { useMascot } from '@/lib/auth';
@@ -17,16 +19,17 @@ import { estimate } from '@/lib/duraciones';
 import { daysBetween } from '@/lib/planner';
 import type { Goal, Task } from '@/lib/types';
 import { todayIso, todayList, useDay, withDefaults } from '@/store/day';
-import { colors, fonts, gradients, type } from '@/theme';
+import { colors, fonts, type } from '@/theme';
 
 const COLUMN = 214;
-const DOTS = ['#F49AC9', '#8A5CFF', '#FFB997', '#5FD3C6', '#C77DFF'];
-const KIND_DOT: Record<string, string> = { trabajo: '#8A5CFF', estudio: '#C77DFF', deporte: '#F49AC9', casa: '#FFB997', otro: '#B9AEE8' };
+// Monochrome: goals get shades of grey; the kind of task no longer has a colour.
+const DOTS = ['#0A0A0A', '#5C5C5C', '#9A9A9A', '#2E2E2E', '#BDBDBD'];
+const KIND_DOT: Record<string, string> = { trabajo: '#0A0A0A', estudio: '#5C5C5C', deporte: '#2E2E2E', casa: '#9A9A9A', otro: '#BDBDBD' };
 
 /** Colour dot of a task: its goal's colour, or its kind. */
 export function dotColor(task: Task, goals: Goal[]) {
   const i = task.goalId ? goals.findIndex((g) => g.id === task.goalId) : -1;
-  return i >= 0 ? DOTS[i % DOTS.length] : KIND_DOT[task.kind] ?? '#B9AEE8';
+  return i >= 0 ? DOTS[i % DOTS.length] : KIND_DOT[task.kind] ?? '#BDBDBD';
 }
 
 const clock = (d: Date) => d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
@@ -44,17 +47,26 @@ function nudge(done: number, total: number, left: number) {
   return t('hoy.progressTitle', { done, total });
 }
 
-function Check({ task, onToggle, size = 24 }: { task: Task; onToggle: () => void; size?: number }) {
+/** Tick. A task that needs a photo shows a small camera and opens the proof screen instead. */
+function Check({ task, onToggle, size = 24, onDark = false }: { task: Task; onToggle: () => void; size?: number; onDark?: boolean }) {
   const on = task.status === 'hecha';
+  const proof = requiresProof(task);
   const box = { width: size, height: size, borderRadius: size / 2 };
   return (
-    <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: on }} accessibilityLabel={task.title} onPress={onToggle} hitSlop={10}>
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: on }}
+      accessibilityLabel={task.title}
+      accessibilityHint={proof ? t('proof.hint') : undefined}
+      onPress={proof ? () => router.push({ pathname: '/prueba', params: { id: task.id } }) : onToggle}
+      hitSlop={10}
+    >
       {on ? (
-        <LinearGradient colors={gradients.mic} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.checkCenter, box]}>
-          <CheckIcon color={colors.white} size={size * 0.55} />
-        </LinearGradient>
+        <View style={[styles.checkCenter, box, { backgroundColor: onDark ? colors.white : colors.ink }]}>
+          <CheckIcon color={onDark ? colors.ink : colors.white} size={size * 0.55} />
+        </View>
       ) : (
-        <View style={[styles.checkOff, box]} />
+        <View style={[styles.checkOff, styles.checkCenter, box, onDark && { backgroundColor: 'transparent', borderColor: '#6E6E6E' }]}>{proof ? <Text style={{ fontSize: size * 0.45 }}>📷</Text> : null}</View>
       )}
     </Pressable>
   );
@@ -72,6 +84,10 @@ export default function Inicio() {
   const agenda = useAgenda((s) => s.status);
   useAgenda((s) => s.loadedAt); // re-render when the calendar is re-read
   const mascot = useMascot();
+  const voz = useVoz();
+  const routines = useDay((s) => s.routines);
+  const routineLog = useDay((s) => s.routineLog);
+  const toggleTop = useDay((s) => s.toggleTop);
   useAtajos();
   const [sheet, setSheet] = useState<Task | null>(null);
   const [showDone, setShowDone] = useState(false);
@@ -120,9 +136,18 @@ export default function Inicio() {
     const b = timeline?.blocks.find((x) => x.type === 'task' && x.task.id === task.id);
     return b ? { start: b.start, end: b.end } : null;
   };
-  const current = orderedToday[0];
-  const next = orderedToday[1];
+  // Lo más importante: 3 tasks. If these get done, the day counts.
+  const top = topThree(active, today);
+  const topDone = done.filter((x) => x.top);
+  const topRows = [...topDone, ...top].slice(0, 3);
+  // "Ahora" = the first priority, else the next in the day's order.
+  const current = top[0] ?? orderedToday[0];
+  const next = orderedToday.find((x) => x.id !== current?.id);
   const nowSlot = current ? slot(current) : null;
+  const routineKind = routineNow();
+  const routine = routineKind ? routineOf(routines, routineKind) : null;
+  const routineDone = routineKind ? (routineLog[today]?.[routineKind] ?? []).length : 0;
+  const showRoutine = routine && routine.enabled && routine.steps.length > 0 && routineDone < routine.steps.length;
 
   // Pipeline columns: today, then each of the next 6 days that has something, then "later".
   const future = tasks.filter((x) => x.status === 'pendiente' && x.day > today);
@@ -231,11 +256,11 @@ export default function Inicio() {
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         {/* Progress ring with the mascot (or the halo during the first week). */}
         <View style={styles.hero}>
-          <Anillo progress={active.length ? done.length / active.length : 0} size={104} stroke={8}>
+          <Anillo progress={active.length ? done.length / active.length : 0} size={96} stroke={6} color={voz.mic[1]}>
             {mascot.unlocked ? (
-              <Mascota seed={mascot.seed} size={92} mood={active.length && !pending.length ? 'feliz' : 'calma'} />
+              <Mascota seed={mascot.seed} size={84} mood={active.length && !pending.length ? 'feliz' : 'calma'} />
             ) : (
-              <LinearGradient colors={gradients.mic} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.halo} />
+              <View style={[styles.halo, { backgroundColor: voz.mic[1] }]} />
             )}
           </Anillo>
           <View style={{ flex: 1, gap: 4 }}>
@@ -253,6 +278,58 @@ export default function Inicio() {
             </Text>
           </View>
         </View>
+
+        {showRoutine && routine && routineKind ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push({ pathname: '/rutina', params: { kind: routineKind } })}
+            style={({ pressed }) => [styles.routine, pressed && { opacity: 0.85 }]}
+          >
+            <Text style={styles.routineIcon}>{routineKind === 'manana' ? '☀︎' : '☾'}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.routineTitle}>{t(`routine.${routineKind}`)}</Text>
+              <Text style={styles.metaText}>{t('routine.progress', { done: routineDone, total: routine.steps.length })}</Text>
+            </View>
+            <Text style={styles.routineCta}>{routineDone ? t('routine.continue') : t('routine.start')}</Text>
+          </Pressable>
+        ) : null}
+
+        {topRows.length ? (
+          <View style={styles.topCard}>
+            <View style={styles.topHead}>
+              <Text style={styles.sectionLabel}>{t('top.title').toUpperCase()}</Text>
+              <Text style={styles.topCount}>
+                {topDone.length}/{topRows.length}
+              </Text>
+            </View>
+            {topRows.map((task, i) => (
+              <Pressable key={task.id} onPress={() => setSheet(task)} style={styles.topRow} accessibilityHint={t('task.options')}>
+                <Text style={[styles.topNum, task.status === 'hecha' && { color: colors.faint }]}>{i + 1}</Text>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={[styles.topTitle, task.status === 'hecha' && styles.done]} numberOfLines={2}>
+                    {task.title}
+                  </Text>
+                  {task.at || slot(task) || task.where ? (
+                    <Text style={styles.metaText} numberOfLines={1}>
+                      {[slot(task) ? clock(slot(task)!.start) : task.at ?? '', task.where ?? ''].filter(Boolean).join(' · ')}
+                    </Text>
+                  ) : null}
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={task.top ? t('top.unstar') : t('top.star')}
+                  onPress={() => toggleTop(task.id)}
+                  hitSlop={8}
+                  style={styles.star}
+                >
+                  <Text style={[styles.starText, task.top && { color: colors.ink }]}>{task.top ? '★' : '☆'}</Text>
+                </Pressable>
+                <Check task={task} onToggle={() => toggle(task)} size={26} onDark />
+              </Pressable>
+            ))}
+            <Text style={styles.topHint}>{topDone.length >= topRows.length ? t('top.allDone') : t('top.hint')}</Text>
+          </View>
+        ) : null}
 
         {current ? (
           <View style={styles.nowCard}>
@@ -283,10 +360,12 @@ export default function Inicio() {
                 ))}
               </View>
             ) : null}
-            <Pressable accessibilityRole="button" onPress={() => router.push('/ahora')} style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }]}>
-              <LinearGradient colors={gradients.action} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.startBtn}>
-                <Text style={styles.startText}>{t('hoy.start')}</Text>
-              </LinearGradient>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push({ pathname: '/foco', params: { id: current.id } })}
+              style={({ pressed }) => [styles.startBtn, { opacity: pressed ? 0.85 : 1 }]}
+            >
+              <Text style={styles.startText}>{t('focus.start')}</Text>
             </Pressable>
           </View>
         ) : null}
@@ -384,7 +463,7 @@ export default function Inicio() {
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, minHeight: 52, marginTop: 6 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  pill: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 34, paddingHorizontal: 12, borderRadius: 17, backgroundColor: colors.white },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 34, paddingHorizontal: 12, borderRadius: 17, backgroundColor: colors.card },
   pillText: { fontFamily: fonts.medium, fontSize: 14, color: colors.ink },
   titleBlock: { paddingHorizontal: 24, marginTop: 28, gap: 10 },
   center: { flex: 1, justifyContent: 'center' },
@@ -392,20 +471,36 @@ const styles = StyleSheet.create({
 
   body: { paddingTop: 8, paddingBottom: 140, gap: 18 },
   hero: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 20 },
-  halo: { width: 74, height: 74, borderRadius: 37, opacity: 0.9 },
-  heroTitle: { fontFamily: fonts.medium, fontSize: 26, lineHeight: 30, letterSpacing: -0.7, color: colors.ink },
+  halo: { width: 66, height: 66, borderRadius: 33, opacity: 0.9 },
+  heroTitle: { fontFamily: fonts.semibold, fontSize: 26, lineHeight: 30, letterSpacing: -0.9, color: colors.ink },
 
-  nowCard: { marginHorizontal: 20, backgroundColor: colors.white, borderRadius: 28, padding: 18, gap: 12 },
+  routine: { marginHorizontal: 20, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, paddingRight: 16, borderRadius: 22, borderWidth: 1, borderColor: colors.line },
+  routineIcon: { fontSize: 22, width: 32, textAlign: 'center', color: colors.ink },
+  routineTitle: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink },
+  routineCta: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
+
+  topCard: { marginHorizontal: 20, backgroundColor: colors.ink, borderRadius: 28, padding: 18, gap: 4 },
+  topHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  sectionLabel: { fontFamily: fonts.semibold, fontSize: 12, letterSpacing: 0.6, color: '#9A9A9A' },
+  topCount: { fontFamily: fonts.semibold, fontSize: 13, color: colors.white },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 4 },
+  topNum: { width: 22, fontFamily: fonts.bold, fontSize: 22, letterSpacing: -0.5, color: colors.white },
+  topTitle: { fontFamily: fonts.semibold, fontSize: 17, lineHeight: 21, color: colors.white },
+  star: { width: 28, alignItems: 'center' },
+  starText: { fontSize: 18, color: '#6E6E6E' },
+  topHint: { fontFamily: fonts.regular, fontSize: 13, color: '#8A8A8A', marginTop: 6 },
+
+  nowCard: { marginHorizontal: 20, backgroundColor: colors.card, borderRadius: 28, padding: 18, gap: 12 },
   nowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  nowLabel: { flexShrink: 1, fontFamily: fonts.semibold, fontSize: 12, letterSpacing: 0.3, color: colors.accentDark },
+  nowLabel: { flexShrink: 1, fontFamily: fonts.semibold, fontSize: 12, letterSpacing: 0.6, color: colors.muted },
   nowRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  nowTitle: { flex: 1, fontFamily: fonts.medium, fontSize: 22, lineHeight: 27, letterSpacing: -0.4, color: colors.ink },
+  nowTitle: { flex: 1, fontFamily: fonts.semibold, fontSize: 22, lineHeight: 27, letterSpacing: -0.6, color: colors.ink },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { minHeight: 34, paddingHorizontal: 12, borderRadius: 17, backgroundColor: colors.soft, justifyContent: 'center' },
-  chipDone: { backgroundColor: '#EFE9FA' },
-  chipText: { fontFamily: fonts.medium, fontSize: 14, color: colors.accentDark },
+  chip: { minHeight: 34, paddingHorizontal: 12, borderRadius: 17, backgroundColor: colors.white, justifyContent: 'center' },
+  chipDone: { backgroundColor: colors.soft },
+  chipText: { fontFamily: fonts.medium, fontSize: 14, color: colors.ink },
   chipTextDone: { color: colors.faint, textDecorationLine: 'line-through' },
-  startBtn: { height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
+  startBtn: { height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.ink },
   startText: { fontFamily: fonts.semibold, fontSize: 16, color: colors.white },
 
   pipelineWrap: { flexGrow: 0 },
@@ -418,7 +513,7 @@ const styles = StyleSheet.create({
   capital: { textTransform: 'capitalize' },
   doneToggle: { minHeight: 36, justifyContent: 'center' },
 
-  card: { backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 20, padding: 14, gap: 6 },
+  card: { backgroundColor: colors.card, borderRadius: 20, padding: 14, gap: 6 },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   cardTime: { flex: 1, fontFamily: fonts.medium, fontSize: 12, color: colors.muted, fontVariant: ['tabular-nums'] },
@@ -426,24 +521,24 @@ const styles = StyleSheet.create({
   done: { color: colors.faint, textDecorationLine: 'line-through' },
   cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   metaText: { flexShrink: 1, fontFamily: fonts.regular, fontSize: 12, color: colors.muted },
-  badge: { paddingHorizontal: 7, height: 20, borderRadius: 10, backgroundColor: colors.soft, justifyContent: 'center' },
-  badgeText: { fontFamily: fonts.medium, fontSize: 11, color: colors.accentDark },
+  badge: { paddingHorizontal: 7, height: 20, borderRadius: 10, backgroundColor: colors.white, justifyContent: 'center' },
+  badgeText: { fontFamily: fonts.medium, fontSize: 11, color: colors.ink },
   event: {
     borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 10,
     gap: 2,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.9)',
-    backgroundColor: 'rgba(255,255,255,0.4)',
+    borderColor: colors.line,
+    backgroundColor: colors.white,
   },
   eventTitle: { fontFamily: fonts.regular, fontSize: 14, color: colors.muted },
   checkCenter: { alignItems: 'center', justifyContent: 'center' },
-  checkOff: { borderWidth: 2, borderColor: '#D9CCF5', backgroundColor: colors.white },
+  checkOff: { borderWidth: 1.5, borderColor: colors.faint, backgroundColor: colors.white },
 
-  connect: { marginHorizontal: 20, backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 24, padding: 18, gap: 6 },
+  connect: { marginHorizontal: 20, borderWidth: 1, borderColor: colors.line, borderRadius: 24, padding: 18, gap: 6 },
   connectTitle: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
-  connectCta: { fontFamily: fonts.semibold, fontSize: 15, color: colors.accentDark, marginTop: 6 },
+  connectCta: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink, marginTop: 6, textDecorationLine: 'underline' },
   toast: {
     position: 'absolute',
     left: 24,
