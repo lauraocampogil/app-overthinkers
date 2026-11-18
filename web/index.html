@@ -19,6 +19,7 @@
       <nav class="nav-links" aria-label="Secciones">
         <a href="#como">Cómo funciona</a>
         <a href="#por-que">Por qué GetGo</a>
+        <a href="#para-ti">Para ti</a>
         <a href="#mascota">Tu mascota</a>
       </nav>
       <a class="btn btn-dark btn-small" href="#descargar">Descargar</a>
@@ -51,7 +52,7 @@
               <div class="island" aria-hidden="true"></div>
               <div class="tabs" aria-hidden="true"><span class="on">Hoy</span><span>Metas</span></div>
               <div class="m-hero">
-                <div class="ring"><div><div style="width:56px;height:56px" data-mascot="phone"></div></div></div>
+                <div class="ring"><div><div class="art" data-hero-mascot="small"></div></div></div>
                 <div><h4>2 de 3 hechas</h4><p>Siguiente: Hacer la compra · 18:00</p></div>
               </div>
               <div class="top3">
@@ -69,7 +70,7 @@
               <div class="dock" aria-hidden="true"><span class="plus">+</span><span class="mic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="9" y="3" width="6" height="11" rx="3" stroke="#fff" stroke-width="2"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></span></div>
             </div>
           </div>
-          <div class="floating" data-mascot="float" aria-hidden="true"></div>
+          <div class="hero-mascot" data-hero-mascot="big" aria-hidden="true"></div>
         </div>
       </div>
     </section>
@@ -85,6 +86,33 @@
           <div class="step"><span class="num">01</span><h3>Suéltalo</h3><p>Habla, escribe, pega un mensaje o una captura. Tal cual te sale, sin orden.</p></div>
           <div class="step"><span class="num">02</span><h3>GetGo decide</h3><p>Elige tus 3 prioridades, el día, la hora, el sitio y cuánto te va a llevar a ti. Y lo pone en tu calendario.</p></div>
           <div class="step"><span class="num">03</span><h3>Hazlo de verdad</h3><p>Empiezas un foco con un toque y lo cierras con una foto. Hasta entonces, el aviso vuelve.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="para-ti" aria-labelledby="pt-title" style="padding-top:0">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="kicker">Hecho a tu medida</span>
+          <h2 id="pt-title">Tus prioridades no son las de nadie más.</h2>
+          <p>Al empezar eliges las 3 cosas que más te importan ahora. GetGo decide cada día pensando en ellas, no en una lista genérica.</p>
+        </div>
+        <div class="personas">
+          <div class="persona">
+            <div class="persona-head"><div class="art" data-seed="Laura"></div><div><b>Laura</b><span>Juega al fútbol y entrena</span></div></div>
+            <div class="areas"><span class="area">Gimnasio</span><span class="area">Fútbol</span><span class="area">Comer bien</span></div>
+            <div class="mini-top"><small>SUS 3 DE HOY</small><div><i>1</i>Entreno de fútbol · 19:00</div><div><i>2</i>Gym: piernas</div><div><i>3</i>Preparar la comida de mañana</div></div>
+          </div>
+          <div class="persona">
+            <div class="persona-head"><div class="art" data-seed="Sofía"></div><div><b>Sofía</b><span>Estudia y quiere ganar fuerza</span></div></div>
+            <div class="areas"><span class="area">Estudios</span><span class="area">Comer</span><span class="area">Coger músculo</span></div>
+            <div class="mini-top"><small>SUS 3 DE HOY</small><div><i>1</i>2 h de estadística</div><div><i>2</i>Fuerza: espalda</div><div><i>3</i>Comida con proteína</div></div>
+          </div>
+          <div class="persona">
+            <div class="persona-head"><div class="art" data-seed="Lorena"></div><div><b>Lorena</b><span>Trabaja y quiere bajar de peso</span></div></div>
+            <div class="areas"><span class="area">Trabajo</span><span class="area">Compras y casa</span><span class="area">Deporte</span></div>
+            <div class="mini-top"><small>SUS 3 DE HOY</small><div><i>1</i>Presentación del cliente</div><div><i>2</i>Compra en el Colruyt</div><div><i>3</i>Caminar 30 min</div></div>
+          </div>
         </div>
       </div>
     </section>
@@ -134,12 +162,28 @@
           <h2 id="m-title">Nadie tiene una igual que la tuya.</h2>
           <p>Durante tu primera semana, tus ondas se van tiñendo de un color que es solo tuyo. El día 7 nace tu mascota. Crece con tus rachas, te recuerda tu meta y puedes enseñarla.</p>
         </div>
-        <div class="mascots">
-          <div class="m-card"><div class="art" data-mascot="258"></div><b>Nube</b><span>Racha de 12 días</span></div>
-          <div class="m-card"><div class="art" data-mascot="318"></div><b>Mochi</b><span>Racha de 31 días</span></div>
-          <div class="m-card"><div class="art" data-mascot="222"></div><b>Boo</b><span>Racha de 7 días</span></div>
-          <div class="m-card"><div class="art" data-mascot="292"></div><b>Lila</b><span>Racha de 54 días</span></div>
-          <div class="m-card"><div class="art" data-mascot="160"></div><b>Kiwi</b><span>Racha de 3 días</span></div>
+        <div class="try">
+          <div>
+            <h3 style="font-size:28px;letter-spacing:-0.04em;margin:0 0 8px">Escribe tu nombre.</h3>
+            <p style="color:var(--muted);margin:0">Así podría ser la tuya. En la app, tu mascota sale de tu cuenta: es única y nadie más la tiene.</p>
+            <form class="field" id="try-form" autocomplete="off">
+              <label for="try-input" style="position:absolute;left:-9999px">Tu nombre</label>
+              <input id="try-input" maxlength="24" placeholder="Tu nombre" />
+              <button class="btn btn-dark" type="submit">Ver</button>
+            </form>
+            <div class="swatch" id="try-swatch" aria-hidden="true"></div>
+          </div>
+          <div class="try-stage">
+            <div class="art" id="try-art" data-seed="GetGo"></div>
+            <span class="try-name" id="try-name">GetGo</span>
+          </div>
+        </div>
+        <div class="mascots" style="margin-top:16px">
+          <div class="m-card"><div class="art" data-seed="Nube"></div><b>Nube</b><span>Racha de 12 días</span></div>
+          <div class="m-card"><div class="art" data-seed="Mochi"></div><b>Mochi</b><span>Racha de 31 días</span></div>
+          <div class="m-card"><div class="art" data-seed="Boo" data-mood="feliz"></div><b>Boo</b><span>Racha de 7 días</span></div>
+          <div class="m-card"><div class="art" data-seed="Lila"></div><b>Lila</b><span>Racha de 54 días</span></div>
+          <div class="m-card"><div class="art" data-seed="Kiwi"></div><b>Kiwi</b><span>Racha de 3 días</span></div>
         </div>
         <div class="growth" aria-label="De la onda gris a tu mascota en 7 días">
           <div class="g"><div data-wave="0"></div><b>Día 1</b><span>Tu onda, en gris</span></div>
@@ -148,13 +192,14 @@
           <div class="bar"></div>
           <div class="g"><div data-wave="0.8"></div><b>Día 5</b><span>Casi es tu color</span></div>
           <div class="bar"></div>
-          <div class="g"><div data-mascot="292"></div><b>Día 7</b><span>Nace tu mascota</span></div>
+          <div class="g"><div data-seed="Lila"></div><b>Día 7</b><span>Nace tu mascota</span></div>
         </div>
       </div>
     </section>
 
     <section class="cta" aria-labelledby="cta-title">
       <div class="wrap">
+        <div class="cta-mascots" aria-hidden="true"><div class="art" data-seed="Mochi"></div><div class="art" data-seed="Laura" data-mood="feliz"></div><div class="art" data-seed="Kiwi"></div></div>
         <h2 id="cta-title">Tu cabeza no es una lista de tareas.</h2>
         <p>Déjala a GetGo y empieza.</p>
         <div class="cta-row"><a class="btn btn-dark" href="#descargar">Descargar GetGo</a><a class="btn btn-light" href="soporte.html">Preguntas</a></div>
@@ -174,51 +219,51 @@
     </div>
   </footer>
 
+  <script src="mascota.js"></script>
   <script>
-    // Mascots: same idea as the app: a glossy blob whose colours come from one hue, so each one is different.
-    const hsl = (h, s, l) => `hsl(${h} ${s}% ${l}%)`;
-    const palette = (h) => ({ core: hsl(h, 55, 40), mid: hsl(h, 70, 58), edge: hsl(h, 85, 76), a: hsl(h - 45, 90, 66) });
-    let uid = 0;
-    function mascot(h) {
-      const p = palette(h);
-      const id = `m${uid++}`;
-      return `<svg class="mascot" viewBox="0 0 200 200" role="img" aria-label="Mascota de GetGo"><defs>
-        <radialGradient id="${id}b" cx="50%" cy="62%" r="62%"><stop offset="0" stop-color="${p.core}"/><stop offset="0.6" stop-color="${p.mid}"/><stop offset="1" stop-color="${p.edge}"/></radialGradient>
-        <radialGradient id="${id}h" cx="34%" cy="26%" r="34%"><stop offset="0" stop-color="#fff" stop-opacity="0.75"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>
-        <g class="body"><path d="M104 18C152 16 186 52 184 100C182 150 150 184 100 184C50 184 16 150 18 100C20 52 56 20 104 18Z" fill="url(#${id}b)"/>
-        <path d="M104 18C152 16 186 52 184 100C182 150 150 184 100 184C50 184 16 150 18 100C20 52 56 20 104 18Z" fill="url(#${id}h)"/></g>
-        <g class="eyes"><rect x="78" y="80" width="13" height="26" rx="6.5" fill="#fff"/><rect x="109" y="80" width="13" height="26" rx="6.5" fill="#fff"/></g></svg>`;
-    }
-    function wave(t) {
-      // Grey at first, then the person's colour.
-      const g = (v) => Math.round(v);
-      const mix = (from, to) => from.map((v, i) => g(v + (to[i] - v) * t));
+    // Waves for the first week: grey that turns into the person's colour.
+    function wave(t, k) {
+      const mix = (from, to) => from.map((v, i) => Math.round(v + (to[i] - v) * t));
       const c1 = mix([190, 190, 190], [245, 154, 203]);
       const c2 = mix([92, 92, 92], [124, 77, 255]);
-      return `<svg viewBox="0 0 64 64" role="img" aria-label="Onda de voz"><defs><radialGradient id="w${uid}" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="rgb(${c2})"/><stop offset="1" stop-color="rgb(${c1})" stop-opacity="0.15"/></radialGradient></defs>
-        <circle cx="32" cy="32" r="30" fill="url(#w${uid++})"/><path d="M6 32c6-8 10-8 16 0s10 8 16 0 10-8 16 0 6 4 8 2" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`;
+      return `<svg viewBox="0 0 64 64" role="img" aria-label="Onda de voz"><defs><radialGradient id="w${k}" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="rgb(${c2})"/><stop offset="1" stop-color="rgb(${c1})" stop-opacity="0.15"/></radialGradient></defs>
+        <circle cx="32" cy="32" r="30" fill="url(#w${k})"/><path d="M6 32c6-8 10-8 16 0s10 8 16 0 10-8 16 0 6 4 8 2" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`;
     }
-    document.querySelectorAll('[data-wave]').forEach((el) => (el.innerHTML = wave(Number(el.dataset.wave))));
-    document.querySelectorAll('[data-mascot]').forEach((el) => {
-      const v = el.dataset.mascot;
-      if (/^\d+$/.test(v)) el.innerHTML = mascot(Number(v));
-    });
+    document.querySelectorAll('[data-wave]').forEach((el, k) => (el.innerHTML = wave(Number(el.dataset.wave), k)));
 
-    // Hero: the phone and the floating mascot change person every few seconds, to show each one is unique.
-    const hues = [292, 258, 318, 222, 160, 20];
+    // Hero: a different person every few seconds: phone colours and mascot follow their mascot.
+    const people = ['Laura', 'Sofía', 'Lorena', 'Nube', 'Mochi', 'Kiwi'];
     let i = 0;
     const phone = document.getElementById('phone');
+    const heroEls = document.querySelectorAll('[data-hero-mascot]');
     function paint() {
-      const h = hues[i % hues.length];
-      const p = palette(h);
+      const seed = people[i % people.length];
+      heroEls.forEach((el) => { el.dataset.seed = seed; });
+      let p;
+      heroEls.forEach((el) => { p = GetGoMascot.mount(el); });
       phone.style.setProperty('--a', p.a);
       phone.style.setProperty('--mid', p.mid);
       phone.style.setProperty('--core', p.core);
-      document.querySelectorAll('[data-mascot="phone"], [data-mascot="float"]').forEach((el) => (el.innerHTML = mascot(h)));
       i++;
     }
     paint();
-    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(paint, 3200);
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(paint, 3600);
+
+    // Try your name.
+    const art = document.getElementById('try-art');
+    const name = document.getElementById('try-name');
+    const sw = document.getElementById('try-swatch');
+    function tryName(v) {
+      const n = v.trim() || 'GetGo';
+      art.dataset.seed = n;
+      const p = GetGoMascot.mount(art);
+      name.textContent = n;
+      sw.innerHTML = [p.a, p.edge, p.mid, p.core].map((c) => `<span style="background:${c}"></span>`).join('');
+    }
+    tryName('GetGo');
+    const input = document.getElementById('try-input');
+    input.addEventListener('input', () => tryName(input.value));
+    document.getElementById('try-form').addEventListener('submit', (e) => { e.preventDefault(); tryName(input.value); });
 
     const nav = document.getElementById('nav');
     addEventListener('scroll', () => nav.classList.toggle('scrolled', scrollY > 8), { passive: true });

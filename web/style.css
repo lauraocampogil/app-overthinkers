@@ -176,3 +176,36 @@ footer a:hover { color: var(--ink); }
 @media (max-width: 900px) {
   .floating { width: 80px; height: 80px; right: 0; top: -36px; }
 }
+
+/* ---- v2: real mascots, personas, try-your-name ---- */
+.hero-mascot { position: absolute; width: 150px; height: 150px; right: -36px; top: 8px; }
+.ring .art { width: 60px; height: 60px; }
+.personas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.persona { background: var(--card); border-radius: var(--radius); padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+.persona-head { display: flex; align-items: center; gap: 14px; }
+.persona-head .art { width: 64px; height: 64px; flex: 0 0 auto; }
+.persona-head b { display: block; font-size: 20px; letter-spacing: -0.03em; }
+.persona-head span { font-size: 13px; color: var(--muted); }
+.areas { display: flex; flex-wrap: wrap; gap: 6px; }
+.area { font-size: 13px; font-weight: 500; padding: 7px 12px; border-radius: 99px; background: #fff; }
+.mini-top { background: var(--ink); color: #fff; border-radius: 20px; padding: 12px 14px; }
+.mini-top small { font-size: 10px; letter-spacing: 0.08em; color: #9a9a9a; font-weight: 600; }
+.mini-top div { display: flex; gap: 10px; align-items: baseline; padding: 6px 0; font-size: 14px; font-weight: 600; }
+.mini-top i { font-style: normal; width: 12px; color: #fff; font-weight: 700; }
+.try { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; background: var(--card); border-radius: 40px; padding: 48px; }
+.try-stage { position: relative; display: grid; place-items: center; aspect-ratio: 1; max-width: 360px; width: 100%; margin: 0 auto; }
+.try-stage .art { width: 70%; height: 70%; margin-bottom: 40px; }
+.try-name { position: absolute; bottom: 0; font-weight: 700; font-size: 22px; letter-spacing: -0.03em; }
+.field { display: flex; gap: 8px; margin-top: 24px; max-width: 420px; }
+.field input { flex: 1; height: 52px; border-radius: 999px; border: 1px solid var(--line); background: #fff; padding: 0 20px; font: inherit; font-size: 16px; color: var(--ink); outline: none; }
+.field input:focus { border-color: var(--ink); }
+.swatch { display: flex; gap: 6px; margin-top: 18px; }
+.swatch span { width: 28px; height: 28px; border-radius: 50%; }
+.cta-mascots { display: flex; justify-content: center; gap: 4px; margin-bottom: 28px; }
+.cta-mascots .art { width: 72px; height: 72px; }
+.cta-mascots .art:nth-child(2) { width: 96px; height: 96px; margin-top: -12px; }
+@media (max-width: 900px) {
+  .personas { grid-template-columns: 1fr; }
+  .try { grid-template-columns: 1fr; padding: 28px; border-radius: 32px; }
+  .hero-mascot { width: 104px; height: 104px; right: -6px; top: -40px; }
+}
