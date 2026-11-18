@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Anillo } from '@/components/Anillo';
 import { ArrowRightIcon, CalendarIcon, CameraIcon, ChartIcon, ClockIcon, StarIcon, MoonIcon, PinIcon, PlayIcon, SunIcon, TargetIcon } from '@/components/Iconos';
@@ -14,7 +14,7 @@ import { CheckIcon, FlameIcon, IconCircle, PersonIcon, Screen } from '@/componen
 import { locale, minutesLabel, t } from '@/i18n';
 import { useAtajos } from '@/lib/atajos';
 import { useAuth, useMascot } from '@/lib/auth';
-import { connectCalendar, dayTimeline, defaultCalendarId, refreshAgenda, useAgenda } from '@/lib/calendario';
+import { dayTimeline, useAgenda } from '@/lib/calendario';
 import { estimate } from '@/lib/duraciones';
 import { useVoz } from '@/lib/paleta';
 import { addDays, daysBetween } from '@/lib/planner';
@@ -88,6 +88,8 @@ export default function Inicio() {
   const [showDone, setShowDone] = useState(false);
   const retos = useDay((s) => s.retos);
   const [weight, setWeight] = useState('');
+  const [sel, setSel] = useState(todayIso());
+  const nudges = useDay((s) => s.nudges);
 
   const minutesOf = (task: Task) => estimate(task, learned).minutes;
   const durLabel = (task: Task) => {
@@ -96,13 +98,6 @@ export default function Inicio() {
   };
   const toggle = (task: Task) => (task.status === 'hecha' ? undoDone(task.id) : markDone(task.id));
 
-  const connect = async () => {
-    if (!(await connectCalendar())) return;
-    const target = settings.calendarTarget ?? (await defaultCalendarId());
-    useDay.getState().setSettings({ calendar: 'write', calendarTarget: target });
-    await refreshAgenda({ ...settings, calendar: 'write', calendarTarget: target });
-    useDay.getState().replan();
-  };
 
   const params = useLocalSearchParams<{ added?: string; today?: string; later?: string; goals?: string }>();
   const [toast, setToast] = useState<string | null>(null);
@@ -146,10 +141,6 @@ export default function Inicio() {
   const ordered = timeline ? [...timeline.blocks.flatMap((b) => (b.type === 'task' ? [b.task] : [])), ...timeline.overflow] : pending;
   const rest = ordered.filter((x) => !topRows.some((y) => y.id === x.id));
 
-  // Next 6 days + later, as a grid like the home-screen widgets.
-  const future = tasks.filter((x) => x.status === 'pendiente' && x.day > today);
-  const week = Array.from({ length: 6 }, (_, i) => addDays(today, i + 1));
-  const later = future.filter((x) => daysBetween(today, x.day) > 6);
 
   // The goal that ends soonest, as a countdown next to the streak.
   const nextGoal = goals
@@ -191,7 +182,7 @@ export default function Inicio() {
 
   if (!tasks.some((x) => x.status === 'pendiente' || x.doneOn === today) && !goals.some((g) => !g.archived)) {
     return (
-      <Screen>
+      <Screen tabs>
         {header}
         <View style={styles.titleBlock}>
           <Text style={type.title} accessibilityRole="header">{t('home.title')}</Text>
@@ -225,10 +216,151 @@ export default function Inicio() {
     </Pressable>
   );
 
+  // The next 7 days as a calm strip: tap a day to see only what that day holds.
+  const days = Array.from({ length: 7 }, (_, i) => addDays(today, i));
+  const countOn = (day: string) => (day === today ? pending.length : tasks.filter((x) => x.status === 'pendiente' && x.day === day).length);
+  const strip = (
+    <View style={styles.strip} accessibilityRole="tablist">
+      {days.map((day) => {
+        const on = day === sel;
+        const date = new Date(`${day}T12:00:00`);
+        return (
+          <Pressable
+            key={day}
+            onPress={() => setSel(day)}
+            style={[styles.stripDay, on && styles.stripDayOn]}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
+            accessibilityLabel={`${date.toLocaleDateString(locale, { weekday: 'long', day: 'numeric' })}: ${countOn(day)}`}
+          >
+            <Text style={[styles.stripName, on && { color: '#BDBDBD' }]}>{date.toLocaleDateString(locale, { weekday: 'short' }).slice(0, 2)}</Text>
+            <Text style={[styles.stripNum, on && { color: colors.white }]}>{date.getDate()}</Text>
+            <View style={[styles.stripDot, { opacity: countOn(day) ? 1 : 0 }, on && { backgroundColor: colors.white }]} />
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+
+  const selTasks = tasks.filter((x) => x.day === sel && x.status === 'pendiente').sort((a, b) => (a.at ?? '99').localeCompare(b.at ?? '99'));
+  const dayView = (
+    <View style={styles.section}>
+      <Text style={styles.dayTitle} accessibilityRole="header">
+        {new Date(`${sel}T12:00:00`).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
+      </Text>
+      <Text style={[styles.rowMeta, { marginBottom: 10 }]}>{selTasks.length ? t('day.count', { n: selTasks.length }) : t('day.nothing')}</Text>
+      {(['manana', 'noche'] as const).map((rk) => {
+        const r = routineOf(routines, rk);
+        return r.enabled && r.steps.length ? (
+          <View key={rk} style={styles.dayRoutineRow}>
+            {rk === 'manana' ? <SunIcon size={16} color={colors.muted} /> : <MoonIcon size={16} color={colors.muted} />}
+            <Text style={[styles.rowMeta, { flex: 1 }]}>
+              {t(`routine.${rk}`)} · {r.at} · {t('routine.stepsShort', { n: r.steps.length })}
+            </Text>
+          </View>
+        ) : null;
+      })}
+      {selTasks.map((task) => (
+        <Deslizar key={task.id} today={today} onMove={(d) => moveTo(task.id, d)}>
+          {row(task)}
+        </Deslizar>
+      ))}
+      {!selTasks.length ? (
+        <Pressable onPress={() => router.push('/semana')} style={styles.dayPlan} accessibilityRole="button">
+          <CalendarIcon size={18} />
+          <Text style={[styles.routineTitle, { flex: 1 }]}>{t('week.cardTitle')}</Text>
+          <ArrowRightIcon size={16} />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+
+  // Weekly check-in and the day's challenge come as one calm pop-up, not as cards that stay on screen.
+  const popupKind = nudges.laterOn === today ? null : checkin ? 'checkin' : offer ? 'reto' : null;
+  const snooze = () => useDay.getState().setNudge({ laterOn: today });
+  const popup = (
+    <Modal visible={!!popupKind && !sheet} transparent animationType="fade" onRequestClose={snooze}>
+      <Pressable style={styles.popBack} onPress={snooze} accessibilityLabel={t('popup.later')} />
+      <View style={styles.popCard}>
+        {popupKind === 'checkin' && checkin ? (
+          <>
+            <View style={styles.offerHead}>
+              <ChartIcon size={18} />
+              <Text style={styles.label}>{t('checkin.label').toUpperCase()}</Text>
+            </View>
+            <Text style={styles.popTitle}>{isWeightGoal(checkin) ? t('checkin.weightTitle') : t('checkin.photoTitle')}</Text>
+            <Text style={styles.rowMeta}>{checkin.title}</Text>
+            {isWeightGoal(checkin) ? (
+              <View style={styles.weightRow}>
+                <TextInput
+                  value={weight}
+                  onChangeText={setWeight}
+                  keyboardType="decimal-pad"
+                  placeholder="62,5"
+                  placeholderTextColor={colors.faint}
+                  style={styles.weightInput}
+                  accessibilityLabel={t('checkin.weightTitle')}
+                />
+                <Text style={styles.unit}>kg</Text>
+                <Pressable
+                  onPress={() => {
+                    const v = Number(weight.replace(',', '.'));
+                    if (v > 20 && v < 400) useDay.getState().addCheckin(checkin.id, { value: v });
+                    setWeight('');
+                  }}
+                  style={styles.offerYes}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.offerYesText}>{t('task.save')}</Text>
+                </Pressable>
+              </View>
+            ) : null}
+            <Pressable
+              onPress={async () => {
+                const uri = await keepPhoto(`progress-${checkin.id}-${today}`);
+                if (uri) useDay.getState().addCheckin(checkin.id, { photo: uri });
+              }}
+              style={styles.offerPhoto}
+              accessibilityRole="button"
+            >
+              <CameraIcon size={18} />
+              <Text style={styles.offerNoText}>{t('checkin.photo')}</Text>
+            </Pressable>
+          </>
+        ) : null}
+        {popupKind === 'reto' && offer ? (
+          <>
+            <View style={styles.offerHead}>
+              <StarIcon size={16} />
+              <Text style={styles.label}>{t('reto.label').toUpperCase()}</Text>
+            </View>
+            <Text style={styles.popTitle}>{retoText(offer.id, offer.n)}</Text>
+            <Text style={styles.rowMeta}>
+              {offer.goalId ? t('reto.forGoal', { goal: goals.find((g) => g.id === offer.goalId)?.title ?? '' }) : t('reto.body')} · {t(`routine.${RETOS[offer.id].routine}`)}
+            </Text>
+            <View style={styles.offerBtns}>
+              <Pressable onPress={() => useDay.getState().answerReto(offer.id, true)} style={styles.offerYes} accessibilityRole="button">
+                <Text style={styles.offerYesText}>{t('reto.accept')}</Text>
+              </Pressable>
+              <Pressable onPress={() => useDay.getState().answerReto(offer.id, false)} style={styles.offerNo} accessibilityRole="button">
+                <Text style={styles.offerNoText}>{t('reto.decline')}</Text>
+              </Pressable>
+            </View>
+          </>
+        ) : null}
+        <Pressable onPress={snooze} style={styles.popLater} accessibilityRole="button">
+          <Text style={styles.popLaterText}>{t('popup.later')}</Text>
+        </Pressable>
+      </View>
+    </Modal>
+  );
+
   return (
-    <Screen>
+    <Screen tabs>
       {header}
+      {strip}
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+        {sel !== today ? dayView : (<>
         <View style={styles.hero}>
           <Anillo progress={active.length ? done.length / active.length : 0} size={84} stroke={6} color={voz.mic[1]}>
             {mascot.unlocked ? (
@@ -291,74 +423,6 @@ export default function Inicio() {
           )
         ) : null}
 
-        {checkin ? (
-          <View style={styles.offer}>
-            <View style={styles.offerHead}>
-              <ChartIcon size={18} />
-              <Text style={styles.label}>{t('checkin.label').toUpperCase()}</Text>
-            </View>
-            <Text style={styles.offerTitle}>{isWeightGoal(checkin) ? t('checkin.weightTitle') : t('checkin.photoTitle')}</Text>
-            <Text style={styles.rowMeta}>{checkin.title}</Text>
-            {isWeightGoal(checkin) ? (
-              <View style={styles.weightRow}>
-                <TextInput
-                  value={weight}
-                  onChangeText={setWeight}
-                  keyboardType="decimal-pad"
-                  placeholder="62,5"
-                  placeholderTextColor={colors.faint}
-                  style={styles.weightInput}
-                  accessibilityLabel={t('checkin.weightTitle')}
-                />
-                <Text style={styles.unit}>kg</Text>
-                <Pressable
-                  onPress={() => {
-                    const v = Number(weight.replace(',', '.'));
-                    if (v > 20 && v < 400) useDay.getState().addCheckin(checkin.id, { value: v });
-                    setWeight('');
-                  }}
-                  style={styles.offerYes}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.offerYesText}>{t('task.save')}</Text>
-                </Pressable>
-              </View>
-            ) : null}
-            <Pressable
-              onPress={async () => {
-                const uri = await keepPhoto(`progress-${checkin.id}-${today}`);
-                if (uri) useDay.getState().addCheckin(checkin.id, { photo: uri });
-              }}
-              style={styles.offerPhoto}
-              accessibilityRole="button"
-            >
-              <CameraIcon size={18} />
-              <Text style={styles.offerNoText}>{t('checkin.photo')}</Text>
-            </Pressable>
-          </View>
-        ) : null}
-
-        {offer ? (
-          <View style={styles.offer}>
-            <View style={styles.offerHead}>
-              <StarIcon size={16} />
-              <Text style={styles.label}>{t('reto.label').toUpperCase()}</Text>
-            </View>
-            <Text style={styles.offerTitle}>{retoText(offer.id, offer.n)}</Text>
-            <Text style={styles.rowMeta}>
-              {offer.goalId ? t('reto.forGoal', { goal: goals.find((g) => g.id === offer.goalId)?.title ?? '' }) : t('reto.body')} · {t(`routine.${RETOS[offer.id].routine}`)}
-            </Text>
-            <View style={styles.offerBtns}>
-              <Pressable onPress={() => useDay.getState().answerReto(offer.id, true)} style={styles.offerYes} accessibilityRole="button">
-                <Text style={styles.offerYesText}>{t('reto.accept')}</Text>
-              </Pressable>
-              <Pressable onPress={() => useDay.getState().answerReto(offer.id, false)} style={styles.offerNo} accessibilityRole="button">
-                <Text style={styles.offerNoText}>{t('reto.decline')}</Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : null}
-
         {topRows.length ? (
           <View style={styles.topCard}>
             <View style={styles.topHead}>
@@ -383,49 +447,20 @@ export default function Inicio() {
                 <Check task={task} onToggle={() => toggle(task)} size={28} onDark />
               </Pressable>
             ))}
-          </View>
-        ) : null}
-
-        {current ? (
-          <View style={styles.now}>
-            <Text style={styles.label}>{t('hoy.now').toUpperCase()}</Text>
-            <View style={styles.nowRow}>
-              <Pressable style={{ flex: 1, gap: 6 }} onPress={() => setSheet(current)} accessibilityHint={t('task.options')}>
-                <Text style={styles.nowTitle} numberOfLines={2}>
-                  {current.title}
-                </Text>
-                <View style={styles.metaLine}>
-                  <ClockIcon color={colors.muted} size={13} />
-                  <Text style={styles.rowMeta}>{[timeOf(current), durLabel(current)].filter(Boolean).join(' · ')}</Text>
-                  {current.where ? (
-                    <>
-                      <PinIcon color={colors.muted} size={13} />
-                      <Text style={styles.rowMeta} numberOfLines={1}>
-                        {current.where}
-                      </Text>
-                    </>
-                  ) : null}
-                </View>
-              </Pressable>
+            {current ? (
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`${t('focus.start')}: ${current.title}`}
                 onPress={() => router.push({ pathname: '/foco', params: { id: current.id } })}
-                style={({ pressed }) => [styles.playWrap, pressed && { transform: [{ scale: 0.95 }] }]}
+                style={({ pressed }) => [styles.focusBtn, pressed && { transform: [{ scale: 0.98 }] }]}
               >
-                <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.play}>
-                  <PlayIcon size={26} />
+                <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.focusPlay}>
+                  <PlayIcon size={16} />
                 </LinearGradient>
+                <Text style={styles.focusText} numberOfLines={1}>
+                  {t('focus.start')}
+                </Text>
               </Pressable>
-            </View>
-            {current.checklist.length ? (
-              <View style={styles.chips}>
-                {current.checklist.slice(0, 6).map((i) => (
-                  <Pressable key={i.id} accessibilityRole="checkbox" accessibilityState={{ checked: i.done }} onPress={() => toggleItem(current.id, i.id)} style={[styles.chip, i.done && styles.chipDone]}>
-                    <Text style={[styles.chipText, i.done && styles.done]}>{i.text}</Text>
-                  </Pressable>
-                ))}
-              </View>
             ) : null}
           </View>
         ) : null}
@@ -451,59 +486,7 @@ export default function Inicio() {
           </View>
         ) : null}
 
-        <View style={styles.section}>
-          <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>{t('hoy.week')}</Text>
-          </View>
-          <View style={styles.grid}>
-            {week.map((day, i) => {
-              const list = future.filter((x) => x.day === day);
-              return (
-                <View key={day} style={[styles.dayCard, i === 0 && styles.dayCardNext]}>
-                  <View style={styles.dayHead}>
-                    <Text style={[styles.dayName, i === 0 && { color: colors.white }]}>{i === 0 ? t('hoy.tomorrow') : weekday(day)}</Text>
-                    <Text style={[styles.dayCount, i === 0 && { color: colors.white }]}>{list.length}</Text>
-                  </View>
-                  {(['manana', 'noche'] as const).map((rk) => {
-                    const r = routineOf(routines, rk);
-                    return r.enabled && r.steps.length ? (
-                      <View key={rk} style={styles.dayRoutine}>
-                        {rk === 'manana' ? <SunIcon size={13} color={i === 0 ? '#BDBDBD' : colors.muted} /> : <MoonIcon size={13} color={i === 0 ? '#BDBDBD' : colors.muted} />}
-                        <Text style={[styles.dayRoutineText, i === 0 && { color: '#BDBDBD' }]} numberOfLines={1}>
-                          {r.at} · {t('routine.stepsShort', { n: r.steps.length })}
-                        </Text>
-                      </View>
-                    ) : null;
-                  })}
-                  {list.length ? (
-                    list.slice(0, 3).map((task) => (
-                      <Pressable key={task.id} onPress={() => setSheet(task)} style={styles.dayTask} hitSlop={4}>
-                        <View style={[styles.dayDot, i === 0 && { borderColor: '#8A8A8A' }]} />
-                        <Text style={[styles.dayTaskText, i === 0 && { color: colors.white }]} numberOfLines={2}>
-                          {task.title}
-                        </Text>
-                      </Pressable>
-                    ))
-                  ) : (
-                    <Text style={[styles.dayEmpty, i === 0 && { color: '#8A8A8A' }]}>{t('hoy.colEmpty')}</Text>
-                  )}
-                  {list.length > 3 ? <Text style={[styles.dayEmpty, i === 0 && { color: '#8A8A8A' }]}>+{list.length - 3}</Text> : null}
-                </View>
-              );
-            })}
-          </View>
-          {later.length ? (
-            <Text style={[styles.rowMeta, { marginTop: 4 }]}>{t('hoy.laterCount', { n: later.length })}</Text>
-          ) : null}
-        </View>
-
-        {agenda !== 'on' ? (
-          <Pressable accessibilityRole="button" onPress={() => void connect()} style={styles.connect}>
-            <Text style={styles.routineTitle}>{t(agenda === 'denied' ? 'cal.deniedTitle' : 'cal.connectTitle')}</Text>
-            <Text style={type.muted}>{t(agenda === 'denied' ? 'cal.deniedBody' : 'cal.connectBodyAuto')}</Text>
-            <Text style={styles.connectCta}>{t('cal.connect')}</Text>
-          </Pressable>
-        ) : null}
+        </>)}
       </ScrollView>
 
       {toast ? (
@@ -514,11 +497,29 @@ export default function Inicio() {
       ) : null}
       {dock}
       <TaskSheet task={sheet} onClose={() => setSheet(null)} />
+      {popup}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  strip: { flexDirection: 'row', gap: 6, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 8 },
+  stripDay: { flex: 1, alignItems: 'center', gap: 2, paddingVertical: 8, borderRadius: 18 },
+  stripDayOn: { backgroundColor: colors.ink },
+  stripName: { fontFamily: fonts.medium, fontSize: 12, color: colors.muted, textTransform: 'capitalize' },
+  stripNum: { fontFamily: fonts.semibold, fontSize: 17, color: colors.ink, fontVariant: ['tabular-nums'] },
+  stripDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.ink, marginTop: 2 },
+  dayTitle: { fontFamily: fonts.semibold, fontSize: 24, letterSpacing: -0.7, color: colors.ink, textTransform: 'capitalize', marginTop: 8 },
+  dayRoutineRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 40 },
+  dayPlan: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 56, paddingHorizontal: 16, borderRadius: 20, backgroundColor: colors.card, marginTop: 14 },
+  focusBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 8, marginTop: 6, marginBottom: 8, borderRadius: 28, backgroundColor: '#1E1E1E' },
+  focusPlay: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  focusText: { flex: 1, fontFamily: fonts.semibold, fontSize: 16, color: colors.white },
+  popBack: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.35)' },
+  popCard: { position: 'absolute', left: 12, right: 12, bottom: 28, padding: 22, borderRadius: 30, backgroundColor: colors.white, gap: 6 },
+  popTitle: { fontFamily: fonts.semibold, fontSize: 22, lineHeight: 27, letterSpacing: -0.5, color: colors.ink, marginTop: 4 },
+  popLater: { minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  popLaterText: { fontFamily: fonts.medium, fontSize: 15, color: colors.muted },
   planWeek: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18, borderRadius: 24, backgroundColor: colors.ink },
   planWeekTitle: { fontFamily: fonts.semibold, fontSize: 17, color: colors.white, letterSpacing: -0.2 },
   planWeekBody: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: '#BDBDBD' },
@@ -555,11 +556,11 @@ const styles = StyleSheet.create({
   offerBtns: { flexDirection: 'row', gap: 10, marginTop: 10 },
   offerYes: { minHeight: 46, paddingHorizontal: 20, borderRadius: 23, backgroundColor: colors.ink, alignItems: 'center', justifyContent: 'center' },
   offerYesText: { fontFamily: fonts.semibold, fontSize: 15, color: colors.white },
-  offerNo: { minHeight: 46, paddingHorizontal: 20, borderRadius: 23, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+  offerNo: { minHeight: 46, paddingHorizontal: 20, borderRadius: 23, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' },
   offerNoText: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink },
-  offerPhoto: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', minHeight: 44, paddingHorizontal: 16, borderRadius: 22, backgroundColor: colors.white, marginTop: 8 },
+  offerPhoto: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', minHeight: 44, paddingHorizontal: 16, borderRadius: 22, backgroundColor: colors.card, marginTop: 8 },
   weightRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
-  weightInput: { width: 110, minHeight: 46, paddingHorizontal: 14, borderRadius: 14, backgroundColor: colors.white, fontFamily: fonts.semibold, fontSize: 20, color: colors.ink },
+  weightInput: { width: 110, minHeight: 46, paddingHorizontal: 14, borderRadius: 14, backgroundColor: colors.card, fontFamily: fonts.semibold, fontSize: 20, color: colors.ink },
   unit: { fontFamily: fonts.semibold, fontSize: 16, color: colors.muted, flex: 1 },
   swipeHint: { fontFamily: fonts.regular, fontSize: 12, color: colors.faint, marginTop: 6 },
   dayRoutine: { flexDirection: 'row', alignItems: 'center', gap: 6 },

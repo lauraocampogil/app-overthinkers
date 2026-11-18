@@ -81,7 +81,7 @@ export default function Metas() {
   };
 
   return (
-    <Screen>
+    <Screen tabs>
       <View style={styles.header}>
         <Text style={styles.screenTitle} accessibilityRole="header">{t('tab.goals')}</Text>
         <IconCircle label={t('account.title')} onPress={() => router.push('/cuenta')} size={34}>

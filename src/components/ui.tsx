@@ -9,10 +9,11 @@ import { t } from '@/i18n';
 import { useVoz } from '@/lib/paleta';
 import { colors, fonts } from '@/theme';
 
-export function Screen({ children, style }: { children: ReactNode; style?: ViewStyle }) {
+/** `tabs`: screens with the floating bottom bar keep no bottom inset, so the content scrolls behind the bar. */
+export function Screen({ children, style, tabs = false }: { children: ReactNode; style?: ViewStyle; tabs?: boolean }) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <SafeAreaView style={[{ flex: 1 }, style]} edges={['top', 'bottom']}>
+      <SafeAreaView style={[{ flex: 1 }, style]} edges={tabs ? ['top'] : ['top', 'bottom']}>
         {children}
       </SafeAreaView>
     </View>
@@ -106,8 +107,8 @@ export const PlusIcon = ({ color = colors.ink }: { color?: string }) => (
   </Svg>
 );
 
-export const MicIcon = ({ color = colors.white }: { color?: string }) => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+export const MicIcon = ({ color = colors.white, size = 24 }: { color?: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Rect x={9} y={3} width={6} height={11} rx={3} stroke={color} strokeWidth={2} />
     <Path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke={color} strokeWidth={2} strokeLinecap="round" />
   </Svg>

@@ -4,6 +4,10 @@
  * Plurals: keys ending in `_one` / `_other` are picked automatically from `{n}`.
  */
 const es = {
+  'day.count_one': "{n} cosa por hacer",
+  'day.count_other': "{n} cosas por hacer",
+  'day.nothing': "Nada planeado todavía",
+  'popup.later': "Más tarde",
   'week.title': "Planificar mi semana",
   'week.body': "Cuéntame todo lo que quieres hacer esta semana: gym, entrenos, estudiar, cocinar, lavar la losa… y a qué hora tienes cosas fijas. Yo marco las prioridades y lo pongo en tu horario.",
   'week.placeholder': "Ej.: gym 3 veces, entreno de fútbol martes y jueves a las 19:00, cocinar para 3 días, lavar la losa, mandar 5 CV…",
@@ -574,6 +578,10 @@ export type Key = keyof typeof es;
 type Dict = Record<Key, string>;
 
 const en: Dict = {
+  'day.count_one': "{n} thing to do",
+  'day.count_other': "{n} things to do",
+  'day.nothing': "Nothing planned yet",
+  'popup.later': "Later",
   'week.title': "Plan my week",
   'week.body': "Tell me everything you want to do this week: gym, training, studying, cooking, dishes… and when your fixed things are. I mark the priorities and put it all in your schedule.",
   'week.placeholder': "E.g. gym 3 times, football training Tue and Thu at 19:00, cook for 3 days, do the dishes, send 5 CVs…",
@@ -1131,6 +1139,10 @@ const en: Dict = {
 };
 
 const fr: Dict = {
+  'day.count_one': "{n} chose à faire",
+  'day.count_other': "{n} choses à faire",
+  'day.nothing': "Rien de prévu pour l'instant",
+  'popup.later': "Plus tard",
   'week.title': "Planifier ma semaine",
   'week.body': "Dis-moi tout ce que tu veux faire cette semaine : salle, entraînements, études, cuisine, vaisselle… et tes horaires fixes. Je marque les priorités et je mets tout dans ton agenda.",
   'week.placeholder': "Ex. : salle 3 fois, entraînement de foot mardi et jeudi à 19:00, cuisiner pour 3 jours, faire la vaisselle, envoyer 5 CV…",
@@ -1688,6 +1700,10 @@ const fr: Dict = {
 };
 
 const nl: Dict = {
+  'day.count_one': "{n} ding te doen",
+  'day.count_other': "{n} dingen te doen",
+  'day.nothing': "Nog niets gepland",
+  'popup.later': "Later",
   'week.title': "Mijn week plannen",
   'week.body': "Vertel me alles wat je deze week wilt doen: gym, trainingen, studeren, koken, afwassen… en wanneer je vaste dingen hebt. Ik markeer de prioriteiten en zet alles in je planning.",
   'week.placeholder': "Bv.: 3 keer gym, voetbaltraining di en do om 19:00, koken voor 3 dagen, afwassen, 5 cv's sturen…",
@@ -2245,6 +2261,10 @@ const nl: Dict = {
 };
 
 const de: Dict = {
+  'day.count_one': "{n} Sache zu tun",
+  'day.count_other': "{n} Sachen zu tun",
+  'day.nothing': "Noch nichts geplant",
+  'popup.later': "Später",
   'week.title': "Meine Woche planen",
   'week.body': "Erzähl mir alles, was du diese Woche machen willst: Gym, Training, Lernen, Kochen, Abwasch… und wann deine festen Termine sind. Ich markiere die Prioritäten und trage alles in deinen Plan ein.",
   'week.placeholder': "Z. B.: 3× Gym, Fußballtraining Di und Do um 19:00, für 3 Tage kochen, abwaschen, 5 Bewerbungen schicken…",
@@ -2802,6 +2822,10 @@ const de: Dict = {
 };
 
 const pt: Dict = {
+  'day.count_one': "{n} coisa para fazer",
+  'day.count_other': "{n} coisas para fazer",
+  'day.nothing': "Nada planeado ainda",
+  'popup.later': "Mais tarde",
   'week.title': "Planear a minha semana",
   'week.body': "Diz-me tudo o que queres fazer esta semana: ginásio, treinos, estudar, cozinhar, lavar a loiça… e a que horas tens compromissos fixos. Eu marco as prioridades e ponho tudo no teu horário.",
   'week.placeholder': "Ex.: ginásio 3 vezes, treino de futebol terça e quinta às 19:00, cozinhar para 3 dias, lavar a loiça, enviar 5 CV…",
@@ -3359,6 +3383,10 @@ const pt: Dict = {
 };
 
 const it: Dict = {
+  'day.count_one': "{n} cosa da fare",
+  'day.count_other': "{n} cose da fare",
+  'day.nothing': "Ancora niente in programma",
+  'popup.later': "Più tardi",
   'week.title': "Pianificare la mia settimana",
   'week.body': "Dimmi tutto quello che vuoi fare questa settimana: palestra, allenamenti, studio, cucinare, lavare i piatti… e gli orari fissi. Io segno le priorità e metto tutto nella tua agenda.",
   'week.placeholder': "Es.: palestra 3 volte, allenamento di calcio mar e gio alle 19:00, cucinare per 3 giorni, lavare i piatti, mandare 5 CV…",

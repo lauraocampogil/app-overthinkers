@@ -62,6 +62,9 @@ type DayState = {
   addParsed: (result: Pick<ParseResult, 'tasks' | 'goals'>, opts?: { pinDays?: boolean }) => AddResult & { goals: number };
   /** Week planned (to show "Planifica tu semana" only once a week). */
   weekPlannedOn: string | null;
+  /** Pop-ups on Hoy: the day the last challenge was offered (one per day) and the day "later" was tapped. */
+  nudges: { retoOn?: string; laterOn?: string };
+  setNudge: (patch: { retoOn?: string; laterOn?: string }) => void;
   toggleItem: (taskId: string, itemId: string) => void;
   addItem: (taskId: string, text: string) => void;
   setItemText: (taskId: string, itemId: string, text: string) => void;
@@ -132,6 +135,7 @@ const initial = {
   focusLog: {} as Record<string, number>,
   retos: [] as Reto[],
   weekPlannedOn: null as string | null,
+  nudges: {} as { retoOn?: string; laterOn?: string },
 };
 
 const items = (list?: string[]): ChecklistItem[] =>
@@ -464,8 +468,11 @@ export const useDay = create<DayState>()(
           syncDay(get());
         },
 
+        setNudge: (patch) => set({ nudges: { ...get().nudges, ...patch } }),
         offerReto: (id, goalId) => {
-          if (get().retos.some((r) => r.id === id && r.status === 'offered')) return;
+          // One challenge a day: never a second offer on the same day, whatever the answer to the first.
+          if (get().nudges.retoOn === today() || get().retos.some((r) => r.status === 'offered')) return;
+          set({ nudges: { ...get().nudges, retoOn: today() } });
           set({ retos: [...get().retos.filter((r) => r.id !== id), { id, status: 'offered', n: RETOS[id].start, goalId, since: today() }] });
         },
 
@@ -536,9 +543,10 @@ export const useDay = create<DayState>()(
       name: 'getgo-day',
       version: 6,
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: ({ settings, streak, tasks, lastDay, history, owner, learned, focus, goals, routines, routineLog, profile, focusLog, retos, weekPlannedOn }) => ({
+      partialize: ({ settings, streak, tasks, lastDay, history, owner, learned, focus, goals, routines, routineLog, profile, focusLog, retos, weekPlannedOn, nudges }) => ({
         goals,
         weekPlannedOn,
+        nudges,
         retos,
         focusLog,
         profile,

@@ -51,7 +51,7 @@ export default function Progreso() {
     null;
 
   return (
-    <Screen>
+    <Screen tabs>
       <View style={styles.header}>
         <Text style={styles.title} accessibilityRole="header">
           {t('tab.progress')}
