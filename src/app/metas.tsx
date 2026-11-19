@@ -8,7 +8,7 @@ import { Barra } from '@/components/Barra';
 import { ArrowRightIcon, CalendarIcon } from '@/components/Iconos';
 import { CheckIcon, IconCircle, PersonIcon, Screen } from '@/components/ui';
 import { locale, minutesLabel, t } from '@/i18n';
-import { dayTimeline, useAgenda } from '@/lib/calendario';
+import { busyOf, dayTimeline, useAgenda } from '@/lib/calendario';
 import { estimate } from '@/lib/duraciones';
 import { useVoz } from '@/lib/paleta';
 import { addDays, daysBetween } from '@/lib/planner';
@@ -72,9 +72,35 @@ export default function Semana() {
       .map((x) => ({ task: x, at: hour(x), fixed: !!x.at }))
       .sort((a, b) => Number(a.task.status === 'hecha') - Number(b.task.status === 'hecha') || (a.at || '99').localeCompare(b.at || '99'));
     const minutes = open.reduce((n, x) => n + minutesOf(x), 0);
-    return { d, rows, open: open.length, minutes };
+    // What is already part of the day (classes, work, training, calendar): shown, never ticked.
+    const life = busyOf(d).map((e) => ({ title: e.title, at: clock(e.start), end: clock(e.end) }));
+    return { d, rows, open: open.length, minutes, life };
   });
   const empty = plan.every((p) => !p.rows.length);
+
+  const renderTask = ({ task, at, fixed }: { task: Task; at: string; fixed: boolean }) => (
+    <Pressable key={task.id} onPress={() => router.push({ pathname: '/agenda', params: { d: task.day } })} style={styles.row}>
+      <Text style={[styles.at, !fixed && at ? styles.atSoft : null, !at && styles.noRoom]} numberOfLines={2}>
+        {task.status === 'hecha' ? '✓' : at || t('week.noRoom')}
+      </Text>
+      {task.top || task.importance === 3 ? <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={styles.mark} /> : <View style={styles.markQuiet} />}
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.rowText, task.status === 'hecha' && styles.done]} numberOfLines={1}>
+          {task.title}
+        </Text>
+        {task.where ? (
+          <Text style={styles.where} numberOfLines={1}>
+            {task.where}
+          </Text>
+        ) : null}
+      </View>
+      {task.status === 'hecha' ? (
+        <View style={styles.doneDot}>
+          <CheckIcon color={colors.white} size={9} />
+        </View>
+      ) : null}
+    </Pressable>
+  );
 
   const jump = (d: string) => {
     setSel(d);
@@ -145,29 +171,26 @@ export default function Semana() {
               </Text>
               <Text style={styles.dayMeta}>{p.rows.length ? `${t('week.dayCount', { n: p.open })}${p.minutes ? ` · ${minutesLabel(p.minutes)}` : ''}` : t('week.free')}</Text>
             </Pressable>
-            {p.rows.map(({ task, at, fixed }) => (
-              <Pressable key={task.id} onPress={() => router.push({ pathname: '/agenda', params: { d: p.d } })} style={styles.row}>
-                <Text style={[styles.at, !fixed && at ? styles.atSoft : null, !at && styles.noRoom]} numberOfLines={2}>
-                  {task.status === 'hecha' ? '✓' : at || t('week.noRoom')}
-                </Text>
-                {task.top || task.importance === 3 ? <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={styles.mark} /> : <View style={styles.markQuiet} />}
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.rowText, task.status === 'hecha' && styles.done]} numberOfLines={1}>
-                    {task.title}
-                  </Text>
-                  {task.where ? (
-                    <Text style={styles.where} numberOfLines={1}>
-                      {task.where}
-                    </Text>
-                  ) : null}
-                </View>
-                {task.status === 'hecha' ? (
-                  <View style={styles.doneDot}>
-                    <CheckIcon color={colors.white} size={9} />
+            {[...p.life.map((e) => ({ kind: 'life' as const, at: e.at, e })), ...p.rows.map((r) => ({ kind: 'task' as const, at: r.at || '99', r }))]
+              .sort((a, b) => a.at.localeCompare(b.at))
+              .map((item, k) =>
+                item.kind === 'life' ? (
+                  <View key={`life-${k}`} style={styles.row}>
+                    <Text style={[styles.at, styles.atSoft]}>{item.e.at}</Text>
+                    <View style={styles.markLife} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.lifeText} numberOfLines={1}>
+                        {item.e.title}
+                      </Text>
+                      <Text style={styles.where}>
+                        {item.e.at}–{item.e.end}
+                      </Text>
+                    </View>
                   </View>
-                ) : null}
-              </Pressable>
-            ))}
+                ) : (
+                  renderTask(item.r)
+                ),
+              )}
           </View>
         ))}
 
@@ -202,6 +225,8 @@ const styles = StyleSheet.create({
   atSoft: { color: colors.muted, fontFamily: fonts.medium },
   noRoom: { fontFamily: fonts.medium, fontSize: 11, lineHeight: 13, color: colors.faint },
   mark: { width: 4, alignSelf: 'stretch', marginVertical: 8, borderRadius: 2 },
+  markLife: { width: 4, alignSelf: 'stretch', marginVertical: 8, borderRadius: 2, backgroundColor: colors.faint, opacity: 0.5 },
+  lifeText: { fontFamily: fonts.medium, fontSize: 15.5, color: colors.muted },
   markQuiet: { width: 4, alignSelf: 'stretch', marginVertical: 8, borderRadius: 2, backgroundColor: colors.line },
   rowText: { fontFamily: fonts.medium, fontSize: 15.5, color: colors.ink },
   where: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.muted, marginTop: 1 },

@@ -128,7 +128,8 @@ let extraBusy: (day: string) => Busy[] = () => [];
 export function setExtraBusy(fn: (day: string) => Busy[]) {
   extraBusy = fn;
 }
-const busyOf = (day: string) => [...(useAgenda.getState().status === 'on' ? (useAgenda.getState().busy[day] ?? []) : []), ...extraBusy(day)];
+/** Everything already happening that day: calendar events, work or classes, the fixed week. */
+export const busyOf = (day: string) => [...(useAgenda.getState().status === 'on' ? (useAgenda.getState().busy[day] ?? []) : []), ...extraBusy(day)];
 
 /** Free minutes per day, to spread tasks over the week. Works with or without a connected calendar. */
 export function capacityFor(settings: Settings) {

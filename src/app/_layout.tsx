@@ -122,17 +122,35 @@ export default function RootLayout() {
     // Work or classes on their days, with the trip there and back: never planned over.
     const commute = profile.home && profile.workPlace ? travelMinutes(profile.home, profile.workPlace, profile.transport ?? 'transporte') : 0;
     setExtraBusy((day) => {
-      if (!profile.workFrom || !profile.workTo) return [];
-      const d = new Date(`${day}T12:00:00`);
-      if (!profile.workDays.includes(d.getDay())) return [];
-      const start = new Date(`${day}T${profile.workFrom}:00`);
-      const end = new Date(`${day}T${profile.workTo}:00`);
-      return [{ title: t('busy.work'), start: new Date(start.getTime() - commute * 60_000), end: new Date(end.getTime() + commute * 60_000) }];
+      const out: { title: string; start: Date; end: Date }[] = [];
+      const dow = new Date(`${day}T12:00:00`).getDay();
+      if (profile.workFrom && profile.workTo && profile.workDays.includes(dow)) {
+        const start = new Date(`${day}T${profile.workFrom}:00`);
+        const end = new Date(`${day}T${profile.workTo}:00`);
+        out.push({ title: t('busy.work'), start: new Date(start.getTime() - commute * 60_000), end: new Date(end.getTime() + commute * 60_000) });
+      }
+      // The fixed week (classes, training, a course): part of the person's life, so busy time, with the trip before.
+      for (const f of profile.fixed ?? []) {
+        if (f.task || !f.at || !f.days.includes(dow)) continue;
+        const start = new Date(`${day}T${f.at}:00`);
+        const way = travelTo(f.where, profile.home, profile.transport) ?? 0;
+        if (way) out.push({ title: t('busy.trip', { place: f.where ?? '' }), start: new Date(start.getTime() - way * 60_000), end: start });
+        out.push({ title: f.text, start, end: new Date(start.getTime() + (f.minutes ?? 60) * 60_000) });
+      }
+      return out;
     });
     if (!profile.home) return;
     const soon = useDay.getState().tasks.filter((x) => x.status === 'pendiente' && x.where).map((x) => x.where);
     void warmPlaces(soon);
-  }, [profile.home, profile.transport, profile.workPlace, profile.workFrom, profile.workTo, profile.workDays, tasks]);
+  }, [profile.home, profile.transport, profile.workPlace, profile.workFrom, profile.workTo, profile.workDays, profile.fixed, tasks]);
+
+  // Old copies of the fixed week as tasks go away once (they are calendar time now).
+  useEffect(() => {
+    if (!signedIn) return;
+    const st = useDay.getState();
+    const items = st.profile.fixed ?? [];
+    if (st.tasks.some((x) => x.fixedId && x.status === 'pendiente' && !items.find((f) => f.id === x.fixedId)?.task)) st.setFixed(items);
+  }, [signedIn]);
 
   // People who used Okio before the bond existed start with what they already did.
   useEffect(() => {

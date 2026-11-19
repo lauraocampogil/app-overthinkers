@@ -206,8 +206,9 @@ function fixedTasks(items: FixedItem[], tasks: Task[], from: string): Task[] {
   for (let i = 0; i < FIXED_DAYS; i++) {
     const day = addDays(from, i);
     const dow = new Date(`${day}T12:00:00`).getDay();
+    // Only the fixed things the person wants to tick are tasks; the rest is their calendar (busy time).
     for (const f of items) {
-      if (!f.days.includes(dow)) continue;
+      if (!f.task || !f.days.includes(dow)) continue;
       if (tasks.some((t) => t.fixedId === f.id && (t.status === 'pendiente' ? t.day : (t.doneOn ?? t.day)) === day)) continue;
       out.push({
         ...fromRaw({ title: f.text, minutes: f.minutes, dueInDays: null, energy: 'alta', kind: f.kind ?? 'otro', importance: 2, where: f.where ?? null, at: f.at }, day),
@@ -449,7 +450,10 @@ export const useDay = create<DayState>()(
             if (routine.steps.some((s) => s.id === retoStepId(r.id) && s.text !== text))
               set({ routines: { ...get().routines, [def.routine]: { ...routine, steps: routine.steps.map((s) => (s.id === retoStepId(r.id) ? { ...s, text } : s)) } } });
           }
-          commit([...relinked, ...weekly, ...fixedTasks(get().profile.fixed ?? [], [...relinked, ...weekly], day)]);
+          // A class or a training of the fixed week is busy time in the calendar, not a task: old copies go.
+          const fixedItems = get().profile.fixed ?? [];
+          const lifeOnly = relinked.filter((t) => !(t.fixedId && t.status === 'pendiente' && !fixedItems.find((f) => f.id === t.fixedId)?.task));
+          commit([...lifeOnly, ...weekly, ...fixedTasks(fixedItems, [...lifeOnly, ...weekly], day)]);
         },
 
         markDone: (id) => {
@@ -571,7 +575,7 @@ export const useDay = create<DayState>()(
           const kept = get().tasks.filter((t) => {
             if (!t.fixedId || t.status !== 'pendiente') return true;
             const f = items.find((x) => x.id === t.fixedId);
-            return !!f && f.days.includes(new Date(`${t.day}T12:00:00`).getDay());
+            return !!f && !!f.task && f.days.includes(new Date(`${t.day}T12:00:00`).getDay());
           });
           commit([...kept, ...fixedTasks(items, kept, day)]);
           syncDay(get());

@@ -4,6 +4,9 @@
  * Plurals: keys ending in `_one` / `_other` are picked automatically from `{n}`.
  */
 const es = {
+  "agenda.life": "Tu semana",
+  "busy.trip": "Trayecto a {place}",
+  "hoy.alsoToday": "Hoy también",
   "week.noRoom": "No cabe",
   "busy.work": "Trabajo o clases (con el trayecto)",
   "goals.pill": "Metas",
@@ -867,6 +870,9 @@ export type Key = keyof typeof es;
 type Dict = Record<Key, string>;
 
 const en: Dict = {
+  "agenda.life": "Your week",
+  "busy.trip": "Trip to {place}",
+  "hoy.alsoToday": "Also today",
   "week.noRoom": "No room",
   "busy.work": "Work or classes (with the trip)",
   "goals.pill": "Goals",
@@ -1717,6 +1723,9 @@ const en: Dict = {
 };
 
 const fr: Dict = {
+  "agenda.life": "Ta semaine",
+  "busy.trip": "Trajet vers {place}",
+  "hoy.alsoToday": "Aussi aujourd'hui",
   "week.noRoom": "Pas de place",
   "busy.work": "Travail ou cours (avec le trajet)",
   "goals.pill": "Objectifs",
@@ -2567,6 +2576,9 @@ const fr: Dict = {
 };
 
 const nl: Dict = {
+  "agenda.life": "Je week",
+  "busy.trip": "Reis naar {place}",
+  "hoy.alsoToday": "Ook vandaag",
   "week.noRoom": "Geen plek",
   "busy.work": "Werk of les (met de reis)",
   "goals.pill": "Doelen",
@@ -3417,6 +3429,9 @@ const nl: Dict = {
 };
 
 const de: Dict = {
+  "agenda.life": "Deine Woche",
+  "busy.trip": "Weg zu {place}",
+  "hoy.alsoToday": "Auch heute",
   "week.noRoom": "Kein Platz",
   "busy.work": "Arbeit oder Unterricht (mit Weg)",
   "goals.pill": "Ziele",
@@ -4267,6 +4282,9 @@ const de: Dict = {
 };
 
 const pt: Dict = {
+  "agenda.life": "A tua semana",
+  "busy.trip": "Trajeto para {place}",
+  "hoy.alsoToday": "Também hoje",
   "week.noRoom": "Não cabe",
   "busy.work": "Trabalho ou aulas (com o trajeto)",
   "goals.pill": "Metas",
@@ -5117,6 +5135,9 @@ const pt: Dict = {
 };
 
 const it: Dict = {
+  "agenda.life": "La tua settimana",
+  "busy.trip": "Tragitto verso {place}",
+  "hoy.alsoToday": "Anche oggi",
   "week.noRoom": "Non ci sta",
   "busy.work": "Lavoro o lezioni (con il tragitto)",
   "goals.pill": "Obiettivi",

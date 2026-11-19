@@ -64,8 +64,12 @@ export type Profile = {
   transport?: 'pie' | 'bici' | 'transporte' | 'coche';
 };
 
-/** One thing of the fixed week. days: 0 = Sunday … 6 = Saturday. */
-export type FixedItem = { id: string; text: string; days: number[]; at: string | null; minutes: number | null; where?: string | null; kind?: Kind };
+/**
+ * One thing of the fixed week. days: 0 = Sunday … 6 = Saturday.
+ * By default it is part of the person's life (a class, work, training): it sits in the calendar as busy time,
+ * never as a task to tick. `task: true` makes it a task too ("Llegar a la hora al trabajo").
+ */
+export type FixedItem = { id: string; text: string; days: number[]; at: string | null; minutes: number | null; where?: string | null; kind?: Kind; task?: boolean };
 
 export const EMPTY_PROFILE: Profile = {
   onboarded: false,

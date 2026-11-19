@@ -11,7 +11,7 @@ import { Deslizar } from '@/components/Deslizar';
 import { ArrowRightIcon, CalendarIcon, MoonIcon, SunIcon } from '@/components/Iconos';
 import { CloseIcon, IconCircle, Screen } from '@/components/ui';
 import { locale, minutesLabel, t } from '@/i18n';
-import { connectCalendar, dayTimeline, refreshAgenda, useAgenda } from '@/lib/calendario';
+import { busyOf, connectCalendar, dayTimeline, refreshAgenda, useAgenda } from '@/lib/calendario';
 import { estimate } from '@/lib/duraciones';
 import { useVoz } from '@/lib/paleta';
 import { todayIso, useDay, withDefaults } from '@/store/day';
@@ -53,7 +53,7 @@ function Arrastrable({ id, title, minutes, onDrag, onDrop, children }: {
 
 type Item =
   | { kind: 'routine'; at: string; routine: 'manana' | 'noche'; steps: number }
-  | { kind: 'event'; at: string; end: string; title: string }
+  | { kind: 'event'; at: string; end: string; title: string; life?: boolean }
   | { kind: 'task'; at: string; title: string; minutes: number | null; id: string; top: boolean };
 
 /**
@@ -108,7 +108,9 @@ export default function Agenda() {
 
   const items: Item[] = [];
   // Routines wait for version 2 (product plan): not shown in the day either.
-  for (const e of busy[day] ?? []) items.push({ kind: 'event', at: clock(e.start), end: clock(e.end), title: e.title });
+  // Calendar events, then the person's own week (work, classes, training): part of their life, not tasks.
+  const calendarTitles = new Set((busy[day] ?? []).map((e) => `${e.title}${e.start.getTime()}`));
+  for (const e of busyOf(day)) items.push({ kind: 'event', at: clock(e.start), end: clock(e.end), title: e.title, life: !calendarTitles.has(`${e.title}${e.start.getTime()}`) });
   const dayTasks = tasks.filter((x) => x.status === 'pendiente' && x.day === day);
   const photos = tasks.filter((x) => x.status === 'hecha' && (x.doneOn ?? x.day) === day && x.proofPhoto);
   // Same hours as Hoy: tasks without a fixed hour get the slot Okio found for them in the free time.
@@ -181,7 +183,7 @@ export default function Agenda() {
                   </View>
                   <Text style={styles.meta}>
                     {it.kind === 'event'
-                      ? `${it.at}–${it.end} · ${t('cal.event')}`
+                      ? `${it.at}–${it.end} · ${it.life ? t('agenda.life') : t('cal.event')}`
                       : it.kind === 'routine'
                         ? t('routine.stepsShort', { n: it.steps })
                         : it.minutes

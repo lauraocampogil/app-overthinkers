@@ -17,7 +17,7 @@ import { CheckIcon, FlameIcon, IconCircle, PersonIcon, Screen } from '@/componen
 import { locale, minutesLabel, t } from '@/i18n';
 import { useAtajos } from '@/lib/atajos';
 import { useAuth, useMascot } from '@/lib/auth';
-import { dayTimeline, useAgenda } from '@/lib/calendario';
+import { dayTimeline, useAgenda, busyOf } from '@/lib/calendario';
 import { estimate } from '@/lib/duraciones';
 import { useVoz } from '@/lib/paleta';
 import { addDays, daysBetween } from '@/lib/planner';
@@ -161,6 +161,7 @@ export default function Inicio() {
   const pending = active.filter((x) => x.status === 'pendiente');
   const done = active.filter((x) => x.status === 'hecha');
   const timeline = dayTimeline(today, pending, minutesOf, settings);
+  const lifeToday = busyOf(today).filter((e) => e.end > new Date());
   const slot = (task: Task): Slot => {
     const b = timeline?.blocks.find((x) => x.type === 'task' && x.task.id === task.id);
     return b ? { start: b.start, end: b.end } : null;
@@ -496,6 +497,14 @@ export default function Inicio() {
           </View>
         ) : null}
 
+        {/* What is already part of today (work, classes, training, calendar): context, never tasks. */}
+        {sel === today && lifeToday.length ? (
+          <View style={styles.life}>
+            <Text style={styles.lifeLabel}>{t('hoy.alsoToday')}</Text>
+            <Text style={styles.lifeText}>{lifeToday.map((e) => `${clock(e.start)} ${e.title}`).join('  ·  ')}</Text>
+          </View>
+        ) : null}
+
         {rest.length || done.length ? (
           <View style={styles.section}>
             <View style={styles.sectionHead}>
@@ -660,6 +669,9 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 62, paddingVertical: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#2A2A2A' },
   topNum: { width: 22, fontFamily: fonts.bold, fontSize: 24, letterSpacing: -0.6, color: colors.white },
   topTitle: { fontFamily: fonts.semibold, fontSize: 17, lineHeight: 21, color: colors.white },
+  life: { marginHorizontal: 20, marginTop: 14, gap: 4 },
+  lifeLabel: { fontFamily: fonts.medium, fontSize: 12, letterSpacing: 0.6, color: colors.faint, textTransform: 'uppercase' },
+  lifeText: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, color: colors.muted },
   topWhy: { fontFamily: fonts.medium, fontSize: 12.5, color: '#9A9A9A', marginTop: 3 },
   topMeta: { fontFamily: fonts.regular, fontSize: 13, color: '#8A8A8A' },
   doneDark: { color: '#5E5E5E', textDecorationLine: 'line-through' },
