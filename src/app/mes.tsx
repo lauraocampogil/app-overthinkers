@@ -161,7 +161,8 @@ export default function Mes() {
 const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
   nav: { flexDirection: 'row', gap: 8 },
-  body: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 40, gap: 16 },
+  // Plenty of room on this screen: the month starts well below the buttons and breathes.
+  body: { paddingHorizontal: 16, paddingTop: 56, paddingBottom: 40, gap: 22 },
   titleRow: { flexDirection: 'row', alignItems: 'baseline', gap: 10, paddingHorizontal: 6 },
   month: { fontFamily: fonts.bold, fontSize: 34, letterSpacing: -1.2, color: colors.ink },
   year: { fontFamily: fonts.medium, fontSize: 22, letterSpacing: -0.5, color: colors.faint, flex: 1 },
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', marginBottom: 6 },
   weekday: { width: `${100 / 7}%`, textAlign: 'center', fontFamily: fonts.semibold, fontSize: 11, letterSpacing: 0.5, color: colors.muted },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  cell: { width: `${100 / 7}%`, height: 56, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 2 },
+  cell: { width: `${100 / 7}%`, height: 62, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 2 },
   dayBox: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   today: { backgroundColor: colors.ink },
   photoShade: { backgroundColor: 'rgba(0,0,0,0.25)' },
