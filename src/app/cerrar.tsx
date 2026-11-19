@@ -10,6 +10,7 @@ import { Mascota } from '@/components/Mascota';
 import { CheckIcon, CloseIcon, IconCircle, MicIcon, PrimaryButton, Screen, TextButton } from '@/components/ui';
 import { lang, locale, t } from '@/i18n';
 import { parseBrainDump } from '@/lib/ai';
+import { track } from '@/lib/eventos';
 import { useMascot } from '@/lib/auth';
 import { useVoz } from '@/lib/paleta';
 import { addDays } from '@/lib/planner';
@@ -79,6 +80,7 @@ export default function Cerrar() {
     setAdding(false);
     const forTomorrow = res.tasks.map((x) => ({ ...x, dueInDays: Math.max(1, x.dueInDays ?? 1) }));
     if (!forTomorrow.length && !res.goals?.length) return;
+    track('dump', { source: 'close', n: forTomorrow.length });
     const out = useDay.getState().addParsed({ tasks: forTomorrow, goals: res.goals ?? [] }, { pinDays: true });
     setAddedN((n) => n + out.added);
     setText('');

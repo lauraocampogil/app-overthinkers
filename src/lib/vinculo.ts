@@ -5,9 +5,9 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import type { Kind } from './types';
 
 /**
- * The bond with Okio. Every mascot is born grey; each time the person empties their head,
- * talks to Okio, finishes something or closes the day, it gains a little colour and character.
- * What they work on most decides its colour family, so nobody ends up with the same Okio.
+ * The bond with Okio. Each time the person empties their head, talks to Okio, finishes something
+ * or closes the day, the bond grows: Okio gets its sparkles and glow, and its stages in Cuenta.
+ * Its colours never change: they are the person's own from day one.
  */
 export type BondEvent = 'dump' | 'chat' | 'done' | 'proof' | 'close';
 
@@ -66,7 +66,7 @@ export function familyFor(byKind: Partial<Record<Kind, number>>): number | null 
   return KIND_FAMILY[top[0] as Kind] ?? null;
 }
 
-/** 0 = grey, 1 = all its colours. Eased so the first days already show a hint. */
+/** 0..1, eased so the first days already show a change. */
 export function bondLevel(points: number): number {
   const p = Math.max(0, Math.min(1, points / BOND_FULL));
   return p === 0 ? 0 : 0.08 + 0.92 * Math.sqrt(p);

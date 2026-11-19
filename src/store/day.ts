@@ -7,6 +7,7 @@ import { estimate, learn, type Learned } from '@/lib/duraciones';
 import { addDays, schedule } from '@/lib/planner';
 import { countToday, isoDay, START_FREEZES } from '@/lib/streak';
 import { bond } from '@/lib/vinculo';
+import { track } from '@/lib/eventos';
 import { syncDay } from '@/lib/sync';
 import { EMPTY_PROFILE, sameGoal, type FixedItem, type Profile } from '@/lib/perfil';
 import { isWeightGoal, RETOS, retoStepId, type Reto, type RetoId } from '@/lib/retos';
@@ -442,6 +443,7 @@ export const useDay = create<DayState>()(
           }
           patch(id, (t) => ({ ...t, status: 'hecha', doneOn: day }));
           bond('done', task?.kind);
+          if (task?.top) track('top_done');
           // The streak counts when today's list is finished.
           const leftToday = get().tasks.some((t) => t.status === 'pendiente' && t.day <= day);
           if (leftToday) return;
@@ -501,6 +503,7 @@ export const useDay = create<DayState>()(
         proveDone: (id, photo, offline) => {
           set({ tasks: get().tasks.map((t) => (t.id === id ? { ...t, proofPhoto: photo, proofOffline: offline } : t)) });
           bond('proof');
+          track('proof', { offline });
           // Proof for something already ticked (from "Cerrar el día") only adds the photo.
           if (get().tasks.find((t) => t.id === id)?.status === 'pendiente') get().markDone(id);
         },
@@ -532,6 +535,7 @@ export const useDay = create<DayState>()(
           }
           set({ closedOn: day });
           bond('close');
+          track('close_day', { done: get().tasks.filter((t) => t.status === 'hecha' && t.doneOn === day).length, moved: moveLeft });
           syncDay(get());
         },
 

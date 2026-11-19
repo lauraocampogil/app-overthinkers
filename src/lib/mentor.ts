@@ -10,6 +10,7 @@ import { topThree } from './prioridad';
 import { focusScore } from './puntuacion';
 import { useFoco } from './foco';
 import { bond } from './vinculo';
+import { track } from './eventos';
 import { ensureSession, supabase } from './supabase';
 import { goalProgress, todayIso, todayList, useDay, weekStart } from '../store/day';
 
@@ -95,6 +96,7 @@ export async function askOkio(text: string): Promise<void> {
   const chat = prune([...useMentor.getState().chat, msg]);
   useMentor.setState({ chat });
   bond('chat');
+  track('chat');
   let answer = (await call({ mode: 'chat', messages: chat.map(({ role, content }) => ({ role, content })) })) ?? null;
   const dump = answer ? answer.startsWith('[[DUMP]]') : looksLikeDump(msg.content);
   if (answer) answer = answer.replace(/^\[\[DUMP\]\]\s*/, '');
@@ -104,6 +106,7 @@ export async function askOkio(text: string): Promise<void> {
     if (parsed.tasks.length || parsed.goals?.length) {
       useDay.getState().addParsed({ tasks: parsed.tasks, goals: parsed.goals ?? [] });
       added = parsed.tasks.map((x) => x.title);
+      track('dump', { source: 'chat', n: added.length });
       if (!answer) answer = t('mentor.addedLocal');
     }
   }

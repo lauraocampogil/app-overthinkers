@@ -8,7 +8,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ChartIcon, HomeIcon, TargetIcon } from '@/components/Iconos';
+import { CalendarIcon, ChartIcon, HomeIcon, TargetIcon } from '@/components/Iconos';
 import { CheckIcon as CheckLine } from '@/components/ui';
 import { MicIcon, PlusIcon } from '@/components/ui';
 import { Mascota } from '@/components/Mascota';
@@ -70,7 +70,8 @@ export function Barra({ active }: { active: Tab; onWrite?: () => void }) {
     router.push(meta ? { pathname: '/escribir', params: { meta: '1' } } : '/escribir');
   };
   const insets = useSafeAreaInsets();
-  const tab = (key: Tab, label: string, Icon: typeof HomeIcon) => {
+  // The third tab is your own Okio: its icon is your mascot.
+  const tab = (key: Tab, label: string, Icon: typeof HomeIcon, okio = false) => {
     const on = active === key;
     return (
       <Pressable
@@ -85,7 +86,7 @@ export function Barra({ active }: { active: Tab; onWrite?: () => void }) {
         style={[styles.tab, on && styles.tabOn]}
         hitSlop={4}
       >
-        <Icon color={on ? colors.white : colors.ink} size={22} strokeWidth={on ? 2.1 : 1.8} />
+        {okio ? <Mascota seed={mascot.seed} size={30} mood="calma" bond={0} /> : <Icon color={on ? colors.white : colors.ink} size={22} strokeWidth={on ? 2.1 : 1.8} />}
       </Pressable>
     );
   };
@@ -134,8 +135,8 @@ export function Barra({ active }: { active: Tab; onWrite?: () => void }) {
       <Glass style={styles.pill}>
         <View style={styles.tabs} accessibilityRole="tablist">
           {tab('hoy', t('tab.today'), HomeIcon)}
-          {tab('metas', t('tab.goals'), TargetIcon)}
-          {tab('progreso', t('tab.progress'), ChartIcon)}
+          {tab('metas', t('tab.week'), CalendarIcon)}
+          {tab('progreso', t('tab.okio'), ChartIcon, true)}
         </View>
       </Glass>
       {/* The two ways to tell GetGo something, side by side: write or speak. */}

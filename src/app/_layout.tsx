@@ -21,6 +21,7 @@ initPurchases();
 import { clearTaskReminders, refreshReminders, snoozeTask, type TaskAlarm } from '@/lib/avisos';
 import { dayTimeline, refreshAgenda, useAgenda } from '@/lib/calendario';
 import { syncHealth } from '@/lib/salud';
+import { track } from '@/lib/eventos';
 import { syncStrava } from '@/lib/strava';
 import { estimate } from '@/lib/duraciones';
 import { requiresProof, topThree } from '@/lib/prioridad';
@@ -48,6 +49,7 @@ export default function RootLayout() {
   // Apple Health and Strava: today's workouts and steps tick sport tasks by themselves (on launch and on return).
   useEffect(() => {
     const sync = () => {
+      track('open');
       void syncHealth();
       void syncStrava();
     };

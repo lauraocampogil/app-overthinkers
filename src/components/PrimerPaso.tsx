@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { t } from '@/i18n';
+import { track } from '@/lib/eventos';
 import { draftFor } from '@/lib/mentor';
 import { emailIn, mailtoUrl, phoneIn, stepKindOf, whatsappUrl } from '@/lib/primer-paso';
 import type { Task } from '@/lib/types';
@@ -30,6 +31,7 @@ export function PrimerPaso({ task }: { task: Task }) {
 
   const write = async () => {
     setBusy(true);
+    track('draft', { kind });
     const out = await draftFor({ title: task.title }, channel);
     setBusy(false);
     setDraft(out ?? { subject: kind === 'email' ? task.title : '', body: t('step.fallback') });
@@ -37,6 +39,7 @@ export function PrimerPaso({ task }: { task: Task }) {
 
   const send = async () => {
     if (!draft) return;
+    track('draft', { kind, sent: true });
     if (kind === 'email') {
       await Linking.openURL(mailtoUrl(to, draft.subject, draft.body)).catch(() => {});
       return;

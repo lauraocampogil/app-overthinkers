@@ -10,6 +10,7 @@ import { SunIcon } from '@/components/Iconos';
 import { CloseIcon, IconCircle, MicIcon, PrimaryButton, Screen } from '@/components/ui';
 import { lang, locale, minutesLabel, t } from '@/i18n';
 import { lastWeekError, parseBrainDump, planWeek, type WeekPlan } from '@/lib/ai';
+import { track } from '@/lib/eventos';
 import { cleanFillers, liveSpeechAvailable, pickLocale, requestLivePermission, startLive, type LiveSession } from '@/lib/voz';
 import { useVoz } from '@/lib/paleta';
 import { addDays } from '@/lib/planner';
@@ -38,6 +39,7 @@ export default function Semana() {
   const [adding, setAdding] = useState(false);
   const [listening, setListening] = useState(false);
   const session = useRef<LiveSession | null>(null);
+  const proposed = useRef(0);
   const canSpeak = liveSpeechAvailable();
 
   const stopListening = () => {
@@ -82,12 +84,14 @@ export default function Semana() {
   const run = async (value: string) => {
     if (!value.trim()) return;
     setPhase('thinking');
+    track('dump', { source: 'week' });
     const res = await planWeek(value.trim());
     if (!res || !res.tasks.length) {
       setPhase('failed');
       return;
     }
     setPlan(res);
+    proposed.current = res.tasks.length;
     setPhase('review');
   };
 
@@ -108,6 +112,8 @@ export default function Semana() {
       store.setSettings({ dayStart: plan.wake });
     }
     const added = store.addParsed({ tasks: plan.tasks, goals: plan.goals }, { pinDays: true });
+    // Plan acceptance: how much of what Okio proposed the person kept.
+    track('plan', { source: 'week', proposed: proposed.current, kept: proposed.current ? Math.min(1, plan.tasks.length / proposed.current) : 1 });
     useDay.setState({ weekPlannedOn: today });
     router.replace({ pathname: '/', params: { added: added.added, today: added.today, later: added.later, goals: added.goals } });
   };

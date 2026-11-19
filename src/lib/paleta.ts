@@ -1,11 +1,7 @@
 import { mascotTraits } from '../components/Mascota';
 import { useMascot } from './auth';
-import { bondLevel, useVinculo } from './vinculo';
 
-/**
- * The voice colours are the person's own: they start grey and, as the bond with Okio grows,
- * blend into their mascot's gradient.
- */
+/** The voice colours are the person's own: their mascot's gradient. */
 const NEUTRAL_MIC = ['#B5B5B5', '#5C5C5C', '#111111'];
 const NEUTRAL_CLOUDS = ['#D0D0D0', '#9E9E9E', '#6A6A6A', '#BDBDBD', '#2E2E2E'];
 
@@ -21,8 +17,8 @@ export function mix(a: string, b: string, t: number) {
   return toHex(x.map((v, i) => v + (y[i] - v) * t));
 }
 
-export function voicePalette(seed: string, progress: number, family: number | null = null) {
-  const p = mascotTraits(seed, family).palette;
+export function voicePalette(seed: string, progress: number) {
+  const p = mascotTraits(seed).palette;
   const mic = [p.a, p.mid, p.core].map((c, i) => mix(NEUTRAL_MIC[i], c, progress)) as [string, string, string];
   const clouds = [p.a, p.b, p.mid, p.edge, p.core].map((c, i) => mix(NEUTRAL_CLOUDS[i], c, progress));
   return { mic, clouds, solid: mic[1] };
@@ -30,7 +26,5 @@ export function voicePalette(seed: string, progress: number, family: number | nu
 
 export function useVoz() {
   const m = useMascot();
-  const points = useVinculo((s) => s.points);
-  const family = useVinculo((s) => s.family);
-  return voicePalette(m.seed, 0.12 + 0.88 * bondLevel(points), family);
+  return voicePalette(m.seed, 1);
 }

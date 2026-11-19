@@ -1,20 +1,19 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Anillo } from '@/components/Anillo';
 import { Barra } from '@/components/Barra';
-import { TaskSheet } from '@/components/TaskSheet';
+import { ArrowRightIcon, CalendarIcon } from '@/components/Iconos';
 import { CheckIcon, IconCircle, PersonIcon, Screen } from '@/components/ui';
 import { locale, t } from '@/i18n';
-import { daysBetween } from '@/lib/planner';
-import type { Goal, Task } from '@/lib/types';
+import { addDays, daysBetween } from '@/lib/planner';
+import type { Goal } from '@/lib/types';
 import { goalProgress, todayIso, useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
 /**
- * Goals: big things broken down into tasks GetGo puts on the calendar.
- * What is due soon stays on top, weekly goals show today's step, long-term goals wait below.
+ * Semana: the next 7 days at a glance, each with what Okio put on it. Tap a day to move things around.
+ * Goals sit below, small: their steps already live in the days above.
  */
 function dueLabel(goal: Goal, done: number, total: number) {
   if (goal.type === 'semanal') return t('goals.weekCount', { done, total });
@@ -24,18 +23,13 @@ function dueLabel(goal: Goal, done: number, total: number) {
   return t('goals.daysShort', { n: diff });
 }
 
-export default function Metas() {
+export default function Semana() {
   const goals = useDay((s) => s.goals);
   const tasks = useDay((s) => s.tasks);
-  const { markDone, undoDone, archiveGoal } = useDay.getState();
-  const [sheet, setSheet] = useState<Task | null>(null);
-
-  const live = goals.filter((g) => !g.archived);
-  const soon = live
-    .filter((g) => g.type === 'pronto' || (g.type === 'largo' && g.due && daysBetween(todayIso(), g.due) <= 21))
-    .sort((a, b) => (a.due ?? '9999').localeCompare(b.due ?? '9999'));
-  const weekly = live.filter((g) => g.type === 'semanal');
-  const longTerm = live.filter((g) => !soon.includes(g) && g.type === 'largo');
+  const archiveGoal = useDay((s) => s.archiveGoal);
+  const today = todayIso();
+  const days = Array.from({ length: 7 }, (_, i) => addDays(today, i));
+  const live = goals.filter((g) => !g.archived).sort((a, b) => (a.due ?? '9999').localeCompare(b.due ?? '9999'));
 
   const confirmArchive = (goal: Goal) =>
     Alert.alert(goal.title, t('goals.archiveBody'), [
@@ -43,69 +37,88 @@ export default function Metas() {
       { text: t('goals.archive'), style: 'destructive', onPress: () => archiveGoal(goal.id) },
     ]);
 
-  const goalCard = (goal: Goal) => {
-    const p = goalProgress(goal, tasks);
-    const pct = p.pct;
-    const shown = goal.type === 'semanal' ? p.next.slice(0, 1) : p.next.slice(0, 3);
-    return (
-      <Pressable key={goal.id} onPress={() => router.push({ pathname: '/meta', params: { id: goal.id } })} onLongPress={() => confirmArchive(goal)} style={styles.goal} accessibilityHint={t('goals.longPress')}>
-        <Anillo progress={pct} size={58} stroke={6} label={`${Math.round(pct * 100)}%`} />
-        <View style={{ flex: 1, gap: 8 }}>
-          <View style={styles.goalTop}>
-            <Text style={styles.goalTitle} numberOfLines={2}>
-              {goal.title}
-            </Text>
-            <Text style={styles.goalDue}>{dueLabel(goal, p.done, p.total)}</Text>
-          </View>
-          {shown.map((task) => (
-            <Pressable key={task.id} style={styles.step} onPress={() => setSheet(task)}>
-              <Pressable
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: task.status === 'hecha' }}
-                accessibilityLabel={task.title}
-                onPress={() => (task.status === 'hecha' ? undoDone(task.id) : markDone(task.id))}
-                hitSlop={10}
-                style={[styles.box, task.status === 'hecha' && styles.boxOn]}
-              >
-                {task.status === 'hecha' ? <CheckIcon color={colors.white} size={10} /> : null}
-              </Pressable>
-              <Text style={styles.stepText} numberOfLines={1}>
-                {goal.type === 'semanal' && task.day === todayIso() ? t('goals.todayStep', { title: task.title }) : task.title}
-              </Text>
-            </Pressable>
-          ))}
-          {!shown.length ? <Text style={styles.stepMuted}>{t(p.total ? 'goals.allDone' : 'goals.noSteps')}</Text> : null}
-        </View>
-      </Pressable>
-    );
-  };
+  const dayName = (d: string, i: number) =>
+    i === 0 ? t('due.today') : i === 1 ? t('due.tomorrow') : new Date(`${d}T12:00:00`).toLocaleDateString(locale, { weekday: 'long', day: 'numeric' });
+
+  const empty = days.every((d) => !tasks.some((x) => x.day === d));
 
   return (
     <Screen tabs>
       <View style={styles.header}>
-        <Text style={styles.screenTitle} accessibilityRole="header">{t('tab.goals')}</Text>
-        <IconCircle label={t('account.title')} onPress={() => router.push('/cuenta')} size={34}>
-          <PersonIcon />
-        </IconCircle>
+        <Text style={styles.screenTitle} accessibilityRole="header">
+          {t('tab.week')}
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <IconCircle label={t('month.title')} onPress={() => router.push('/mes')} size={34}>
+            <CalendarIcon size={17} />
+          </IconCircle>
+          <IconCircle label={t('account.title')} onPress={() => router.push('/cuenta')} size={34}>
+            <PersonIcon />
+          </IconCircle>
+        </View>
       </View>
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        {!live.length ? (
-          <View style={styles.empty}>
-            <Text style={type.title} accessibilityRole="header">
-              {t('goals.emptyTitle')}
-            </Text>
-            <Text style={type.muted}>{t('goals.emptyBody')}</Text>
+        <Pressable onPress={() => router.push('/semana')} style={({ pressed }) => [styles.plan, pressed && { opacity: 0.85 }]} accessibilityRole="button">
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={styles.planTitle}>{t('week.cardTitle')}</Text>
+            <Text style={styles.planBody}>{t('week.cardBody')}</Text>
           </View>
-        ) : null}
-        {soon.length ? <Text style={styles.section}>{t('goals.soon')}</Text> : null}
-        {soon.map(goalCard)}
-        {weekly.length ? <Text style={styles.section}>{t('goals.weekly')}</Text> : null}
-        {weekly.map(goalCard)}
-        {longTerm.length ? <Text style={styles.section}>{t('goals.long')}</Text> : null}
-        {longTerm.map(goalCard)}
+          <ArrowRightIcon size={14} color={colors.white} />
+        </Pressable>
+
+        {empty ? <Text style={[type.muted, { paddingHorizontal: 6 }]}>{t('week.emptyTab')}</Text> : null}
+
+        {days.map((d, i) => {
+          const list = tasks.filter((x) => x.day === d && (x.status === 'pendiente' || x.doneOn === d));
+          const open = list.filter((x) => x.status === 'pendiente');
+          const shown = [...list].sort((a, b) => Number(Boolean(b.top)) - Number(Boolean(a.top)) || (a.at ?? '99').localeCompare(b.at ?? '99')).slice(0, 4);
+          return (
+            <Pressable
+              key={d}
+              onPress={() => router.push({ pathname: '/agenda', params: { d } })}
+              style={({ pressed }) => [styles.day, pressed && { opacity: 0.85 }]}
+              accessibilityRole="button"
+              accessibilityLabel={`${dayName(d, i)}: ${t('week.dayCount', { n: open.length })}`}
+            >
+              <View style={styles.dayTop}>
+                <Text style={[styles.dayName, i === 0 && { color: colors.ink }]}>{dayName(d, i)}</Text>
+                <Text style={styles.dayCount}>{list.length ? t('week.dayCount', { n: open.length }) : t('week.free')}</Text>
+              </View>
+              {shown.map((x) => (
+                <View key={x.id} style={styles.row}>
+                  <View style={[styles.box, x.status === 'hecha' && styles.boxOn]}>{x.status === 'hecha' ? <CheckIcon color={colors.white} size={9} /> : null}</View>
+                  <Text style={[styles.rowText, x.status === 'hecha' && styles.done]} numberOfLines={1}>
+                    {x.title}
+                  </Text>
+                  {x.at ? <Text style={styles.at}>{x.at}</Text> : null}
+                </View>
+              ))}
+              {list.length > shown.length ? <Text style={styles.more}>+{list.length - shown.length}</Text> : null}
+            </Pressable>
+          );
+        })}
+
+        {live.length ? <Text style={styles.section}>{t('tab.goals')}</Text> : null}
+        {live.map((goal) => {
+          const p = goalProgress(goal, tasks);
+          return (
+            <Pressable
+              key={goal.id}
+              onPress={() => router.push({ pathname: '/meta', params: { id: goal.id } })}
+              onLongPress={() => confirmArchive(goal)}
+              style={styles.goal}
+              accessibilityHint={t('goals.longPress')}
+            >
+              <Anillo progress={p.pct} size={40} stroke={4} label={`${Math.round(p.pct * 100)}`} />
+              <Text style={styles.goalTitle} numberOfLines={1}>
+                {goal.title}
+              </Text>
+              <Text style={styles.goalDue}>{dueLabel(goal, p.done, p.total)}</Text>
+            </Pressable>
+          );
+        })}
       </ScrollView>
       <Barra active="metas" />
-      <TaskSheet task={sheet} onClose={() => setSheet(null)} />
     </Screen>
   );
 }
@@ -114,18 +127,22 @@ const styles = StyleSheet.create({
   screenTitle: { fontFamily: fonts.bold, fontSize: 30, letterSpacing: -1.1, color: colors.ink },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, minHeight: 52, marginTop: 6 },
   body: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 140, gap: 10 },
-  empty: { gap: 10, marginTop: 20, marginBottom: 12 },
-  section: { fontFamily: fonts.semibold, fontSize: 14, color: colors.muted, paddingHorizontal: 6, marginTop: 8 },
-  goal: { flexDirection: 'row', gap: 14, alignItems: 'flex-start', backgroundColor: colors.card, borderRadius: 24, padding: 16 },
-  goalTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  goalTitle: { flex: 1, fontFamily: fonts.semibold, fontSize: 16, lineHeight: 20, color: colors.ink },
-  goalDue: { fontFamily: fonts.medium, fontSize: 13, color: colors.accentDark, },
-  step: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 28 },
-  box: { width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: colors.faint, alignItems: 'center', justifyContent: 'center' },
-  boxOn: { backgroundColor: colors.accent, borderColor: colors.accent },
-  stepText: { flex: 1, fontFamily: fonts.regular, fontSize: 14, color: colors.ink },
-  stepMuted: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted },
-  add: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 18, borderRadius: 22, backgroundColor: colors.card, marginTop: 10 },
-  addText: { fontFamily: fonts.semibold, fontSize: 15, color: colors.accentDark },
-  dock: { position: 'absolute', left: 0, right: 0, bottom: 28 },
+  plan: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 18, borderRadius: 24, backgroundColor: colors.ink },
+  planTitle: { fontFamily: fonts.semibold, fontSize: 16, color: colors.white },
+  planBody: { fontFamily: fonts.regular, fontSize: 13, color: '#BDBDBD' },
+  day: { backgroundColor: colors.card, borderRadius: 22, padding: 16, gap: 8 },
+  dayTop: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  dayName: { fontFamily: fonts.semibold, fontSize: 16, color: colors.muted, textTransform: 'capitalize' },
+  dayCount: { fontFamily: fonts.medium, fontSize: 13, color: colors.muted },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 24 },
+  box: { width: 16, height: 16, borderRadius: 8, borderWidth: 1.5, borderColor: colors.faint, alignItems: 'center', justifyContent: 'center' },
+  boxOn: { backgroundColor: colors.ink, borderColor: colors.ink },
+  rowText: { flex: 1, fontFamily: fonts.regular, fontSize: 14, color: colors.ink },
+  done: { color: colors.muted, textDecorationLine: 'line-through' },
+  at: { fontFamily: fonts.medium, fontSize: 12, color: colors.muted },
+  more: { fontFamily: fonts.medium, fontSize: 13, color: colors.muted },
+  section: { fontFamily: fonts.semibold, fontSize: 14, color: colors.muted, paddingHorizontal: 6, marginTop: 14 },
+  goal: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.card, borderRadius: 20, paddingVertical: 10, paddingHorizontal: 14 },
+  goalTitle: { flex: 1, fontFamily: fonts.semibold, fontSize: 15, color: colors.ink },
+  goalDue: { fontFamily: fonts.medium, fontSize: 13, color: colors.muted },
 });

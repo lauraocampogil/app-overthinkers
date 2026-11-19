@@ -9,6 +9,7 @@ import { t } from '@/i18n';
 import type { ParseResult, RawTask, TaskQuestion } from '@/lib/types';
 import { parseBrainDump } from '@/lib/ai';
 import { canDump, countDump } from '@/lib/limite';
+import { track } from '@/lib/eventos';
 import { useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
@@ -34,6 +35,7 @@ export default function Ordenando() {
 
   const save = (result: ParseResult, started: number) => {
     const added = addParsed(result);
+    track('plan', { proposed: result.tasks.length, kept: 1 });
     // A short beat so it feels sorted, then straight to the list with a small confirmation.
     const wait = Math.max(0, MIN_MS - (Date.now() - started));
     setTimeout(() => router.replace({ pathname: '/', params: { added: added.added, today: added.today, later: added.later, goals: added.goals } }), wait);
@@ -50,6 +52,7 @@ export default function Ordenando() {
         return;
       }
       if (text) countDump();
+      track('dump', { source: 'home' });
       const result: ParseResult = text ? await parseBrainDump(text) : { tasks: [], goals: [], tired: false };
       if (!alive) return;
       if (!result.tasks.length && !result.goals?.length) {

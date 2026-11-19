@@ -2,21 +2,21 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Anillo } from '@/components/Anillo';
 import { Barra } from '@/components/Barra';
 import { ArrowRightIcon, ClockIcon, MoonIcon, SunIcon, TargetIcon } from '@/components/Iconos';
 import { FlameIcon, IconCircle, PersonIcon, Screen } from '@/components/ui';
 import { locale, minutesLabel, t } from '@/i18n';
-import { useFoco } from '@/lib/foco';
+import { useMascot } from '@/lib/auth';
+import { bondLevel, bondStage, useVinculo } from '@/lib/vinculo';
+import { Mascota } from '@/components/Mascota';
 import { useVoz } from '@/lib/paleta';
-import { areaRings, focusScore } from '@/lib/puntuacion';
-import { addDays, daysBetween } from '@/lib/planner';
-import { goalProgress, todayIso, useDay, weekStart } from '@/store/day';
+import { addDays } from '@/lib/planner';
+import { todayIso, useDay, weekStart } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
 /**
- * Progress: what you did this week, at a glance. Overthinkers like the overview,
- * so everything here is a count or a bar, never a list to read.
+ * Okio: your own mascot and how the bond grows, then what you did this week and the month's photos.
+ * Counts and bars, never a list to read. Goals live in Semana.
  */
 export default function Progreso() {
   const tasks = useDay((s) => s.tasks);
@@ -26,8 +26,8 @@ export default function Progreso() {
   const focusLog = useDay((s) => s.focusLog ?? {});
   const routineLog = useDay((s) => s.routineLog);
   const voz = useVoz();
-  const areas = useDay((s) => s.profile.areas);
-  const lives = useFoco((s) => s.lives ?? {});
+  const mascot = useMascot();
+  const bondPoints = useVinculo((s) => s.points);
 
   const today = todayIso();
   const start = weekStart(today);
@@ -39,10 +39,6 @@ export default function Progreso() {
   const focusWeek = week.reduce((a, d) => a + (focusLog[d] ?? 0), 0);
   const fullDays = week.filter((d) => history[d] === 'done').length;
   const routineDays = (kind: 'manana' | 'noche') => week.filter((d) => (routineLog[d]?.[kind] ?? []).length > 0).length;
-  const live = goals.filter((g) => !g.archived);
-  const rings = areaRings(tasks, areas, week);
-  const score = focusScore({ tasks, week, today, focusLog, lives });
-  const areaName = (a: (typeof areas)[number]) => (a.id === 'otra' ? a.label || t('area.otra') : t(`area.${a.id}`));
 
   // Memories: a month calendar with the photo of each day (task proofs and progress photos).
   const [month, setMonth] = useState(0);
@@ -61,13 +57,25 @@ export default function Progreso() {
     <Screen tabs>
       <View style={styles.header}>
         <Text style={styles.title} accessibilityRole="header">
-          {t('tab.progress')}
+          {t('tab.okio')}
         </Text>
         <IconCircle label={t('account.title')} onPress={() => router.push('/cuenta')} size={34}>
           <PersonIcon />
         </IconCircle>
       </View>
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+        <View style={styles.hero}>
+          <Mascota seed={mascot.seed} size={170} />
+          <Text style={styles.heroTitle}>{t(`bond.stage${bondStage(bondPoints)}`)}</Text>
+          <Text style={[type.muted, { textAlign: 'center' }]}>{t('bond.body')}</Text>
+          <View style={styles.bondBar} accessibilityLabel={t('bond.pct', { n: Math.round(bondLevel(bondPoints) * 100) })}>
+            <View style={[styles.bondFill, { width: `${Math.round(bondLevel(bondPoints) * 100)}%`, backgroundColor: voz.mic[1] }]} />
+          </View>
+          <Pressable onPress={() => router.push('/mentor')} style={({ pressed }) => [styles.talk, pressed && { opacity: 0.85 }]} accessibilityRole="button">
+            <Text style={styles.talkText}>{t('read.talk')}</Text>
+          </Pressable>
+        </View>
+
         <Pressable onPress={() => router.push('/racha')} style={styles.streak} accessibilityRole="button">
           <View style={styles.streakIcon}>
             <FlameIcon />
@@ -78,34 +86,6 @@ export default function Progreso() {
           </View>
           <ArrowRightIcon color={colors.muted} />
         </Pressable>
-
-        <View style={styles.scoreCard}>
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text style={styles.scoreLabel}>{t('score.title')}</Text>
-            <Text style={styles.scoreNum} accessibilityLabel={t('score.a11y', { n: score.score })}>
-              {score.score}
-              <Text style={styles.scoreOf}>/100</Text>
-            </Text>
-            <Text style={styles.scoreSub}>{t('score.body', { focus: minutesLabel(score.minutes), stay: score.stay, done: score.done })}</Text>
-          </View>
-          <Anillo progress={score.score / 100} size={74} stroke={7} color={voz.mic[1]} />
-        </View>
-
-        {rings.length ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>{t('rings.title')}</Text>
-            <View style={styles.rings}>
-              {rings.map((r, i) => (
-                <View key={r.area.id + i} style={styles.ringCol}>
-                  <Anillo progress={r.pct} size={78} stroke={7} color={voz.mic[i % voz.mic.length]} label={r.total ? `${r.done}/${r.total}` : '–'} />
-                  <Text style={styles.ringName} numberOfLines={2}>
-                    {areaName(r.area)}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        ) : null}
 
         <View style={styles.card}>
           <View style={styles.cardHead}>
@@ -184,25 +164,7 @@ export default function Progreso() {
           </View>
         </View>
 
-        {live.length ? <Text style={styles.section}>{t('tab.goals')}</Text> : null}
-        {live.map((g) => {
-          const p = goalProgress(g, tasks);
-          const left = g.due ? daysBetween(today, g.due) : null;
-          return (
-            <Pressable key={g.id} onPress={() => router.push({ pathname: '/meta', params: { id: g.id } })} style={styles.goal} accessibilityRole="button">
-              <Anillo progress={p.pct} size={52} stroke={5} color={voz.mic[1]} label={`${Math.round(p.pct * 100)}%`} />
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={styles.goalTitle} numberOfLines={2}>
-                  {g.title}
-                </Text>
-                <Text style={styles.muted}>
-                  {left !== null ? t('goals.daysLeft', { n: Math.max(0, left) }) : t('goals.weekCount', { done: p.done, total: p.total })}
-                </Text>
-              </View>
-            </Pressable>
-          );
-        })}
-        {!live.length && !weekDone ? <Text style={type.muted}>{t('progress.empty')}</Text> : null}
+        {!weekDone ? <Text style={type.muted}>{t('progress.empty')}</Text> : null}
       </ScrollView>
       <Barra active="progreso" />
     </Screen>
@@ -213,6 +175,12 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, minHeight: 52, marginTop: 6 },
   title: { fontFamily: fonts.bold, fontSize: 30, letterSpacing: -1.1, color: colors.ink },
   body: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 150, gap: 12 },
+  hero: { alignItems: 'center', gap: 8, paddingBottom: 6 },
+  heroTitle: { fontFamily: fonts.bold, fontSize: 22, letterSpacing: -0.6, color: colors.ink, textAlign: 'center' },
+  bondBar: { alignSelf: 'stretch', height: 6, borderRadius: 3, backgroundColor: colors.line, overflow: 'hidden', marginTop: 4, marginHorizontal: 30 },
+  bondFill: { height: 6, borderRadius: 3 },
+  talk: { marginTop: 6, minHeight: 44, paddingHorizontal: 20, borderRadius: 22, backgroundColor: colors.card, justifyContent: 'center' },
+  talkText: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink },
   muted: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted },
   streak: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18, borderRadius: 24, backgroundColor: colors.card },
   streakIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },

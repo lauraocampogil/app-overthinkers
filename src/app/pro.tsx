@@ -11,6 +11,7 @@ import { CheckIcon, CloseIcon, IconCircle, MicIcon, Screen } from '@/components/
 import { t } from '@/i18n';
 import { openPage, SITE_URL } from '@/lib/legal';
 import { buyPlan, getPlans, purchasesReady, restorePlan, type Plan } from '@/lib/monitor';
+import { track } from '@/lib/eventos';
 import { useVoz } from '@/lib/paleta';
 import { colors, fonts } from '@/theme';
 
@@ -33,6 +34,7 @@ export default function Pro() {
   const [note, setNote] = useState<string | null>(null);
   const live = purchasesReady();
 
+  useEffect(() => track('paywall', { reason: reason ?? next ?? 'account' }), [reason, next]);
   useEffect(() => {
     void getPlans().then((p) => {
       const list = p.length ? p : FALLBACK;
@@ -55,6 +57,7 @@ export default function Pro() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     const ok = await buyPlan(plan.id);
     setBusy(false);
+    if (ok) track('purchase', { plan: plan.kind });
     if (ok) leave();
   };
   const restore = async () => {
