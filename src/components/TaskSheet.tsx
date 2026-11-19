@@ -5,6 +5,7 @@ import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleShee
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CameraIcon, CartIcon, ClockIcon, GearIcon, PinIcon, PlayIcon, TargetIcon, TrashIcon } from '@/components/Iconos';
+import { PrimerPaso } from '@/components/PrimerPaso';
 import { CheckIcon, CloseIcon } from '@/components/ui';
 import { locale, minutesLabel, t } from '@/i18n';
 import { appsFor, openApp } from '@/lib/apps';
@@ -14,7 +15,7 @@ import { addDays } from '@/lib/planner';
 import { requiresProof } from '@/lib/prioridad';
 import { isShopping } from '@/lib/compra';
 import type { Task } from '@/lib/types';
-import { todayIso, useDay } from '@/store/day';
+import { todayIso, useDay, withDefaults } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
 const DURATIONS = [15, 30, 45, 60, 90, 120];
@@ -51,6 +52,8 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
   };
   const shopping = isShopping(cur);
   const proof = requiresProof(cur);
+  // One of the top 3: a photo is offered (never required) when it is ticked. Commitment, not control.
+  const offerProof = !proof && cur.top && withDefaults(useDay.getState().settings).proofTop;
   const dayLabel =
     cur.day === today ? t('due.today') : cur.day === addDays(today, 1) ? t('due.tomorrow') : new Date(`${cur.day}T12:00:00`).toLocaleDateString(locale, { weekday: 'long' });
 
@@ -98,6 +101,8 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
                 </View>
               ) : null}
             </View>
+
+            {cur.status === 'pendiente' ? <PrimerPaso task={cur} /> : null}
 
             {shopping ? (
               <Pressable
@@ -211,7 +216,15 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={proof ? t('proof.take') : t('task.markDone')}
-                    onPress={() => go(() => (proof ? router.push({ pathname: '/prueba', params: { id: cur.id } }) : markDone(cur.id)))}
+                    onPress={() =>
+                      go(() =>
+                        proof
+                          ? router.push({ pathname: '/prueba', params: { id: cur.id } })
+                          : offerProof
+                            ? router.push({ pathname: '/prueba', params: { id: cur.id, optional: '1' } })
+                            : markDone(cur.id),
+                      )
+                    }
                     style={({ pressed }) => [styles.photo, pressed && { opacity: 0.8 }]}
                   >
                     {proof ? <CameraIcon size={24} /> : <CheckIcon color={colors.ink} size={22} />}

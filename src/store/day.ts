@@ -6,6 +6,7 @@ import { capacityFor, writePlanToCalendar } from '@/lib/calendario';
 import { estimate, learn, type Learned } from '@/lib/duraciones';
 import { addDays, schedule } from '@/lib/planner';
 import { countToday, isoDay, START_FREEZES } from '@/lib/streak';
+import { bond } from '@/lib/vinculo';
 import { syncDay } from '@/lib/sync';
 import { EMPTY_PROFILE, sameGoal, type FixedItem, type Profile } from '@/lib/perfil';
 import { isWeightGoal, RETOS, retoStepId, type Reto, type RetoId } from '@/lib/retos';
@@ -89,6 +90,13 @@ type DayState = {
   setNeedsProof: (id: string, on: boolean) => void;
   /** Done with a photo that proves it (checked by the AI before calling this). */
   proveDone: (id: string, photo: string, offline: boolean) => void;
+  /** Last day closed with the evening ritual. */
+  closedOn: string | null;
+  /**
+   * Close the day honestly: what is left moves to tomorrow (if asked) and, with at least one thing done,
+   * the day counts for the streak even if the list was not finished. Kinder than all-or-nothing.
+   */
+  closeDay: (opts: { moveLeft: boolean }) => void;
   setRoutine: (kind: RoutineKind, routine: Routine) => void;
   setProfile: (patch: Partial<Profile>) => void;
   /** Save the fixed week and put its tasks on the next 7 days. */
@@ -117,6 +125,8 @@ export const DEFAULT_SETTINGS: Settings = {
   calendarsOff: [],
   dayStart: '08:00',
   dayEnd: '22:00',
+  calm: true,
+  proofTop: true,
 };
 /** Settings saved by older versions miss the newer fields. */
 export const withDefaults = (s?: Partial<Settings> | null): Settings => ({ ...DEFAULT_SETTINGS, ...(s ?? {}) });
@@ -138,6 +148,7 @@ const initial = {
   focusLog: {} as Record<string, number>,
   retos: [] as Reto[],
   weekPlannedOn: null as string | null,
+  closedOn: null as string | null,
   nudges: {} as { retoOn?: string; laterOn?: string; doneOn?: string },
 };
 
@@ -314,6 +325,7 @@ export const useDay = create<DayState>()(
           }
           const weekly = goals.flatMap((g) => weeklyTasks(g, [...get().tasks, ...fresh], day));
           set({ goals, draft: '' });
+          if (fresh.length) bond('dump');
           commit([...get().tasks, ...fresh, ...weekly]);
           const ids = new Set([...fresh, ...weekly].map((t) => t.id));
           const placed = get().tasks.filter((t) => ids.has(t.id));
@@ -429,6 +441,7 @@ export const useDay = create<DayState>()(
             });
           }
           patch(id, (t) => ({ ...t, status: 'hecha', doneOn: day }));
+          bond('done', task?.kind);
           // The streak counts when today's list is finished.
           const leftToday = get().tasks.some((t) => t.status === 'pendiente' && t.day <= day);
           if (leftToday) return;
@@ -487,7 +500,39 @@ export const useDay = create<DayState>()(
 
         proveDone: (id, photo, offline) => {
           set({ tasks: get().tasks.map((t) => (t.id === id ? { ...t, proofPhoto: photo, proofOffline: offline } : t)) });
-          get().markDone(id);
+          bond('proof');
+          // Proof for something already ticked (from "Cerrar el día") only adds the photo.
+          if (get().tasks.find((t) => t.id === id)?.status === 'pendiente') get().markDone(id);
+        },
+
+        closeDay: ({ moveLeft }) => {
+          const day = today();
+          if (get().closedOn === day) return;
+          const tomorrow = addDays(day, 1);
+          if (moveLeft) {
+            set({
+              tasks: get().tasks.map((t) =>
+                t.status === 'pendiente' && t.day <= day ? { ...t, day: tomorrow, pinned: true, postponed: t.postponed + 1 } : t,
+              ),
+            });
+          }
+          const didSomething = get().tasks.some((t) => t.status === 'hecha' && t.doneOn === day);
+          if (didSomething && get().streak.lastCountedDate !== day) {
+            const prev = get().streak.lastCountedDate;
+            const outcome = countToday(get().streak, get().settings.level, day);
+            const history = { ...get().history, [day]: 'done' as const };
+            if (prev && outcome.usedFreezes > 0) {
+              const d = new Date(`${prev}T12:00:00`);
+              for (let i = 0; i < outcome.usedFreezes; i++) {
+                d.setDate(d.getDate() + 1);
+                history[isoDay(d)] = 'freeze';
+              }
+            }
+            set({ streak: outcome.streak, history });
+          }
+          set({ closedOn: day });
+          bond('close');
+          syncDay(get());
         },
 
         setFixed: (items) => {
@@ -582,8 +627,9 @@ export const useDay = create<DayState>()(
       name: 'getgo-day',
       version: 7,
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: ({ settings, streak, tasks, lastDay, history, owner, learned, focus, goals, routines, routineLog, profile, focusLog, retos, weekPlannedOn, nudges }) => ({
+      partialize: ({ settings, streak, tasks, lastDay, history, owner, learned, focus, goals, routines, routineLog, profile, focusLog, retos, weekPlannedOn, nudges, closedOn }) => ({
         goals,
+        closedOn,
         weekPlannedOn,
         nudges,
         retos,

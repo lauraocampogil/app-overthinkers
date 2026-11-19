@@ -16,7 +16,7 @@ import { estimate } from '@/lib/duraciones';
 import { addMinutes, cameBack, elapsedMs, endFocus, endsAt, MAX_LEAVES, pauseFocus, resumeFocus, startFocus, useFoco, wentAway } from '@/lib/foco';
 import { useVoz } from '@/lib/paleta';
 import { requiresProof, topThree } from '@/lib/prioridad';
-import { todayIso, todayList, useDay } from '@/store/day';
+import { todayIso, todayList, useDay, withDefaults } from '@/store/day';
 import { colors, fonts } from '@/theme';
 
 const BG = '#0A0A0A';
@@ -67,7 +67,8 @@ export default function Foco() {
   useEffect(() => {
     const sub = AppState.addEventListener('change', (st) => {
       if (st === 'background') {
-        wentAway();
+        // Calm mode (default): leaving costs nothing, only a gentle call back.
+        if (!withDefaults(useDay.getState().settings).calm) wentAway();
         void Notifications.scheduleNotificationAsync({
           identifier: 'focus-away',
           content: { title: t('focus.awayTitle'), body: t('focus.awayBody') },
@@ -125,6 +126,10 @@ export default function Foco() {
       router.push({ pathname: '/prueba', params: { id: task.id, from: 'foco' } });
       return;
     }
+    if (task.top && withDefaults(useDay.getState().settings).proofTop) {
+      router.push({ pathname: '/prueba', params: { id: task.id, from: 'foco', optional: '1' } });
+      return;
+    }
     const minutes = endFocus();
     // Learn from the real focused time (pauses don't count).
     useDay.setState({ focus: { id: task.id, startedAt: Date.now() - minutes * 60_000 } });
@@ -149,7 +154,8 @@ export default function Foco() {
 
   quitRef.current = quit;
   const paused = Boolean(s?.pausedAt);
-  const leaves = s?.leaves ?? 0;
+  const calm = withDefaults(useDay.getState().settings).calm;
+  const leaves = calm ? 0 : (s?.leaves ?? 0);
   const life = Math.max(0, 1 - leaves / MAX_LEAVES);
   const dead = life <= 0;
 
@@ -157,11 +163,15 @@ export default function Foco() {
     <View style={styles.root}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         <View style={styles.header}>
-          <View style={styles.lives} accessibilityLabel={t('focus.life', { n: MAX_LEAVES - Math.min(leaves, MAX_LEAVES) })}>
-            {Array.from({ length: MAX_LEAVES }, (_, i) => (
-              <View key={i} style={[styles.dot, i < MAX_LEAVES - leaves && { backgroundColor: voz.mic[1] }]} />
-            ))}
-          </View>
+          {calm ? (
+            <View style={styles.lives} />
+          ) : (
+            <View style={styles.lives} accessibilityLabel={t('focus.life', { n: MAX_LEAVES - Math.min(leaves, MAX_LEAVES) })}>
+              {Array.from({ length: MAX_LEAVES }, (_, i) => (
+                <View key={i} style={[styles.dot, i < MAX_LEAVES - leaves && { backgroundColor: voz.mic[1] }]} />
+              ))}
+            </View>
+          )}
           <Text style={styles.headerLabel}>{paused ? t('focus.paused') : t('focus.live')}</Text>
           <Pressable onPress={quit} accessibilityRole="button" style={styles.pill} hitSlop={8}>
             <Text style={styles.pillText}>{t('focus.quit')}</Text>

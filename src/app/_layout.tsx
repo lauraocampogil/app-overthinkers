@@ -28,6 +28,7 @@ import { routineOf } from '@/lib/rutinas';
 import { syncWidget, widgetChanges } from '@/lib/widget';
 import { pullDay } from '@/lib/sync';
 import { todayIso, todayList, useDay, withDefaults } from '@/store/day';
+import { seedBond } from '@/lib/vinculo';
 
 export default function RootLayout() {
   const [loaded] = useFonts({ Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold });
@@ -72,6 +73,7 @@ export default function RootLayout() {
   const rawSettings = useDay((s) => s.settings);
   const routines = useDay((s) => s.routines);
   const agendaLoaded = useAgenda((s) => s.loadedAt);
+  const closedOn = useDay((s) => s.closedOn);
   useEffect(() => {
     if (!signedIn || !tasks.length) return;
     const id = setTimeout(() => {
@@ -104,10 +106,18 @@ export default function RootLayout() {
         notifyAt: settings.notifyAt,
         dayEnd: settings.dayEnd,
         routines: { manana: routineOf(routines, 'manana'), noche: routineOf(routines, 'noche') },
+        closedOn: useDay.getState().closedOn,
       });
     }, 1200);
     return () => clearTimeout(id);
-  }, [signedIn, tasks, rawSettings, routines, agendaLoaded]);
+  }, [signedIn, tasks, rawSettings, routines, agendaLoaded, closedOn]);
+
+  // People who used Okio before the bond existed start with what they already did.
+  useEffect(() => {
+    if (!signedIn) return;
+    const st = useDay.getState();
+    seedBond(st.tasks.filter((x) => x.status === 'hecha'), Object.values(st.history).filter((v) => v === 'done').length);
+  }, [signedIn]);
 
   // Tapping a reminder: "Hecho" opens the task (camera if it needs proof); "15 min" snoozes it.
   useEffect(() => {
@@ -125,6 +135,10 @@ export default function RootLayout() {
         return;
       }
       const url = data?.url ?? '';
+      if (url.endsWith('cerrar')) {
+        router.push('/cerrar');
+        return;
+      }
       const kind = /rutina\?kind=(manana|noche)/.exec(url)?.[1];
       if (kind) router.push({ pathname: '/rutina', params: { kind } });
     });
@@ -204,6 +218,7 @@ export default function RootLayout() {
           <Stack.Screen name="ahora" />
           <Stack.Screen name="foco" options={{ gestureEnabled: false, animation: 'fade' }} />
           <Stack.Screen name="prueba" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="cerrar" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="rutina" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="rutinas" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="bienvenida" options={{ animation: 'fade', gestureEnabled: false }} />

@@ -8,6 +8,7 @@ import { PrimaryButton, Screen } from '@/components/ui';
 import { t } from '@/i18n';
 import type { ParseResult, RawTask, TaskQuestion } from '@/lib/types';
 import { parseBrainDump } from '@/lib/ai';
+import { canDump, countDump } from '@/lib/limite';
 import { useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
@@ -43,6 +44,12 @@ export default function Ordenando() {
     const started = Date.now();
     (async () => {
       const text = draftRef.current.trim();
+      // Free plan: one dump a day. The draft stays, so nothing said is lost.
+      if (text && !(await canDump())) {
+        if (alive) router.replace({ pathname: '/pro', params: { next: 'ordenando', reason: 'limit' } });
+        return;
+      }
+      if (text) countDump();
       const result: ParseResult = text ? await parseBrainDump(text) : { tasks: [], goals: [], tired: false };
       if (!alive) return;
       if (!result.tasks.length && !result.goals?.length) {

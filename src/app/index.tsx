@@ -115,7 +115,13 @@ export default function Inicio() {
     // Only a duration the person gave (or GetGo learned from them): never show an invented one.
     return e.source === 'guess' ? '' : minutesLabel(e.minutes);
   };
-  const toggle = (task: Task) => (task.status === 'hecha' ? undoDone(task.id) : markDone(task.id));
+  // Ticking one of the top 3 offers a photo (optional): proof as commitment.
+  const toggle = (task: Task) =>
+    task.status === 'hecha'
+      ? undoDone(task.id)
+      : task.top && settings.proofTop
+        ? router.push({ pathname: '/prueba', params: { id: task.id, optional: '1' } })
+        : markDone(task.id);
 
 
   const params = useLocalSearchParams<{ added?: string; today?: string; later?: string; goals?: string }>();
@@ -178,6 +184,10 @@ export default function Inicio() {
   const kind = routineDue(routines);
   const routine = kind ? routineOf(routines, kind) : null;
   const routineDone = kind ? (routineLog[today]?.[kind] ?? []).length : 0;
+  // "Cierra tu día" shows from 3 hours before the end of the day (or after 18:00), until it is closed.
+  const closedOn = useDay((s) => s.closedOn);
+  const [endH] = settings.dayEnd.split(':').map(Number);
+  const showClose = closedOn !== today && new Date().getHours() >= Math.min(18, (endH || 22) - 3) && (done.length > 0 || pending.length > 0);
 
   const header = (
     <View style={styles.header}>
@@ -526,6 +536,16 @@ export default function Inicio() {
           )
         ) : null}
 
+        {showClose ? (
+          <Pressable onPress={() => router.push('/cerrar')} style={({ pressed }) => [styles.closeCard, pressed && { opacity: 0.85 }]} accessibilityRole="button">
+            <MoonIcon size={20} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={styles.routineTitle}>{t('close.cardTitle')}</Text>
+              <Text style={type.muted}>{t('close.cardBody')}</Text>
+            </View>
+            <ArrowRightIcon size={14} color={colors.faint} />
+          </Pressable>
+        ) : null}
 
         </>)}
       </ScrollView>
@@ -592,6 +612,7 @@ const styles = StyleSheet.create({
   routine: { marginHorizontal: 20, padding: 16, borderRadius: 24, borderWidth: 1, borderColor: colors.line, gap: 6 },
   routineHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   routineTitle: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
+  closeCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 22, backgroundColor: colors.card },
   routineCount: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
   routineBar: { height: 3, borderRadius: 2, backgroundColor: colors.line, overflow: 'hidden', marginVertical: 6 },
   routineFill: { height: 3, borderRadius: 2 },

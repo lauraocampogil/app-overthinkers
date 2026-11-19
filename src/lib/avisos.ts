@@ -12,6 +12,7 @@ import type { Routine, RoutineKind, Task } from './types';
  */
 
 const MORNING_ID = 'getgo-morning';
+const CLOSE_ID = 'getgo-close-day';
 const EVENING_ID = 'getgo-evening';
 const TASK_PREFIX = 'getgo-task-';
 const ROUTINE_PREFIX = 'getgo-routine-';
@@ -123,6 +124,8 @@ export async function refreshReminders(opts: {
   notifyAt: string;
   dayEnd: string;
   routines: Record<RoutineKind, Routine>;
+  /** Day already closed with the evening ritual (no close reminder then). */
+  closedOn?: string | null;
 }) {
   try {
     if (!(await ensureNotificationPermission())) return;
@@ -213,6 +216,17 @@ export async function refreshReminders(opts: {
           data: { url: 'getgo://' },
         },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at },
+      });
+    }
+    // "Cierra tu día": one hour before the end of the day, unless it is already closed.
+    await Notifications.cancelScheduledNotificationAsync(CLOSE_ID).catch(() => {});
+    const close = new Date(end.getTime() - 60 * 60_000);
+    const iso = `${close.getFullYear()}-${String(close.getMonth() + 1).padStart(2, '0')}-${String(close.getDate()).padStart(2, '0')}`;
+    if (opts.closedOn !== iso && close.getTime() > Date.now()) {
+      await Notifications.scheduleNotificationAsync({
+        identifier: CLOSE_ID,
+        content: { title: t('notif.closeTitle'), body: t('notif.closeBody'), data: { url: 'getgo://cerrar' } },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: close },
       });
     }
     await Notifications.setBadgeCountAsync(pending.length).catch(() => {});

@@ -6,7 +6,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { ArrowRightIcon } from '@/components/Iconos';
 import { Mascota } from '@/components/Mascota';
-import { CloseIcon, IconCircle, Screen } from '@/components/ui';
+import { CheckIcon, CloseIcon, IconCircle, Screen } from '@/components/ui';
 import { locale, t } from '@/i18n';
 import { useMascot } from '@/lib/auth';
 import { askOkio, clearChat, KEEP_DAYS, pruneChat, useMentor } from '@/lib/mentor';
@@ -92,6 +92,18 @@ export default function Mentor() {
                 <Animated.View entering={FadeInDown.duration(220)} style={[styles.bubble, m.role === 'user' ? styles.me : styles.okio]}>
                   <Text style={[styles.bubbleText, m.role === 'user' && { color: colors.white }]}>{m.content}</Text>
                 </Animated.View>
+                {m.added?.length ? (
+                  <Pressable onPress={() => router.navigate('/')} style={styles.added} accessibilityRole="button" accessibilityLabel={t('mentor.added', { n: m.added.length })}>
+                    <Text style={styles.addedTitle}>{t('mentor.added', { n: m.added.length })}</Text>
+                    {m.added.slice(0, 6).map((title, j) => (
+                      <View key={j} style={styles.addedRow}>
+                        <CheckIcon size={14} color={colors.ink} />
+                        <Text style={styles.addedText} numberOfLines={1}>{title}</Text>
+                      </View>
+                    ))}
+                    <Text style={styles.addedLink}>{t('mentor.seePlan')}</Text>
+                  </Pressable>
+                ) : null}
               </View>
             );
           })}
@@ -139,6 +151,11 @@ const styles = StyleSheet.create({
   okio: { alignSelf: 'flex-start', backgroundColor: colors.card, borderBottomLeftRadius: 6 },
   bubbleText: { fontFamily: fonts.regular, fontSize: 15.5, lineHeight: 22, color: colors.ink },
   dayLabel: { alignSelf: 'center', fontFamily: fonts.medium, fontSize: 12, color: colors.muted, textTransform: 'capitalize', marginTop: 6 },
+  added: { alignSelf: 'flex-start', maxWidth: '84%', gap: 6, paddingVertical: 12, paddingHorizontal: 15, borderRadius: 18, borderWidth: 1, borderColor: colors.line },
+  addedTitle: { fontFamily: fonts.semibold, fontSize: 13, color: colors.ink },
+  addedRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  addedText: { fontFamily: fonts.regular, fontSize: 14, color: colors.ink, flexShrink: 1 },
+  addedLink: { fontFamily: fonts.medium, fontSize: 13, color: colors.muted, marginTop: 2 },
   keep: { alignSelf: 'center', fontFamily: fonts.regular, fontSize: 12, color: colors.faint, marginTop: 4 },
   inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 10 },
   input: {

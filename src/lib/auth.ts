@@ -140,7 +140,9 @@ export function useMascot() {
   const preview = process.env.EXPO_PUBLIC_MASCOT_PREVIEW === '1';
   return {
     seed: user?.id ?? 'getgo',
-    unlocked: preview || days >= MASCOT_AFTER_DAYS,
+    // Okio is always there now: it starts grey and gains colour with the bond (lib/vinculo).
+    unlocked: true,
+    preview,
     daysLeft: Math.max(0, MASCOT_AFTER_DAYS - days),
     days,
   };

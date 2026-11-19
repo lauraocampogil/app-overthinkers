@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { BackIcon, CheckIcon, IconCircle, Screen } from '@/components/ui';
 import { t } from '@/i18n';
@@ -11,6 +11,8 @@ import { openPage, SITE_URL } from '@/lib/legal';
 import { connectCalendar, defaultCalendarId, readableCalendars, refreshAgenda, writableCalendars, type ReadableCalendar, type WritableCalendar } from '@/lib/calendario';
 import { connectHealth, disconnectHealth, healthAvailable, useSalud } from '@/lib/salud';
 import { connectStrava, disconnectStrava, stravaAvailable, useStrava } from '@/lib/strava';
+import { bondLevel, bondStage, useVinculo } from '@/lib/vinculo';
+import { useVoz } from '@/lib/paleta';
 import { useDay, withDefaults } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
@@ -19,6 +21,8 @@ export default function Cuenta() {
   const reset = useDay((s) => s.reset);
   const [deleting, setDeleting] = useState(false);
   const mascot = useMascot();
+  const voz = useVoz();
+  const bondPoints = useVinculo((s) => s.points);
   const settings = withDefaults(useDay((s) => s.settings));
   const setSettings = useDay((s) => s.setSettings);
   const setCalendar = async (mode: 'off' | 'read' | 'write') => {
@@ -95,14 +99,12 @@ export default function Cuenta() {
         </View>
 
         <View style={[styles.card, { alignItems: 'center' }]}>
-          {mascot.unlocked ? (
-            <>
-              <Mascota seed={mascot.seed} size={140} />
-              <Text style={[type.muted, { textAlign: 'center' }]}>{t('mascot.yours')}</Text>
-            </>
-          ) : (
-            <Text style={type.muted}>{t('mascot.soon', { n: mascot.daysLeft })}</Text>
-          )}
+          <Mascota seed={mascot.seed} size={140} />
+          <Text style={[styles.name, { textAlign: 'center' }]}>{t(`bond.stage${bondStage(bondPoints)}`)}</Text>
+          <Text style={[type.muted, { textAlign: 'center' }]}>{t('bond.body')}</Text>
+          <View style={styles.bondBar} accessibilityLabel={t('bond.pct', { n: Math.round(bondLevel(bondPoints) * 100) })}>
+            <View style={[styles.bondFill, { width: `${Math.round(bondLevel(bondPoints) * 100)}%`, backgroundColor: voz.mic[1] }]} />
+          </View>
         </View>
 
         <View style={[styles.card, { gap: 10 }]}>
@@ -211,6 +213,24 @@ export default function Cuenta() {
           <Text style={styles.rowText}>{t('read.talk')}</Text>
         </Pressable>
 
+        <View style={[styles.card, { gap: 14 }]}>
+          <Text style={styles.name}>{t('mode.title')}</Text>
+          <View style={styles.switchRow}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={styles.rowText}>{t('mode.calm')}</Text>
+              <Text style={type.muted}>{t('mode.calmBody')}</Text>
+            </View>
+            <Switch value={settings.calm} onValueChange={(v) => setSettings({ calm: v })} trackColor={{ true: colors.ink }} accessibilityLabel={t('mode.calm')} />
+          </View>
+          <View style={styles.switchRow}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={styles.rowText}>{t('mode.proof')}</Text>
+              <Text style={type.muted}>{t('mode.proofBody')}</Text>
+            </View>
+            <Switch value={settings.proofTop} onValueChange={(v) => setSettings({ proofTop: v })} trackColor={{ true: colors.ink }} accessibilityLabel={t('mode.proof')} />
+          </View>
+        </View>
+
         <Conexiones />
 
         <Pressable accessibilityRole="button" onPress={() => router.push('/bloqueo')} style={styles.row}>
@@ -315,6 +335,9 @@ const styles = StyleSheet.create({
   legalRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, paddingHorizontal: 4 },
   legalText: { fontFamily: fonts.medium, fontSize: 14, color: colors.muted, textDecorationLine: 'underline' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  bondBar: { alignSelf: 'stretch', height: 6, borderRadius: 3, backgroundColor: colors.line, overflow: 'hidden', marginTop: 8 },
+  bondFill: { height: 6, borderRadius: 3 },
   chip: { minHeight: 38, paddingHorizontal: 14, borderRadius: 19, backgroundColor: colors.white, justifyContent: 'center' },
   chipOn: { backgroundColor: colors.accentDark },
   calChip: { flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: '100%' },

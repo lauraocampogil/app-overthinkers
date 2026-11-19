@@ -21,7 +21,7 @@ import { colors, fonts, type } from '@/theme';
 type Phase = { kind: 'ask' } | { kind: 'checking'; uri: string } | { kind: 'no'; uri: string; reason: string } | { kind: 'yes'; uri: string };
 
 export default function Prueba() {
-  const { id, from } = useLocalSearchParams<{ id?: string; from?: string }>();
+  const { id, from, optional } = useLocalSearchParams<{ id?: string; from?: string; optional?: string }>();
   const task = useDay((s) => s.tasks.find((x) => x.id === id));
   const [phase, setPhase] = useState<Phase>({ kind: 'ask' });
   const [denied, setDenied] = useState(false);
@@ -105,7 +105,9 @@ export default function Prueba() {
             ? t('proof.yesBody')
             : phase.kind === 'checking'
               ? t('proof.checking')
-              : t('proof.ask', { proof: task.proof ?? t('proof.anyPhoto') })}
+              : optional
+                ? t('proof.optionalBody')
+                : t('proof.ask', { proof: task.proof ?? t('proof.anyPhoto') })}
         </Text>
 
         <View style={styles.frame}>
@@ -150,6 +152,17 @@ export default function Prueba() {
               disabled={phase.kind === 'checking'}
             />
             <TextButton label={t('proof.library')} onPress={() => void pick(false)} />
+            {optional && phase.kind !== 'checking' ? (
+              <TextButton
+                label={t('proof.skip')}
+                onPress={() => {
+                  if (from === 'foco') endFocus();
+                  if (task.status === 'pendiente') useDay.getState().markDone(task.id);
+                  if (from === 'foco') router.replace('/');
+                  else router.back();
+                }}
+              />
+            ) : null}
           </>
         )}
       </View>

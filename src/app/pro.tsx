@@ -19,13 +19,13 @@ import { colors, fonts } from '@/theme';
  * The real prices always come from App Store / Google Play through RevenueCat.
  */
 const FALLBACK: Plan[] = [
-  { id: 'annual', kind: 'annual', price: '39,99 €', perMonth: '3,33 €', trialDays: 7, amount: 3.33 },
-  { id: 'monthly', kind: 'monthly', price: '6,99 €', perMonth: null, trialDays: null, amount: 6.99 },
+  { id: 'annual', kind: 'annual', price: '29,99 €', perMonth: '2,50 €', trialDays: 14, amount: 2.5 },
+  { id: 'monthly', kind: 'monthly', price: '4,99 €', perMonth: null, trialDays: null, amount: 4.99 },
 ];
 
 /** Paywall: shown once at the end of onboarding, and from Cuenta. It can always be closed. */
 export default function Pro() {
-  const { next } = useLocalSearchParams<{ next?: string }>();
+  const { next, reason } = useLocalSearchParams<{ next?: string; reason?: string }>();
   const voz = useVoz();
   const [plans, setPlans] = useState<Plan[] | null>(null);
   const [pick, setPick] = useState<string | null>(null);
@@ -42,6 +42,8 @@ export default function Pro() {
   }, []);
 
   const leave = () => (next === 'ordenando' ? router.replace('/ordenando') : router.back());
+  // Closed without buying after the daily limit: back home (the dump stays saved as a draft).
+  const close = () => (reason === 'limit' ? router.replace('/') : leave());
   const plan = plans?.find((p) => p.id === pick) ?? null;
   const monthly = plans?.find((p) => p.kind === 'monthly');
   const save = (p: Plan) => (p.kind === 'annual' && monthly ? Math.round((1 - p.amount / monthly.amount) * 100) : 0);
@@ -74,7 +76,7 @@ export default function Pro() {
     <Screen>
       <View style={styles.header}>
         <Logo height={22} />
-        <IconCircle label={t('common.close')} onPress={leave}>
+        <IconCircle label={t('common.close')} onPress={close}>
           <CloseIcon />
         </IconCircle>
       </View>
@@ -83,7 +85,7 @@ export default function Pro() {
           {t('pro.title')}
         </Animated.Text>
         <Animated.Text entering={FadeInDown.delay(80).duration(450)} style={styles.sub}>
-          {t('pro.subtitle')}
+          {reason === 'limit' ? t('pro.limit') : t('pro.subtitle')}
         </Animated.Text>
 
         <View style={styles.perks}>

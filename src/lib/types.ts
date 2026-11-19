@@ -116,6 +116,10 @@ export type Settings = {
   /** The part of the day GetGo may plan in (HH:MM). */
   dayStart: string;
   dayEnd: string;
+  /** Calm focus (default): no lives, the mascot never fades. Off = the strict mode with 3 lives. */
+  calm: boolean;
+  /** Offer a photo (optional) when one of the top 3 is ticked: proof as commitment. */
+  proofTop: boolean;
 };
 
 export type Streak = {
