@@ -23,14 +23,21 @@ import { colors, fonts } from '@/theme';
 export type Tab = 'hoy' | 'metas' | 'progreso';
 const ROUTES: Record<Tab, '/' | '/metas' | '/progreso'> = { hoy: '/', metas: '/metas', progreso: '/progreso' };
 
-/** Frosted glass for the light buttons, so the list underneath does not fight with them. */
+/**
+ * Frosted glass for the light buttons. Still glass, but readable on anything behind it (white lists, the black
+ * top-3 card, photos): a stronger blur with a milky white layer, a fine dark outline that separates it from white,
+ * a light rim that separates it from black, and a soft shadow that lifts it off the page.
+ * The shadow sits on an outer view so iOS doesn't clip it with the rounded corners.
+ */
 function Glass({ style, children }: { style: object; children: React.ReactNode }) {
+  const radius = (StyleSheet.flatten(style) as { borderRadius?: number }).borderRadius ?? 30;
   return (
-    <View style={[style, styles.glassEdge]}>
-      <BlurView intensity={28} tint="systemUltraThinMaterialLight" style={StyleSheet.absoluteFill} />
-      <View style={[StyleSheet.absoluteFill, styles.glassTint]} />
-      {/* A thin light rim on top, like real glass catching the light. */}
-      <View style={[StyleSheet.absoluteFill, styles.glassRim]} pointerEvents="none" />
+    <View style={[style, styles.glassShadow]}>
+      <View style={[StyleSheet.absoluteFill, styles.glassClip, { borderRadius: radius }]} pointerEvents="none">
+        <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, styles.glassTint]} />
+        <View style={[StyleSheet.absoluteFill, styles.glassRim, { borderRadius: radius }]} />
+      </View>
       {children}
     </View>
   );
@@ -61,7 +68,7 @@ export function Barra({ active }: { active: Tab; onWrite?: () => void }) {
         style={[styles.tab, on && styles.tabOn]}
         hitSlop={4}
       >
-        <Icon color={on ? colors.white : colors.muted} size={22} strokeWidth={on ? 2.1 : 1.8} />
+        <Icon color={on ? colors.white : colors.ink} size={22} strokeWidth={on ? 2.1 : 1.8} />
       </Pressable>
     );
   };
@@ -148,17 +155,16 @@ export function Barra({ active }: { active: Tab; onWrite?: () => void }) {
 const styles = StyleSheet.create({
   wrap: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  glassEdge: {
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.7)',
+  glassShadow: {
     shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 10,
   },
-  glassTint: { backgroundColor: 'rgba(245,245,245,0.38)' },
-  glassRim: { borderRadius: 999, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.9)' },
+  glassClip: { overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(0,0,0,0.10)' },
+  glassTint: { backgroundColor: 'rgba(255,255,255,0.62)' },
+  glassRim: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.85)' },
   menu: { position: 'absolute', right: 16, gap: 8, alignItems: 'flex-end' },
   menuItem: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 50, paddingHorizontal: 18, borderRadius: 25 },
   menuText: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
