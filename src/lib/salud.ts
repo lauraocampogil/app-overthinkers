@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import { Platform, TurboModuleRegistry } from 'react-native';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
@@ -18,6 +18,9 @@ function lib(): HK | null {
   if (hk !== undefined) return hk;
   hk = null;
   if (Platform.OS !== 'ios' || !Constants.expoConfig?.extra?.health) return hk;
+  // The JS config can say "health" while the installed app was built without it (free signing,
+  // or Metro started without GETGO_FREE_SIGNING=1). Check the native side before loading anything.
+  if (!TurboModuleRegistry.get('NitroModules')) return hk;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     hk = require('@kingstinct/react-native-healthkit') as HK;
