@@ -163,6 +163,11 @@ export default function Progreso() {
                   <Text style={styles.entryText} numberOfLines={openEntry === e.day ? undefined : 3}>
                     {e.text}
                   </Text>
+                  {e.reply ? (
+                    <Text style={styles.entryReply} numberOfLines={openEntry === e.day ? undefined : 2}>
+                      Okio · {e.reply}
+                    </Text>
+                  ) : null}
                 </Pressable>
               ))}
           </View>
@@ -181,6 +186,7 @@ const styles = StyleSheet.create({
   journalTitle: { fontFamily: fonts.bold, fontSize: 19, letterSpacing: -0.4, color: colors.ink },
   entry: { backgroundColor: colors.card, borderRadius: 20, padding: 16, gap: 6 },
   entryDay: { fontFamily: fonts.semibold, fontSize: 13, color: colors.muted, textTransform: 'capitalize' },
+  entryReply: { fontFamily: fonts.regular, fontSize: 13.5, lineHeight: 19, color: colors.muted },
   entryText: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 21, color: colors.ink },
   hero: { alignItems: 'center', gap: 8, paddingBottom: 6 },
   together: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink },

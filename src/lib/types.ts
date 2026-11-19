@@ -140,7 +140,7 @@ export type Streak = {
 /** 'place' = where it happens (the answer becomes its address, for the travel time). */
 export type TaskQuestion = { q: string; kind: 'minutes' | 'text' | 'deadline' | 'place' | 'choice'; template?: string; /** For 'choice': the options shown as chips. */ options?: string[] };
 
-export type ParseResult = { tasks: RawTask[]; tired: boolean; goals?: RawGoal[] };
+export type ParseResult = { tasks: RawTask[]; tired: boolean; goals?: RawGoal[]; /** Okio's short, warm answer to what was said (journal-style). */ reflection?: string };
 
 /** Something the person does every day, whatever happens ("8.000 pasos", "Leer 10 min"). Max 3. */
 export type NonNeg = { id: string; text: string; minutes?: number | null; proof?: string | null };

@@ -13,7 +13,7 @@ import { Celebracion } from '@/components/Celebracion';
 import { Deslizar } from '@/components/Deslizar';
 import { LecturaHoy } from '@/components/LecturaHoy';
 import { TaskSheet } from '@/components/TaskSheet';
-import { CheckIcon, FlameIcon, IconCircle, PersonIcon, Screen } from '@/components/ui';
+import { CheckIcon, CloseIcon, FlameIcon, IconCircle, PersonIcon, Screen } from '@/components/ui';
 import { locale, minutesLabel, t } from '@/i18n';
 import { useAtajos } from '@/lib/atajos';
 import { useAuth, useMascot } from '@/lib/auth';
@@ -22,6 +22,7 @@ import { estimate } from '@/lib/duraciones';
 import { useVoz } from '@/lib/paleta';
 import { addDays, daysBetween } from '@/lib/planner';
 import { requiresProof, topThree, whyTop } from '@/lib/prioridad';
+import { useRespuesta } from '@/lib/diario';
 import { routineDue, routineOf } from '@/lib/rutinas';
 import { checkinDue, isWeightGoal, nextReto, RETOS } from '@/lib/retos';
 import { keepPhoto } from '@/lib/fotos';
@@ -172,6 +173,7 @@ export default function Inicio() {
   const timeOf = (task: Task) => (slot(task) ? clock(slot(task)!.start) : task.at ?? '');
 
   const top = topThree(active, today, areas);
+  const reply = useRespuesta();
   // Days in a row each non-negotiable was done (today counts once ticked).
   const nnStreak = (id: string) => {
     let n = 0;
@@ -468,6 +470,19 @@ export default function Inicio() {
           </Pressable>
         ) : null}
 
+        {/* Okio's answer to what you just told it: what weighs on you and how it arranged things. */}
+        {sel === today && reply.day === today && reply.text && !reply.hidden ? (
+          <View style={styles.reply}>
+            <Pressable onPress={() => router.push('/mentor')} accessibilityRole="button" accessibilityLabel={t('plus.okio')}>
+              <Mascota seed={mascot.seed} size={40} mood="feliz" bond={0} />
+            </Pressable>
+            <Text style={styles.replyText}>{reply.text}</Text>
+            <Pressable onPress={() => useRespuesta.setState({ hidden: true })} hitSlop={10} accessibilityRole="button" accessibilityLabel={t('common.close')}>
+              <CloseIcon />
+            </Pressable>
+          </View>
+        ) : null}
+
         {sel === today ? (
           <View style={styles.nnCard}>
             <View style={styles.topHead}>
@@ -708,6 +723,8 @@ const styles = StyleSheet.create({
   dayRoutine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dayRoutineText: { flex: 1, fontFamily: fonts.regular, fontSize: 12, color: colors.muted },
 
+  reply: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 20, marginBottom: 14, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 22, borderWidth: 1, borderColor: colors.line },
+  replyText: { flex: 1, fontFamily: fonts.regular, fontSize: 14.5, lineHeight: 20, color: colors.ink },
   nnCard: { marginHorizontal: 20, marginBottom: 14, backgroundColor: colors.card, borderRadius: 24, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 },
   nnLabel: { fontFamily: fonts.semibold, fontSize: 12, letterSpacing: 0.8, color: colors.muted },
   nnCount: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },

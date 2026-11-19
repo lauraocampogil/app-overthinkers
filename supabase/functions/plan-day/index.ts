@@ -52,8 +52,10 @@ Las tareas que pertenecen a una meta van en "steps" de esa meta, no en "tasks".
 Si hay PERFIL, úsalo: "where" de la compra = su tienda favorita si no dice otra; "where" del gym = su gimnasio; las tareas de sus áreas importantes valen "importance" 3; para metas de salud o peso, ritmo seguro. Si el texto describe sus áreas (por ejemplo "Gimnasio (perWeek: 4)"), crea metas semanales con esa frecuencia.
 
 - "tired": true si dice que está cansada o sin energía.
+- "reflection": 1 o 2 frases cortas, cálidas y concretas, en su idioma, como un buen amigo que escucha: nombra lo que más le pesa según SU texto y dile cómo lo has ordenado ("Te pesa la entrega de la app; hoy solo 3 cosas y lo demás lo he pasado al jueves"). Sin diagnósticos, sin terapia, sin frases hechas.
+- Escucha también lo que le agobia o le frustra: si de ahí sale un deseo claro ("me agobia no avanzar con mi app", "quiero dejar de llegar tarde"), propón una meta en "goals" con su plan.
 Si recibes una CAPTURA de mensajes o mails, extrae solo lo que la persona TIENE QUE HACER (peticiones, citas, fechas, lugares, horas).
-Responde SOLO con JSON: {"tasks":[...],"goals":[...],"tired":boolean}`;
+Responde SOLO con JSON: {"tasks":[...],"goals":[...],"tired":boolean,"reflection":string}`;
 
 const WEEK = `
 MODO SEMANA: la persona te cuenta lo que quiere hacer esta semana. Organízale la semana entera.
@@ -174,6 +176,7 @@ Deno.serve(async (req) => {
         tasks: Array.isArray(json.tasks) ? json.tasks : [],
         goals: Array.isArray(json.goals) ? json.goals : [],
         tired: Boolean(json.tired),
+        reflection: typeof json.reflection === 'string' ? json.reflection.slice(0, 400) : '',
         ...(week ? { wake: typeof json.wake === 'string' ? json.wake : null, advice: typeof json.advice === 'string' ? json.advice : '' } : {}),
       },
       { headers: cors },

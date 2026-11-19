@@ -9,8 +9,9 @@ import { t } from '@/i18n';
 import type { ParseResult, RawTask, TaskQuestion } from '@/lib/types';
 import { parseBrainDump } from '@/lib/ai';
 import { canDump, countDump } from '@/lib/limite';
+import { addEntry, useRespuesta } from '@/lib/diario';
 import { track } from '@/lib/eventos';
-import { useDay } from '@/store/day';
+import { todayIso, useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
 const MIN_MS = 900;
@@ -60,6 +61,10 @@ export default function Ordenando() {
   const [ask, setAsk] = useState<{ result: ParseResult; started: number; text: string } | null>(null);
 
   const save = (result: ParseResult, started: number) => {
+    // Everything said is a journal entry too (kept on the phone), with Okio's answer.
+    const said = draftRef.current.trim();
+    if (said) addEntry(todayIso(), said, result.reflection);
+    if (result.reflection) useRespuesta.setState({ day: todayIso(), text: result.reflection, hidden: false });
     const added = addParsed(result);
     track('plan', { proposed: result.tasks.length, kept: 1 });
     // A short beat so it feels sorted, then straight to the list with a small confirmation.
@@ -82,6 +87,11 @@ export default function Ordenando() {
       const result: ParseResult = text ? await parseBrainDump(text) : { tasks: [], goals: [], tired: false };
       if (!alive) return;
       if (!result.tasks.length && !result.goals?.length) {
+        // Nothing to do, only things on the mind: it is a journal entry; Okio answers on Hoy.
+        if (result.reflection) {
+          save(result, started);
+          return;
+        }
         setEmpty(true);
         return;
       }

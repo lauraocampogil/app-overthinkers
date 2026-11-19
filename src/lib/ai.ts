@@ -90,7 +90,8 @@ export async function parseBrainDump(text: string): Promise<ParseResult & { sour
       // Only what the person said: nothing invented from the profile or from thin air.
       const tasks = keepSaid((Array.isArray(data?.tasks) ? data.tasks : []).map(sanitize).filter(Boolean) as RawTask[], text);
       const goals = (Array.isArray(data?.goals) ? data.goals : []).map(sanitizeGoal).filter(Boolean) as RawGoal[];
-      if (tasks.length || goals.length) return { tasks, goals, tired: Boolean(data?.tired), source: 'ia' };
+      const reflection = typeof data?.reflection === 'string' ? data.reflection.trim() : '';
+      if (tasks.length || goals.length || reflection) return { tasks, goals, tired: Boolean(data?.tired), reflection, source: 'ia' };
     } catch (e) {
       console.warn('[ai] plan-day failed, using local parser', e);
     }
