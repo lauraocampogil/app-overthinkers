@@ -96,6 +96,8 @@ export type Task = Omit<RawTask, 'dueInDays' | 'checklist' | 'goal'> & {
   proofOffline?: boolean;
   /** Comes from the person's fixed week (football training every Tue/Thu…): id of that item. */
   fixedId?: string;
+  /** One of the person's daily non-negotiables (its id): shown on its own, never in the top 3. */
+  nonNeg?: string;
 };
 
 /** Morning or night routine: a fixed sequence the person runs through every day. */
@@ -139,3 +141,6 @@ export type Streak = {
 export type TaskQuestion = { q: string; kind: 'minutes' | 'text' | 'deadline' | 'place' | 'choice'; template?: string; /** For 'choice': the options shown as chips. */ options?: string[] };
 
 export type ParseResult = { tasks: RawTask[]; tired: boolean; goals?: RawGoal[] };
+
+/** Something the person does every day, whatever happens ("8.000 pasos", "Leer 10 min"). Max 3. */
+export type NonNeg = { id: string; text: string; minutes?: number | null; proof?: string | null };

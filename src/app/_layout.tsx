@@ -263,6 +263,7 @@ export default function RootLayout() {
           <Stack.Screen name="prueba" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
           <Stack.Screen name="cerrar" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="objetivos" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="no-negociables" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="rutina" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="rutinas" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="bienvenida" options={{ animation: 'fade', gestureEnabled: false }} />

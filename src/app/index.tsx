@@ -157,7 +157,10 @@ export default function Inicio() {
   if (!onboarded) return <Redirect href="/bienvenida" />;
 
   const today = todayIso();
-  const active = todayList(tasks);
+  // Non-negotiables live in their own card, above everything: never in the top 3 or the rest.
+  const all = todayList(tasks);
+  const nonNegToday = all.filter((x) => x.nonNeg);
+  const active = all.filter((x) => !x.nonNeg);
   const pending = active.filter((x) => x.status === 'pendiente');
   const done = active.filter((x) => x.status === 'hecha');
   const timeline = dayTimeline(today, pending, minutesOf, settings);
@@ -169,6 +172,17 @@ export default function Inicio() {
   const timeOf = (task: Task) => (slot(task) ? clock(slot(task)!.start) : task.at ?? '');
 
   const top = topThree(active, today, areas);
+  // Days in a row each non-negotiable was done (today counts once ticked).
+  const nnStreak = (id: string) => {
+    let n = 0;
+    for (let i = 0; i < 60; i++) {
+      const d = addDays(today, -i);
+      const hit = tasks.some((x) => x.nonNeg === id && x.status === 'hecha' && x.doneOn === d);
+      if (hit) n++;
+      else if (i > 0) break;
+    }
+    return n;
+  };
   // Why each of the 3 is there, in a few words (the strongest reason).
   const whyLabel = (task: Task) => {
     const w = whyTop(task, today, areas);
@@ -454,6 +468,37 @@ export default function Inicio() {
           </Pressable>
         ) : null}
 
+        {sel === today ? (
+          <View style={styles.nnCard}>
+            <View style={styles.topHead}>
+              <Pressable onPress={() => router.push('/no-negociables')} hitSlop={8} accessibilityRole="button" accessibilityHint={t('nn.edit')}>
+                <Text style={styles.nnLabel}>{t('nn.title').toUpperCase()}</Text>
+              </Pressable>
+              {nonNegToday.length ? (
+                <Text style={styles.nnCount}>
+                  {nonNegToday.filter((x) => x.status === 'hecha').length}/{nonNegToday.length}
+                </Text>
+              ) : null}
+            </View>
+            {nonNegToday.length ? (
+              nonNegToday.map((task) => (
+                <Pressable key={task.id} onPress={() => setSheet(task)} style={styles.nnRow} accessibilityHint={t('task.options')}>
+                  <Check task={task} onToggle={() => (task.status === 'hecha' ? undoDone(task.id) : task.proof ? router.push({ pathname: '/prueba', params: { id: task.id, optional: '1' } }) : markDone(task.id))} size={26} />
+                  <Text style={[styles.nnText, task.status === 'hecha' && styles.done]} numberOfLines={1}>
+                    {task.title}
+                  </Text>
+                  {nnStreak(task.nonNeg!) > 1 ? <Text style={styles.nnStreak}>{t('nn.streak', { n: nnStreak(task.nonNeg!) })}</Text> : null}
+                </Pressable>
+              ))
+            ) : (
+              <Pressable onPress={() => router.push('/no-negociables')} accessibilityRole="button" style={styles.nnEmpty}>
+                <Text style={styles.nnText}>{t('nn.empty')}</Text>
+                <ArrowRightIcon size={14} color={colors.faint} />
+              </Pressable>
+            )}
+          </View>
+        ) : null}
+
         {topRows.length ? (
           <View style={styles.topCard}>
             <View style={styles.topHead}>
@@ -663,6 +708,13 @@ const styles = StyleSheet.create({
   dayRoutine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dayRoutineText: { flex: 1, fontFamily: fonts.regular, fontSize: 12, color: colors.muted },
 
+  nnCard: { marginHorizontal: 20, marginBottom: 14, backgroundColor: colors.card, borderRadius: 24, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 },
+  nnLabel: { fontFamily: fonts.semibold, fontSize: 12, letterSpacing: 0.8, color: colors.muted },
+  nnCount: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
+  nnRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 50 },
+  nnText: { flex: 1, fontFamily: fonts.medium, fontSize: 16, color: colors.ink },
+  nnStreak: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.muted },
+  nnEmpty: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 50 },
   topCard: { marginHorizontal: 20, backgroundColor: colors.ink, borderRadius: 28, paddingHorizontal: 18, paddingTop: 16, paddingBottom: 8 },
   topHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   topCount: { fontFamily: fonts.semibold, fontSize: 13, color: colors.white },

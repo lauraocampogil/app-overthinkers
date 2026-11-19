@@ -13,7 +13,7 @@ import { EMPTY_PROFILE, sameGoal, type FixedItem, type Profile } from '@/lib/per
 import { isWeightGoal, RETOS, retoStepId, type Reto, type RetoId } from '@/lib/retos';
 import { defaultRoutine } from '@/lib/rutinas';
 import { t } from '@/i18n';
-import type { ChecklistItem, Goal, ParseResult, RawGoal, RawTask, Routine, RoutineKind, Settings, Streak, Task } from '@/lib/types';
+import type { NonNeg, ChecklistItem, Goal, ParseResult, RawGoal, RawTask, Routine, RoutineKind, Settings, Streak, Task } from '@/lib/types';
 
 /**
  * One list for everything. Every task has a day; GetGo decides it (planner.schedule)
@@ -102,6 +102,9 @@ type DayState = {
   setProfile: (patch: Partial<Profile>) => void;
   /** Save the fixed week and put its tasks on the next 7 days. */
   setFixed: (items: FixedItem[]) => void;
+  /** The daily non-negotiables (max 3): a task each day, shown on their own at the top of Hoy. */
+  nonNeg: NonNeg[];
+  setNonNeg: (items: NonNeg[]) => void;
   offerReto: (id: RetoId, goalId: string | null) => void;
   /** Accept: it joins its routine. Decline: GetGo won't propose it again for two weeks. */
   answerReto: (id: RetoId, accept: boolean) => void;
@@ -150,6 +153,7 @@ const initial = {
   retos: [] as Reto[],
   weekPlannedOn: null as string | null,
   closedOn: null as string | null,
+  nonNeg: [] as NonNeg[],
   nudges: {} as { retoOn?: string; laterOn?: string; doneOn?: string },
 };
 
@@ -198,6 +202,19 @@ function weeklyTasks(goal: Goal, tasks: Task[], day: string): Task[] {
 }
 
 /** Tasks of the fixed week for the 7 days from `from` that do not exist yet (each item once per matching day). */
+/** Today's copy of each non-negotiable that does not exist yet. */
+function nonNegTasks(items: NonNeg[], tasks: Task[], day: string): Task[] {
+  return items
+    .filter((n) => !tasks.some((t) => t.nonNeg === n.id && (t.status === 'pendiente' ? t.day : (t.doneOn ?? t.day)) === day))
+    .map((n) => ({
+      ...fromRaw({ title: n.text, minutes: n.minutes ?? null, dueInDays: null, energy: 'baja', kind: 'otro', importance: 3, where: null, at: null, proof: n.proof ?? null }, day),
+      nonNeg: n.id,
+      day,
+      due: null,
+      pinned: true,
+    }));
+}
+
 const FIXED_DAYS = 28;
 
 /** Today is over for planning: closed with the evening ritual, or less than an hour before the end of the day. */
@@ -470,7 +487,10 @@ export const useDay = create<DayState>()(
           // A class or a training of the fixed week is busy time in the calendar, not a task: old copies go.
           const fixedItems = get().profile.fixed ?? [];
           const lifeOnly = relinked.filter((t) => !(t.fixedId && t.status === 'pendiente' && !fixedItems.find((f) => f.id === t.fixedId)?.task));
-          commit([...lifeOnly, ...weekly, ...fixedTasks(fixedItems, [...lifeOnly, ...weekly], day)]);
+          // A missed non-negotiable is missed (it does not pile up); today's copies are added.
+          const kept = lifeOnly.filter((t) => !(t.nonNeg && t.status === 'pendiente' && t.day < day));
+          const base = [...kept, ...weekly, ...fixedTasks(fixedItems, [...kept, ...weekly], day)];
+          commit([...base, ...nonNegTasks(get().nonNeg ?? [], base, day)]);
         },
 
         markDone: (id) => {
@@ -489,6 +509,8 @@ export const useDay = create<DayState>()(
           }
           patch(id, (t) => ({ ...t, status: 'hecha', doneOn: day }));
           bond('done', task?.kind);
+          // A non-negotiable kept grows Okio twice as much: it is the habit that matters most.
+          if (task?.nonNeg) bond('done', task.kind);
           if (task?.top) track('top_done');
           // The streak counts when today's list is finished.
           const leftToday = get().tasks.some((t) => t.status === 'pendiente' && t.day <= day);
@@ -597,6 +619,14 @@ export const useDay = create<DayState>()(
           commit([...kept, ...fixedTasks(items, kept, day)]);
           syncDay(get());
         },
+        setNonNeg: (itemsIn) => {
+          const items = itemsIn.slice(0, 3);
+          const day = today();
+          set({ nonNeg: items });
+          const kept = get().tasks.filter((t) => !(t.nonNeg && t.status === 'pendiente' && !items.some((n) => n.id === t.nonNeg)));
+          commit([...kept, ...nonNegTasks(items, kept, day)]);
+          syncDay(get());
+        },
         setProfile: (patchIn) => {
           set({ profile: { ...EMPTY_PROFILE, ...get().profile, ...patchIn } });
           syncDay(get());
@@ -677,7 +707,8 @@ export const useDay = create<DayState>()(
       name: 'getgo-day',
       version: 7,
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: ({ settings, streak, tasks, lastDay, history, owner, learned, focus, goals, routines, routineLog, profile, focusLog, retos, weekPlannedOn, nudges, closedOn }) => ({
+      partialize: ({ settings, streak, tasks, lastDay, history, owner, learned, focus, goals, routines, routineLog, profile, focusLog, retos, weekPlannedOn, nudges, closedOn, nonNeg }) => ({
+        nonNeg,
         goals,
         closedOn,
         weekPlannedOn,
