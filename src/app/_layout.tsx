@@ -95,7 +95,9 @@ export default function RootLayout() {
       // When each task should start nagging: its calendar slot, its fixed time, or (top 3 without time) late morning.
       const { home, transport } = useDay.getState().profile;
       const way = (task: (typeof tasks)[number]) => travelTo(task.where, home, transport);
-      const alarms: TaskAlarm[] = pending.flatMap((task) => {
+      // A closed day sends nothing more for today.
+      const dayClosed = useDay.getState().closedOn === day;
+      const alarms: TaskAlarm[] = (dayClosed ? [] : pending).flatMap((task) => {
         const b = timeline?.blocks.find((x) => x.type === 'task' && x.task.id === task.id);
         if (b) return [{ task, start: b.start, travel: way(task) }];
         if (task.at) return [{ task, start: at(task.at), travel: way(task) }];
@@ -104,11 +106,12 @@ export default function RootLayout() {
         return [];
       });
       void refreshReminders({
-        today,
+        today: dayClosed ? [] : today,
         alarms,
         notifyAt: settings.notifyAt,
         dayEnd: settings.dayEnd,
-        routines: { manana: routineOf(routines, 'manana'), noche: routineOf(routines, 'noche') },
+        // Routines wait for version 2: no routine reminders.
+        routines: { manana: { ...routineOf(routines, 'manana'), enabled: false }, noche: { ...routineOf(routines, 'noche'), enabled: false } },
         closedOn: useDay.getState().closedOn,
       });
     }, 1200);

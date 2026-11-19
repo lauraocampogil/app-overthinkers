@@ -200,6 +200,15 @@ function weeklyTasks(goal: Goal, tasks: Task[], day: string): Task[] {
 /** Tasks of the fixed week for the 7 days from `from` that do not exist yet (each item once per matching day). */
 const FIXED_DAYS = 28;
 
+/** Today is over for planning: closed with the evening ritual, or less than an hour before the end of the day. */
+function dayIsOver(s: { closedOn: string | null; settings: Settings }): boolean {
+  if (s.closedOn === today()) return true;
+  const end = withDefaults(s.settings).dayEnd;
+  const [h, m] = end.split(':').map(Number);
+  const now = new Date();
+  return now.getHours() * 60 + now.getMinutes() >= h * 60 + (m || 0) - 60;
+}
+
 function fixedTasks(items: FixedItem[], tasks: Task[], from: string): Task[] {
   const out: Task[] = [];
   // Four weeks ahead, so the month view shows the fixed week too ("pilates every Tuesday").
@@ -348,7 +357,15 @@ export const useDay = create<DayState>()(
             existing.add(key);
             const t0 = { ...fromRaw(r, day), goalId: findGoal(r.goal)?.id ?? null };
             // Week plan: the task stays on the day the plan gave it (dueInDays = day it is done).
-            fresh.push(opts?.pinDays && r.dueInDays !== null && r.dueInDays !== undefined ? { ...t0, day: addDays(day, r.dueInDays), due: null, pinned: true } : t0);
+            // The day is over (closed, or less than an hour left): something with no day goes to tomorrow, not today.
+            const late = !opts?.pinDays && (r.dueInDays === null || r.dueInDays === undefined) && !r.at && dayIsOver(get());
+            fresh.push(
+              opts?.pinDays && r.dueInDays !== null && r.dueInDays !== undefined
+                ? { ...t0, day: addDays(day, r.dueInDays), due: null, pinned: true }
+                : late
+                  ? { ...t0, day: addDays(day, 1), pinned: true }
+                  : t0,
+            );
           }
           const weekly = goals.flatMap((g) => weeklyTasks(g, [...get().tasks, ...fresh], day));
           set({ goals, draft: '' });

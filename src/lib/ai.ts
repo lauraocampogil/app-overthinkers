@@ -1,6 +1,7 @@
 import { File } from 'expo-file-system';
 
 import { useDay } from '../store/day';
+import { keepSaid } from './fiel';
 import { timeInTitle } from './hora';
 import { parseLocal } from './parse-local';
 import { profileContext } from './perfil';
@@ -86,7 +87,8 @@ export async function parseBrainDump(text: string): Promise<ParseResult & { sour
         body: { text, today: isoDay(now), weekday: now.getDay(), lang, profile: profileContext(useDay.getState().profile) },
       });
       if (error) throw error;
-      const tasks = (Array.isArray(data?.tasks) ? data.tasks : []).map(sanitize).filter(Boolean) as RawTask[];
+      // Only what the person said: nothing invented from the profile or from thin air.
+      const tasks = keepSaid((Array.isArray(data?.tasks) ? data.tasks : []).map(sanitize).filter(Boolean) as RawTask[], text);
       const goals = (Array.isArray(data?.goals) ? data.goals : []).map(sanitizeGoal).filter(Boolean) as RawGoal[];
       if (tasks.length || goals.length) return { tasks, goals, tired: Boolean(data?.tired), source: 'ia' };
     } catch (e) {
@@ -199,7 +201,7 @@ export async function planWeek(text: string, attempt = 0): Promise<WeekPlan | nu
     });
     if (error) throw error;
     const wake = typeof data?.wake === 'string' && /^([01]?\d|2[0-3]):[0-5]\d$/.test(data.wake) ? data.wake.padStart(5, '0') : null;
-    const tasks = ((Array.isArray(data?.tasks) ? data.tasks : []).map(sanitize).filter(Boolean) as RawTask[]).map((t) => ({ ...t, dueInDays: Math.max(0, Math.min(6, t.dueInDays ?? 0)) }));
+    const tasks = keepSaid((Array.isArray(data?.tasks) ? data.tasks : []).map(sanitize).filter(Boolean) as RawTask[], text).map((t) => ({ ...t, dueInDays: Math.max(0, Math.min(6, t.dueInDays ?? 0)) }));
     if (!tasks.length && attempt === 0) return planWeek(text, 1);
     lastWeekError = tasks.length ? '' : 'empty';
     return {

@@ -4,6 +4,7 @@
  * Plurals: keys ending in `_one` / `_other` are picked automatically from `{n}`.
  */
 const es = {
+  "order.whereExactly": "¿Qué {place} exactamente? Dime el nombre o la dirección",
   "agenda.life": "Tu semana",
   "busy.trip": "Trayecto a {place}",
   "hoy.alsoToday": "Hoy también",
@@ -870,6 +871,7 @@ export type Key = keyof typeof es;
 type Dict = Record<Key, string>;
 
 const en: Dict = {
+  "order.whereExactly": "Which {place} exactly? Tell me the name or the address",
   "agenda.life": "Your week",
   "busy.trip": "Trip to {place}",
   "hoy.alsoToday": "Also today",
@@ -1723,6 +1725,7 @@ const en: Dict = {
 };
 
 const fr: Dict = {
+  "order.whereExactly": "Quel endroit exactement pour « {place} » ? Dis-moi le nom ou l'adresse",
   "agenda.life": "Ta semaine",
   "busy.trip": "Trajet vers {place}",
   "hoy.alsoToday": "Aussi aujourd'hui",
@@ -2576,6 +2579,7 @@ const fr: Dict = {
 };
 
 const nl: Dict = {
+  "order.whereExactly": "Welke {place} precies? Zeg de naam of het adres",
   "agenda.life": "Je week",
   "busy.trip": "Reis naar {place}",
   "hoy.alsoToday": "Ook vandaag",
@@ -3429,6 +3433,7 @@ const nl: Dict = {
 };
 
 const de: Dict = {
+  "order.whereExactly": "Welcher Ort genau ({place})? Sag mir den Namen oder die Adresse",
   "agenda.life": "Deine Woche",
   "busy.trip": "Weg zu {place}",
   "hoy.alsoToday": "Auch heute",
@@ -4282,6 +4287,7 @@ const de: Dict = {
 };
 
 const pt: Dict = {
+  "order.whereExactly": "Que {place} exatamente? Diz-me o nome ou a morada",
   "agenda.life": "A tua semana",
   "busy.trip": "Trajeto para {place}",
   "hoy.alsoToday": "Também hoje",
@@ -5135,6 +5141,7 @@ const pt: Dict = {
 };
 
 const it: Dict = {
+  "order.whereExactly": "Quale {place} esattamente? Dimmi il nome o l'indirizzo",
   "agenda.life": "La tua settimana",
   "busy.trip": "Tragitto verso {place}",
   "hoy.alsoToday": "Anche oggi",

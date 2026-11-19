@@ -20,15 +20,19 @@ const needsTime = (x: RawTask) => x.minutes === null && (x.askMinutes || x.kind 
  * Things that happen somewhere else (a class, the gym, an appointment) need their place, for the travel time.
  * If the AI did not ask and nobody said where, Okio asks: "¿Dónde es pilates?".
  */
-const PLACE_WORDS = /\b(recoger|recojo|chercher|aller chercher|pick up|ophalen|abholen|gare|estaci[oó]n|station|farmacia|pharmacie|pharmacy|apotheek|apotheke|pilates|yoga|gym|gimnasio|basic.?fit|clase|curso|cours|classe|dentista|dentiste|m[ée]dico|m[ée]decin|doctor|cita|rendez-vous|rdv|entreno|entrenamiento|entra[iî]nement|partido|match|reuni[oó]n|r[ée]union|meeting|fisio|kin[ée]|kine|peluquer[ií]a|coiffeur|piscina|piscine|natation|nataci[oó]n|boxe|boxeo|danza|danse|dance|appointment|lesson)\b/i;
-const needsPlace = (x: RawTask) => !x.where && (PLACE_WORDS.test(x.title) || (!!x.repeat?.days.length && x.kind === 'deporte'));
+const PLACE_WORDS = /\b(sesi[oó]n|s[ée]ance|session|coach|entrenador|recoger|recojo|chercher|aller chercher|pick up|ophalen|abholen|gare|estaci[oó]n|station|farmacia|pharmacie|pharmacy|apotheek|apotheke|pilates|yoga|gym|gimnasio|basic.?fit|clase|curso|cours|classe|dentista|dentiste|m[ée]dico|m[ée]decin|doctor|cita|rendez-vous|rdv|entreno|entrenamiento|entra[iî]nement|partido|match|reuni[oó]n|r[ée]union|meeting|fisio|kin[ée]|kine|peluquer[ií]a|coiffeur|piscina|piscine|natation|nataci[oó]n|boxe|boxeo|danza|danse|dance|appointment|lesson)\b/i;
+/** "el tren", "la gare", "el gym": a kind of place, not an address. Okio still asks which one. */
+const VAGUE_PLACE = /^(el |la |los |las |le |les |the |l'|al |à la |au )?(tren|train|estaci[oó]n|gare|station|metro|bus|gym|gimnasio|salle|farmacia|pharmacie|pharmacy|m[ée]dico|m[ée]decin|doctor|dentista|dentiste|clase|cours|class|trabajo|travail|work|oficina|bureau|office|universidad|universit[ée]|uni|escuela|[ée]cole|school|centro|ciudad|ville|city|casa|centre)$/i;
+const needsPlace = (x: RawTask) =>
+  (!x.where || VAGUE_PLACE.test(x.where.trim())) && (PLACE_WORDS.test(x.title) || (!!x.where && VAGUE_PLACE.test(x.where.trim())) || (!!x.repeat?.days.length && x.kind === 'deporte'));
 /** Every question to ask, in order: the AI's own ("¿Qué libro?") plus a duration and a place when missing. */
 function questionsFor(tasks: RawTask[]) {
   const out: (TaskQuestion & { task: string; index: number })[] = [];
   tasks.forEach((x, index) => {
     for (const a of x.ask ?? []) out.push({ ...a, task: x.title, index });
     if (needsTime(x) && !(x.ask ?? []).some((a) => a.kind === 'minutes')) out.push({ q: t('order.howLongFor', { task: x.title.charAt(0).toLowerCase() + x.title.slice(1) }), kind: 'minutes', task: x.title, index });
-    if (needsPlace(x) && !(x.ask ?? []).some((a) => a.kind === 'place')) out.push({ q: t('order.whereFor', { task: x.title.charAt(0).toLowerCase() + x.title.slice(1) }), kind: 'place', task: x.title, index });
+    if (needsPlace(x) && !(x.ask ?? []).some((a) => a.kind === 'place'))
+      out.push({ q: x.where ? t('order.whereExactly', { place: x.where }) : t('order.whereFor', { task: x.title.charAt(0).toLowerCase() + x.title.slice(1) }), kind: 'place', task: x.title, index });
   });
   return out.slice(0, 6);
 } // a short beat so it feels sorted, without making anyone wait

@@ -19,6 +19,7 @@ TAREAS (cosas concretas que hacer):
 - "checklist": lista de cosas concretas dentro de la tarea si las dice: productos de la compra ("huevos", "manzanas"), ejercicios, pasos, puntos de un mail. [] si no dice ninguna.
 - "where": el lugar si lo dice ("Basic-Fit Ixelles", "casa de mamá"), si no null.
 - "at": la hora si la dice, en formato "HH:MM" 24 h ("a las 6 de la tarde" → "18:00"), si no null. SIEMPRE que diga una hora ("a las 6", "a las 18h", "à 18h") va en "at", NUNCA en el título. Si dice "a las 6" sin "de la mañana" y lo normal es por la tarde (recoger a alguien, entreno, quedar), es "18:00".
+- NUNCA inventes tareas: cada tarea sale de algo que la persona ha dicho en ESTE texto. El PERFIL sirve para completar (lugar, hora, duración), nunca para crear tareas nuevas.
 - El título copia los nombres y parentescos EXACTAMENTE como los dice ("mi hermana" no es "mi hermano"), sin la hora.
 - "alreadyDone": true si dice que YA lo hizo ("ya hice la compra", "ya recogí el aciclovir"): no es una tarea nueva, la app marcará como hecha la que ya tenía. Si no, false.
 - "minutes": SOLO lo que dice ("1 hora de gym" → 60, "media hora corriendo" → 30). Si no lo dice, null: NUNCA inventes una duración. La app le preguntará cuánto tiempo.
@@ -44,7 +45,7 @@ METAS (algo que quiere lograr, no una sola acción: "aprobar el examen del jueve
 - "type": "pronto" si tiene fecha en las próximas semanas, "semanal" si se repite cada semana, "largo" si es a largo plazo.
 - "dueInDays": días hasta la fecha (null si no hay o es semanal).
 - "perWeek": veces por semana para metas semanales ("3 veces" → 3), si no null.
-- "steps": para "pronto" y "largo", de 2 a 6 pasos CONCRETOS y realistas para llegar (mismo formato que las tareas, con su "dueInDays" escalonado antes de la fecha). Para "semanal", [].
+- "steps": para "pronto" y "largo", un PLAN REAL de 3 a 8 pasos, como lo haría un buen entrenador, profesor o coach (mismo formato que las tareas, con su "dueInDays" escalonado hasta la fecha y "minutes"). Cada paso es específico y progresivo, nunca genérico: no "Correr 30 min", sino "Correr 20 min suave (puedes hablar mientras corres)", luego "Series: 6 × 1 min rápido + 2 min andando", luego "Correr 30 min a ritmo cómodo"; no "Estudiar", sino "Estudiar tema 1 y hacer un resumen de 1 página", "Hacer el examen de 2023 cronometrado". Usa el PERFIL (lo que ya hace: entrenos, trabajo, horario) para no sobrecargar los días que ya tiene deporte. Para metas de peso: ritmo seguro (máximo 0,5 kg por semana), combina movimiento y hábitos sencillos (agua, verdura en cada comida, dormir), nada de dietas extremas ni números de calorías. Para "semanal", [].
 - "template": para "semanal", los datos de cada sesión si los dice: {"title","minutes","where","at","kind","sport","checklist"}; si no, {}.
 Las tareas que pertenecen a una meta van en "steps" de esa meta, no en "tasks".
 
