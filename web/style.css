@@ -209,3 +209,4 @@ footer a:hover { color: var(--ink); }
   .try { grid-template-columns: 1fr; padding: 28px; border-radius: 32px; }
   .hero-mascot { width: 104px; height: 104px; right: -6px; top: -40px; }
 }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

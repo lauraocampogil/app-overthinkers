@@ -72,16 +72,29 @@
   const live = new Set();
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // Same as the app: Okio is born grey; data-color="0..1" brings its own colours.
+  function greyed(hex, amount) {
+    if (amount <= 0) return hex;
+    const n = parseInt(hex.slice(1, 7), 16);
+    const rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    const y = 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2];
+    return '#' + rgb.map((v) => Math.round(v + (y - v) * Math.min(1, amount)).toString(16).padStart(2, '0')).join('');
+  }
+
   function render(el) {
     const seed = el.dataset.seed || 'getgo';
     const hue = el.dataset.hue ? Number(el.dataset.hue) : undefined;
     const tr = traits(seed, hue);
+    if (el.dataset.color !== undefined) {
+      const c = Math.max(0, Math.min(1, Number(el.dataset.color)));
+      tr.palette = Object.fromEntries(Object.entries(tr.palette).map(([k, v]) => [k, greyed(v, 1 - c)]));
+    }
     const p = tr.palette;
     const id = `gm${uid++}`;
     const eyes = el.dataset.mood === 'feliz'
       ? `<g class="eyes"><path d="M${100 - tr.eyeGap / 2 - tr.eyeW * 1.6} 104 q${tr.eyeW * 0.8} -12 ${tr.eyeW * 1.6} 0" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M${100 + tr.eyeGap / 2} 104 q${tr.eyeW * 0.8} -12 ${tr.eyeW * 1.6} 0" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none"/></g>`
       : `<g class="eyes"><rect x="${100 - tr.eyeGap / 2 - tr.eyeW}" y="${100 - tr.eyeH / 2}" width="${tr.eyeW}" height="${tr.eyeH}" rx="${tr.eyeW / 2}" fill="url(#${id}e)"/><rect x="${100 + tr.eyeGap / 2}" y="${100 - tr.eyeH / 2}" width="${tr.eyeW}" height="${tr.eyeH}" rx="${tr.eyeW / 2}" fill="url(#${id}e)"/></g>`;
-    el.innerHTML = `<svg viewBox="28 28 144 144" width="100%" height="100%" role="img" aria-label="Mascota de Okio" style="overflow:visible">
+    el.innerHTML = `<svg viewBox="28 28 144 144" width="100%" height="100%" role="img" aria-label="Okio" style="overflow:visible">
       <defs>
         <radialGradient id="${id}h" cx="50%" cy="50%" r="50%"><stop offset="0.55" stop-color="${p.mid}" stop-opacity="0.22"/><stop offset="1" stop-color="${p.mid}" stop-opacity="0"/></radialGradient>
         <radialGradient id="${id}b" cx="52%" cy="56%" r="54%"><stop offset="0" stop-color="${p.core}"/><stop offset="0.5" stop-color="${p.mid}"/><stop offset="0.82" stop-color="${p.edge}"/><stop offset="0.98" stop-color="${p.rim}"/></radialGradient>
