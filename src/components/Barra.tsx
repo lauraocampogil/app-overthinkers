@@ -1,10 +1,11 @@
 import { BlurView } from 'expo-blur';
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ChartIcon, HomeIcon, TargetIcon } from '@/components/Iconos';
@@ -29,12 +30,28 @@ const ROUTES: Record<Tab, '/' | '/metas' | '/progreso'> = { hoy: '/', metas: '/m
  * a light rim that separates it from black, and a soft shadow that lifts it off the page.
  * The shadow sits on an outer view so iOS doesn't clip it with the rounded corners.
  */
+const LIQUID = (() => {
+  try {
+    return isLiquidGlassAvailable();
+  } catch {
+    return false;
+  }
+})();
+
 function Glass({ style, children }: { style: object; children: React.ReactNode }) {
   const radius = (StyleSheet.flatten(style) as { borderRadius?: number }).borderRadius ?? 30;
+  // iOS 26+: Apple's own Liquid Glass, exactly like the system tab bar.
+  if (LIQUID) {
+    return (
+      <GlassView glassEffectStyle="regular" isInteractive colorScheme="light" style={[style, { borderRadius: radius, overflow: 'hidden' }]}>
+        {children}
+      </GlassView>
+    );
+  }
   return (
     <View style={[style, styles.glassShadow]}>
       <View style={[StyleSheet.absoluteFill, styles.glassClip, { borderRadius: radius }]} pointerEvents="none">
-        <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />
+        <BlurView intensity={80} tint="systemChromeMaterialLight" style={StyleSheet.absoluteFill} />
         <View style={[StyleSheet.absoluteFill, styles.glassTint]} />
         <View style={[StyleSheet.absoluteFill, styles.glassRim, { borderRadius: radius }]} />
       </View>
@@ -76,33 +93,41 @@ export function Barra({ active }: { active: Tab; onWrite?: () => void }) {
   const bottom = Math.max(insets.bottom - 6, 14);
   return (
     <>
-    {menu ? <Pressable style={StyleSheet.absoluteFill} onPress={() => setMenu(false)} accessibilityLabel={t('common.close')} /> : null}
     {menu ? (
-      <Animated.View entering={FadeInDown.duration(200)} exiting={FadeOut.duration(150)} style={[styles.menu, { bottom: bottom + 72 }]}>
-        <Pressable onPress={() => pick(false)} accessibilityRole="button">
-          <Glass style={styles.menuItem}>
-            <CheckLine size={18} color={colors.ink} />
-            <Text style={styles.menuText}>{t('plus.task')}</Text>
-          </Glass>
-        </Pressable>
-        <Pressable onPress={() => pick(true)} accessibilityRole="button">
-          <Glass style={styles.menuItem}>
-            <TargetIcon size={18} color={colors.ink} />
-            <Text style={styles.menuText}>{t('plus.goal')}</Text>
-          </Glass>
-        </Pressable>
-        <Pressable
-          onPress={() => {
-            setMenu(false);
-            router.push('/mentor');
-          }}
-          accessibilityRole="button"
-        >
-          <Glass style={styles.menuItem}>
-            <Mascota seed={mascot.seed} size={22} mood="calma" />
-            <Text style={styles.menuText}>Okio</Text>
-          </Glass>
-        </Pressable>
+      <Animated.View entering={FadeIn.duration(160)} exiting={FadeOut.duration(140)} style={[StyleSheet.absoluteFill, styles.scrim]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={() => setMenu(false)} accessibilityLabel={t('common.close')} />
+      </Animated.View>
+    ) : null}
+    {menu ? (
+      // A plain white card (not glass): always readable, whatever is behind it.
+      <Animated.View entering={FadeInDown.duration(220)} exiting={FadeOut.duration(140)} style={[styles.menu, { bottom: bottom + 74 }]}>
+        {[
+          { key: 'task', label: t('plus.task'), sub: t('plus.taskSub'), icon: <CheckLine size={18} color={colors.ink} />, go: () => pick(false) },
+          { key: 'goal', label: t('plus.goal'), sub: t('plus.goalSub'), icon: <TargetIcon size={18} color={colors.ink} />, go: () => pick(true) },
+          {
+            key: 'okio',
+            label: 'Okio',
+            sub: t('plus.okioSub'),
+            icon: <Mascota seed={mascot.seed} size={24} mood="calma" />,
+            go: () => {
+              setMenu(false);
+              router.push('/mentor');
+            },
+          },
+        ].map((it, i) => (
+          <Pressable
+            key={it.key}
+            onPress={it.go}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.menuRow, i > 0 && styles.menuDivider, pressed && { backgroundColor: colors.card }]}
+          >
+            <View style={styles.menuIcon}>{it.icon}</View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.menuText}>{it.label}</Text>
+              <Text style={styles.menuSub}>{it.sub}</Text>
+            </View>
+          </Pressable>
+        ))}
       </Animated.View>
     ) : null}
     <View style={[styles.wrap, { bottom }]} pointerEvents="box-none">
@@ -163,11 +188,27 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   glassClip: { overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(0,0,0,0.10)' },
-  glassTint: { backgroundColor: 'rgba(255,255,255,0.62)' },
+  glassTint: { backgroundColor: 'rgba(255,255,255,0.55)' },
   glassRim: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.85)' },
-  menu: { position: 'absolute', right: 16, gap: 8, alignItems: 'flex-end' },
-  menuItem: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 50, paddingHorizontal: 18, borderRadius: 25 },
+  scrim: { backgroundColor: 'rgba(10,10,10,0.18)' },
+  menu: {
+    position: 'absolute',
+    right: 16,
+    width: 250,
+    borderRadius: 24,
+    backgroundColor: colors.white,
+    paddingVertical: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 14,
+  },
+  menuRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: 16, borderRadius: 18, marginHorizontal: 6 },
+  menuDivider: {},
+  menuIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' },
   menuText: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
+  menuSub: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.muted, marginTop: 1 },
   round: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
   pill: { height: 60, borderRadius: 30, justifyContent: 'center' },
   tabs: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 6 },

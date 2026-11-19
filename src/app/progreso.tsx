@@ -74,7 +74,7 @@ export default function Progreso() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.streakNum}>{t('home.streak', { n: streak.current })}</Text>
-            <Text style={styles.muted}>{t('progress.best', { n: streak.best })}</Text>
+            <Text style={styles.muted}>{t('progress.best', { n: Math.max(streak.best ?? 0, streak.current) })}</Text>
           </View>
           <ArrowRightIcon color={colors.muted} />
         </Pressable>

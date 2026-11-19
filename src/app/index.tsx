@@ -295,7 +295,7 @@ export default function Inicio() {
         ) : null;
       })}
       {selTasks.map((task) => (
-        <Deslizar key={task.id} today={today} onMove={(d) => moveTo(task.id, d)}>
+        <Deslizar key={task.id} today={today} onMove={(d) => moveTo(task.id, d)} onDelete={() => useDay.getState().remove(task.id)}>
           {row(task)}
         </Deslizar>
       ))}
@@ -477,7 +477,7 @@ export default function Inicio() {
               <Text style={styles.sectionCount}>{rest.length}</Text>
             </View>
             {rest.map((task) => (
-              <Deslizar key={task.id} today={today} onMove={(d) => moveTo(task.id, d)}>
+              <Deslizar key={task.id} today={today} onMove={(d) => moveTo(task.id, d)} onDelete={() => useDay.getState().remove(task.id)}>
                 {row(task)}
               </Deslizar>
             ))}

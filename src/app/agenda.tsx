@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -113,6 +113,7 @@ export default function Agenda() {
   }
   for (const e of busy[day] ?? []) items.push({ kind: 'event', at: clock(e.start), end: clock(e.end), title: e.title });
   const dayTasks = tasks.filter((x) => x.status === 'pendiente' && x.day === day);
+  const photos = tasks.filter((x) => x.status === 'hecha' && (x.doneOn ?? x.day) === day && x.proofPhoto);
   for (const x of dayTasks) items.push({ kind: 'task', at: x.at ?? '', title: x.title, minutes: x.minutes, id: x.id, top: x.importance === 3 || !!x.top });
   const mins = (at: string) => (at ? Number(at.slice(0, 2)) * 60 + Number(at.slice(3, 5)) : 9999);
   items.sort((a, b) => mins(a.at) - mins(b.at));
@@ -135,6 +136,18 @@ export default function Agenda() {
         <Text style={[type.title, { textTransform: 'capitalize' }]} accessibilityRole="header">
           {day === todayIso() ? t('due.today') : new Date(`${day}T12:00:00`).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
         </Text>
+        {photos.length ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photos}>
+            {photos.map((x) => (
+              <View key={x.id} style={styles.photoCard}>
+                <Image source={{ uri: x.proofPhoto }} style={styles.photo} resizeMode="cover" />
+                <Text style={styles.photoText} numberOfLines={1}>
+                  {x.title}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
+        ) : null}
         {status !== 'on' ? (
           <Pressable onPress={() => void connect()} style={styles.connect} accessibilityRole="button">
             <CalendarIcon size={18} />
@@ -179,7 +192,7 @@ export default function Agenda() {
             return (
               <Animated.View key={it.kind === 'task' ? it.id : `${it.kind}${i}`} entering={FadeInDown.delay(i * 40).duration(280)} style={drag?.id === (it.kind === 'task' ? it.id : '') && { opacity: 0.25 }}>
                 {it.kind === 'task' ? (
-                  <Deslizar fromLeft today={day} onMove={(d2) => store().moveTo(it.id, d2)} onDelete={() => store().remove(it.id)}>
+                  <Deslizar today={day} onMove={(d2) => store().moveTo(it.id, d2)} onDelete={() => store().remove(it.id)}>
                     <Arrastrable id={it.id} title={it.title} minutes={it.minutes} onDrag={onDrag} onDrop={onDrop}>
                       <View>{row}</View>
                     </Arrastrable>
@@ -196,13 +209,29 @@ export default function Agenda() {
         {items.some((it) => it.kind === 'task') ? <Text style={styles.hint}>{t('agenda.dragHint')}</Text> : null}
       </ScrollView>
       {drag ? (
-        <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(150)} style={[StyleSheet.absoluteFill, styles.overlay]} pointerEvents="none">
+        <Animated.View entering={FadeIn.duration(120)} exiting={FadeOut.duration(160)} style={[StyleSheet.absoluteFill, styles.overlay]} pointerEvents="none">
+          <Text style={[styles.dragTitle, { top: insets.top + 18 }]}>{t('agenda.dropTitle')}</Text>
           {Array.from({ length: 18 }, (_, k) => FIRST + k * 60).map((m) => (
             <View key={m} style={[styles.tick, { top: yOf(m) - 8 }]}>
               <Text style={styles.tickText}>{hhmm(m)}</Text>
               <View style={styles.tickLine} />
             </View>
           ))}
+          {/* What already has an hour that day, in light grey, so the free gaps are easy to see. */}
+          {items
+            .filter((it) => it.at && !(it.kind === 'task' && it.id === drag.id))
+            .map((it, k) => {
+              const m = Number(it.at.slice(0, 2)) * 60 + Number(it.at.slice(3, 5));
+              if (m < FIRST || m > LAST) return null;
+              const len = it.kind === 'event' ? Math.max(15, Number(it.end.slice(0, 2)) * 60 + Number(it.end.slice(3, 5)) - m) : it.kind === 'task' ? (it.minutes ?? 30) : 20;
+              return (
+                <View key={`b${k}`} style={[styles.busy, { top: yOf(m), height: Math.max(18, (len / (LAST - FIRST)) * (bottom - top)) }]}>
+                  <Text style={styles.busyText} numberOfLines={1}>
+                    {it.kind === 'routine' ? t(`routine.${it.routine}`) : it.title}
+                  </Text>
+                </View>
+              );
+            })}
           {/* The slot the task would take, as tall as its duration. */}
           <View style={[styles.slot, { top: yOf(drag.at), height: Math.max(20, ((drag.minutes ?? 30) / (LAST - FIRST)) * (bottom - top)) }]}>
             <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFill} />
@@ -228,8 +257,16 @@ const styles = StyleSheet.create({
   lineRoutine: { backgroundColor: colors.line },
   title: { fontFamily: fonts.medium, fontSize: 16, color: colors.ink, flexShrink: 1 },
   meta: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted },
+  dragTitle: { position: 'absolute', left: 20, right: 20, fontFamily: fonts.semibold, fontSize: 17, color: colors.ink },
+  photos: { gap: 10, paddingVertical: 8 },
+  photoCard: { width: 120, gap: 6 },
+  photo: { width: 120, height: 150, borderRadius: 18, backgroundColor: colors.card },
+  photoText: { fontFamily: fonts.medium, fontSize: 12, color: colors.muted },
   hint: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.muted, marginTop: 12 },
-  overlay: { backgroundColor: 'rgba(255,255,255,0.94)' },
+  // Fully covers the list underneath: while dragging, only the hours and the day's plan are visible.
+  overlay: { backgroundColor: colors.bg },
+  busy: { position: 'absolute', left: 92, right: 20, borderRadius: 10, backgroundColor: colors.card, paddingHorizontal: 10, justifyContent: 'center' },
+  busyText: { fontFamily: fonts.medium, fontSize: 12, color: colors.muted },
   tick: { position: 'absolute', left: 20, right: 20, flexDirection: 'row', alignItems: 'center', gap: 10 },
   tickText: { width: 50, fontFamily: fonts.medium, fontSize: 12, color: colors.muted, fontVariant: ['tabular-nums'] },
   tickLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.line },

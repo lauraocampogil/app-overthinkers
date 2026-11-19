@@ -120,6 +120,13 @@ export const BackIcon = () => (
   </Svg>
 );
 
+/** Chevron pointing right or left, same stroke as BackIcon (pairs nicely for prev / next). */
+export const NavChevron = ({ dir = 'right', size = 18 }: { dir?: 'left' | 'right'; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d={dir === 'right' ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6'} stroke={colors.ink} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
 export const CloseIcon = () => (
   <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
     <Path d="M6 6l12 12M18 6L6 18" stroke={colors.ink} strokeWidth={1.8} strokeLinecap="round" />
