@@ -11,6 +11,7 @@ import { CloseIcon, IconCircle, MicIcon, PrimaryButton, Screen } from '@/compone
 import { lang, locale, minutesLabel, t } from '@/i18n';
 import { lastWeekError, parseBrainDump, planWeek, type WeekPlan } from '@/lib/ai';
 import { track } from '@/lib/eventos';
+import { canUse } from '@/lib/limite';
 import { cleanFillers, liveSpeechAvailable, pickLocale, requestLivePermission, startLive, type LiveSession } from '@/lib/voz';
 import { useVoz } from '@/lib/paleta';
 import { addDays } from '@/lib/planner';
@@ -83,6 +84,11 @@ export default function Semana() {
 
   const run = async (value: string) => {
     if (!value.trim()) return;
+    // Planning the whole week is Pro (product plan). The text stays as a draft.
+    if (!(await canUse('week'))) {
+      router.replace({ pathname: '/pro', params: { reason: 'week' } });
+      return;
+    }
     setPhase('thinking');
     track('dump', { source: 'week' });
     const res = await planWeek(value.trim());

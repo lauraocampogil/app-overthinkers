@@ -1,7 +1,8 @@
 import { mascotTraits } from '../components/Mascota';
 import { useMascot } from './auth';
+import { bondLevel, useVinculo } from './vinculo';
 
-/** The voice colours are the person's own: their mascot's gradient. */
+/** The voice colours follow the mascot: grey on day one, its gradient once the bond has grown. */
 const NEUTRAL_MIC = ['#B5B5B5', '#5C5C5C', '#111111'];
 const NEUTRAL_CLOUDS = ['#D0D0D0', '#9E9E9E', '#6A6A6A', '#BDBDBD', '#2E2E2E'];
 
@@ -26,5 +27,6 @@ export function voicePalette(seed: string, progress: number) {
 
 export function useVoz() {
   const m = useMascot();
-  return voicePalette(m.seed, 1);
+  const points = useVinculo((s) => s.points);
+  return voicePalette(m.seed, bondLevel(points));
 }

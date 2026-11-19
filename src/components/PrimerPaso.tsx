@@ -4,6 +4,8 @@ import { ActivityIndicator, Linking, Pressable, Share, StyleSheet, Text, TextInp
 
 import { t } from '@/i18n';
 import { track } from '@/lib/eventos';
+import { canUse, countUse } from '@/lib/limite';
+import { router } from 'expo-router';
 import { draftFor } from '@/lib/mentor';
 import { emailIn, mailtoUrl, phoneIn, stepKindOf, whatsappUrl } from '@/lib/primer-paso';
 import type { Task } from '@/lib/types';
@@ -30,6 +32,11 @@ export function PrimerPaso({ task }: { task: Task }) {
   const channel = kind === 'email' ? 'email' : 'message';
 
   const write = async () => {
+    if (!(await canUse('draft'))) {
+      router.push({ pathname: '/pro', params: { reason: 'draft' } });
+      return;
+    }
+    countUse('draft');
     setBusy(true);
     track('draft', { kind });
     const out = await draftFor({ title: task.title }, channel);

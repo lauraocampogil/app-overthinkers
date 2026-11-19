@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Barra } from '@/components/Barra';
-import { ArrowRightIcon, ClockIcon, MoonIcon, SunIcon, TargetIcon } from '@/components/Iconos';
-import { FlameIcon, IconCircle, PersonIcon, Screen } from '@/components/ui';
+import { ClockIcon, TargetIcon } from '@/components/Iconos';
+import { IconCircle, PersonIcon, Screen } from '@/components/ui';
 import { locale, minutesLabel, t } from '@/i18n';
 import { useMascot } from '@/lib/auth';
 import { bondLevel, bondStage, useVinculo } from '@/lib/vinculo';
@@ -67,6 +67,8 @@ export default function Progreso() {
         <View style={styles.hero}>
           <Mascota seed={mascot.seed} size={170} />
           <Text style={styles.heroTitle}>{t(`bond.stage${bondStage(bondPoints)}`)}</Text>
+          {/* The streak lives here, as the bond: one number, no separate streak screen. */}
+          <Text style={styles.together}>{t('bond.days', { n: streak.current })}</Text>
           <Text style={[type.muted, { textAlign: 'center' }]}>{t('bond.body')}</Text>
           <View style={styles.bondBar} accessibilityLabel={t('bond.pct', { n: Math.round(bondLevel(bondPoints) * 100) })}>
             <View style={[styles.bondFill, { width: `${Math.round(bondLevel(bondPoints) * 100)}%`, backgroundColor: voz.mic[1] }]} />
@@ -76,16 +78,6 @@ export default function Progreso() {
           </Pressable>
         </View>
 
-        <Pressable onPress={() => router.push('/racha')} style={styles.streak} accessibilityRole="button">
-          <View style={styles.streakIcon}>
-            <FlameIcon />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.streakNum}>{t('home.streak', { n: streak.current })}</Text>
-            <Text style={styles.muted}>{t('progress.best', { n: Math.max(streak.best ?? 0, streak.current) })}</Text>
-          </View>
-          <ArrowRightIcon color={colors.muted} />
-        </Pressable>
 
         <View style={styles.card}>
           <View style={styles.cardHead}>
@@ -122,16 +114,6 @@ export default function Progreso() {
             <TargetIcon size={18} />
             <Text style={styles.tileNum}>{fullDays}/7</Text>
             <Text style={styles.muted}>{t('progress.fullDays')}</Text>
-          </View>
-          <View style={styles.tile}>
-            <SunIcon size={18} />
-            <Text style={styles.tileNum}>{routineDays('manana')}/7</Text>
-            <Text style={styles.muted}>{t('routine.manana')}</Text>
-          </View>
-          <View style={styles.tile}>
-            <MoonIcon size={18} />
-            <Text style={styles.tileNum}>{routineDays('noche')}/7</Text>
-            <Text style={styles.muted}>{t('routine.noche')}</Text>
           </View>
         </View>
 
@@ -176,6 +158,7 @@ const styles = StyleSheet.create({
   title: { fontFamily: fonts.bold, fontSize: 30, letterSpacing: -1.1, color: colors.ink },
   body: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 150, gap: 12 },
   hero: { alignItems: 'center', gap: 8, paddingBottom: 6 },
+  together: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink },
   heroTitle: { fontFamily: fonts.bold, fontSize: 22, letterSpacing: -0.6, color: colors.ink, textAlign: 'center' },
   bondBar: { alignSelf: 'stretch', height: 6, borderRadius: 3, backgroundColor: colors.line, overflow: 'hidden', marginTop: 4, marginHorizontal: 30 },
   bondFill: { height: 6, borderRadius: 3 },

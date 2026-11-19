@@ -16,8 +16,8 @@ import Svg, { Defs, LinearGradient as SvgLinear, Path, RadialGradient, Stop } fr
 import { bondLevel, useVinculo } from '../lib/vinculo';
 
 /**
- * Okio, the personal mascot. Its colours are its own from day one; as the bond grows
- * (see lib/vinculo) it gets its sparkles and a stronger glow.
+ * Okio, the personal mascot. Everyone starts with a grey, neutral Okio; as the bond grows
+ * (see lib/vinculo) it takes on its own colours (from the seed), then its sparkles and glow.
  * A glossy, slowly morphing blob with iridescent edges and two pill eyes.
  * Every account gets its own one: shape, colours, eyes and rhythm come from a seed (the user id).
  */
@@ -33,6 +33,8 @@ type Props = {
   level?: number;
   /** 0..1: sparkles and glow. Defaults to the person's bond with Okio. */
   bond?: number;
+  /** 0 = grey, 1 = all its colours. Defaults to the person's bond (everyone starts grey). */
+  color?: number;
 };
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
@@ -65,6 +67,15 @@ function rng(seed: string) {
     h ^= h >>> 16;
     return (h >>> 0) / 4294967296;
   };
+}
+
+/** The same colour with its saturation taken away, `amount` of the way (1 = fully grey). */
+export function greyed(hex: string, amount: number) {
+  if (amount <= 0) return hex;
+  const n = parseInt(hex.slice(1, 7), 16);
+  const rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const y = 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2];
+  return `#${rgb.map((v) => Math.round(v + (y - v) * Math.min(1, amount)).toString(16).padStart(2, '0')).join('')}`;
 }
 
 /** Same seed → same mascot, same colours, on every phone. */
@@ -151,11 +162,17 @@ function Particle({ x, y, s, d, size, color }: { x: number; y: number; s: number
   );
 }
 
-export function Mascota({ seed, size = 260, mood = 'calma', level = 0, bond }: Props) {
+export function Mascota({ seed, size = 260, mood = 'calma', level = 0, bond, color }: Props) {
   const points = useVinculo((s) => s.points);
-  // Sparkles and glow grow with the bond; a new Okio already has two sparkles.
-  const b = Math.max(0.34, bond ?? bondLevel(points));
-  const tr = useMemo(() => mascotTraits(seed), [seed]);
+  const grown = bondLevel(points);
+  // Colour and sparkles both come with the bond: grey and plain on day one, its own colours later.
+  const b = bond ?? grown;
+  const c = color ?? grown;
+  const tr = useMemo(() => {
+    const base = mascotTraits(seed);
+    const palette = Object.fromEntries(Object.entries(base.palette).map(([k, v]) => [k, greyed(v, 1 - c)])) as typeof base.palette;
+    return { ...base, palette };
+  }, [seed, c]);
   const id = useMemo(() => `m${Math.abs(seed.split('').reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7))}`, [seed]);
 
   const t = useSharedValue(0);
@@ -215,7 +232,7 @@ export function Mascota({ seed, size = 260, mood = 'calma', level = 0, bond }: P
         <Svg width={size} height={size} viewBox={`0 0 ${VB} ${VB}`}>
           <Defs>
             <RadialGradient id={`${id}h`} cx="50%" cy="50%" r="50%">
-              <Stop offset="0.55" stopColor="#7C4DFF" stopOpacity={0.1 + 0.12 * b} />
+              <Stop offset="0.55" stopColor={greyed('#7C4DFF', 1 - c)} stopOpacity={0.1 + 0.12 * b} />
               <Stop offset="1" stopColor="#7C4DFF" stopOpacity="0" />
             </RadialGradient>
             <RadialGradient id={`${id}b`} cx="52%" cy="56%" r="54%">

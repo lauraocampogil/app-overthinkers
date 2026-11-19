@@ -88,7 +88,7 @@ export default function Pro() {
           {t('pro.title')}
         </Animated.Text>
         <Animated.Text entering={FadeInDown.delay(80).duration(450)} style={styles.sub}>
-          {reason === 'limit' ? t('pro.limit') : t('pro.subtitle')}
+          {reason === 'limit' ? t('pro.limit') : reason === 'draft' || reason === 'chat' || reason === 'week' || reason === 'photo' ? t(`pro.reason.${reason}`) : t('pro.subtitle')}
         </Animated.Text>
 
         <View style={styles.perks}>

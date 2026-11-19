@@ -166,6 +166,13 @@ export default function Escuchando() {
     router.replace(to === 'semana' ? { pathname: '/semana', params: { review: '1' } } : '/ordenando');
   };
 
+  const switchTo = (snap: boolean) => {
+    session.current?.cancel();
+    session.current = null;
+    if (recorder.isRecording) void recorder.stop().catch(() => {});
+    router.replace(snap ? { pathname: '/escribir', params: { snap: '1' } } : '/escribir');
+  };
+
   const cancel = () => {
     session.current?.cancel();
     session.current = null;
@@ -198,6 +205,17 @@ export default function Escuchando() {
       <StatusBar style="light" />
       <Degradado level={shown} />
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+        {phase !== 'review' && phase !== 'transcribing' ? (
+          // Same place, other ways in: write it, or snap a photo of a list or a screenshot.
+          <View style={styles.ways}>
+            <Pressable accessibilityRole="button" onPress={() => switchTo(false)} hitSlop={8}>
+              <Text style={styles.way}>{t('listen.write')}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={() => switchTo(true)} hitSlop={8}>
+              <Text style={styles.way}>{t('listen.photo')}</Text>
+            </Pressable>
+          </View>
+        ) : null}
         <View style={styles.center}>
           {mascot.unlocked ? (
             <Mascota seed={mascot.seed} size={220} mood="escucha" level={shown} />
@@ -257,6 +275,8 @@ export default function Escuchando() {
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: 24, paddingBottom: 12 },
+  ways: { flexDirection: 'row', justifyContent: 'center', gap: 28, paddingTop: 12 },
+  way: { fontFamily: fonts.semibold, fontSize: 15, color: 'rgba(255,255,255,0.92)' },
   center: { flex: 1, justifyContent: 'center', gap: 28, paddingTop: 24 },
   heardBox: { maxHeight: 260, flexGrow: 0 },
   heardContent: { paddingHorizontal: 28 },

@@ -9,6 +9,7 @@ import { Mascota } from '@/components/Mascota';
 import { CheckIcon, CloseIcon, IconCircle, Screen } from '@/components/ui';
 import { locale, t } from '@/i18n';
 import { useMascot } from '@/lib/auth';
+import { canUse, countUse } from '@/lib/limite';
 import { askOkio, clearChat, KEEP_DAYS, pruneChat, useMentor } from '@/lib/mentor';
 import { useVoz } from '@/lib/paleta';
 import { colors, fonts } from '@/theme';
@@ -37,6 +38,11 @@ export default function Mentor() {
   const send = async (value: string) => {
     const v = value.trim();
     if (!v || busy) return;
+    if (!(await canUse('chat'))) {
+      router.push({ pathname: '/pro', params: { reason: 'chat' } });
+      return;
+    }
+    countUse('chat');
     setText('');
     setBusy(true);
     await askOkio(v);

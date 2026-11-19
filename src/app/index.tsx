@@ -68,6 +68,9 @@ function Check({ task, onToggle, size = 24, onDark = false }: { task: Task; onTo
 
 type Slot = { start: Date; end: Date } | null;
 
+/** Routines and challenges wait for version 2 (product plan, 19 Nov 2026). */
+const V2 = false as boolean;
+
 export default function Inicio() {
   const streak = useDay((s) => s.streak);
   const tasks = useDay((s) => s.tasks);
@@ -144,7 +147,8 @@ export default function Inicio() {
 
   // One challenge on offer at a time, matched to the person's areas and goals.
   useEffect(() => {
-    if (!onboarded || retos.some((r) => r.status === 'offered')) return;
+    // Challenges wait for version 2 (see the product plan): nothing is offered for now.
+    if (!V2 || !onboarded || retos.some((r) => r.status === 'offered')) return;
     const next = nextReto(areas.map((a) => a.id), goals, retos, todayIso());
     if (next) useDay.getState().offerReto(next.id, next.goalId);
   }, [onboarded, retos, areas, goals]);
@@ -206,13 +210,6 @@ export default function Inicio() {
             <Text style={styles.pillText}>{t('goals.daysShort', { n: daysLeft })}</Text>
           </Pressable>
         ) : null}
-        <Pressable accessibilityRole="button" accessibilityLabel={`${t('streak.open')}: ${t('home.streak', { n: streak.current })}`} onPress={() => router.push('/racha')} style={styles.pill} hitSlop={6}>
-          <FlameIcon />
-          <Text style={styles.pillText}>{streak.current}</Text>
-        </Pressable>
-        <IconCircle label={t('cal.open')} onPress={() => router.push({ pathname: '/mes', params: { d: sel } })} size={34}>
-          <CalendarIcon size={17} />
-        </IconCircle>
         <IconCircle label={t('account.title')} onPress={() => router.push('/cuenta')} size={34}>
           <PersonIcon />
         </IconCircle>
@@ -320,7 +317,7 @@ export default function Inicio() {
   );
 
   // Weekly check-in and the day's challenge come as one calm pop-up, not as cards that stay on screen.
-  const popupKind = nudges.laterOn === today ? null : checkin ? 'checkin' : offer ? 'reto' : null;
+  const popupKind = nudges.laterOn === today ? null : checkin ? 'checkin' : V2 && offer ? 'reto' : null;
   const snooze = () => useDay.getState().setNudge({ laterOn: today });
   const popup = (
     <Modal visible={!!popupKind && !sheet && !celebrate && focused} transparent animationType="fade" onRequestClose={snooze}>
@@ -502,7 +499,8 @@ export default function Inicio() {
         ) : null}
 
         {/* Tasks first; the routine comes after them, only at its time. */}
-        {routine && routine.enabled && routine.steps.length && kind ? (
+        {/* Routines wait for version 2: closing the day is the evening ritual. */}
+        {V2 && routine && routine.enabled && routine.steps.length && kind ? (
           routineDone >= routine.steps.length ? (
             <Pressable onPress={() => router.push({ pathname: '/rutina', params: { kind } })} style={styles.routineDone} accessibilityRole="button">
               {kind === 'manana' ? <SunIcon size={18} /> : <MoonIcon size={18} />}

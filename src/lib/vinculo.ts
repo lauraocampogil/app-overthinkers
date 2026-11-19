@@ -5,9 +5,9 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import type { Kind } from './types';
 
 /**
- * The bond with Okio. Each time the person empties their head, talks to Okio, finishes something
- * or closes the day, the bond grows: Okio gets its sparkles and glow, and its stages in Cuenta.
- * Its colours never change: they are the person's own from day one.
+ * The bond with Okio. Everyone starts with a grey, neutral Okio. Each time the person empties their head,
+ * talks to Okio, finishes something or closes the day, the bond grows: Okio takes on its own colours
+ * (fully after about two weeks of use), then its sparkles and glow.
  */
 export type BondEvent = 'dump' | 'chat' | 'done' | 'proof' | 'close';
 
@@ -80,8 +80,8 @@ export function bondStage(points: number): number {
   return i;
 }
 
-export const useVinculo = create<BondState & { seeded: boolean }>()(
-  persist(() => ({ ...EMPTY_BOND, seeded: false as boolean }), { name: 'okio-bond', storage: createJSONStorage(() => AsyncStorage) }),
+export const useVinculo = create<BondState & { seeded: boolean; seeded2: boolean }>()(
+  persist(() => ({ ...EMPTY_BOND, seeded: false as boolean, seeded2: false as boolean }), { name: 'okio-bond', storage: createJSONStorage(() => AsyncStorage) }),
 );
 
 export function bond(event: BondEvent, kind?: Kind) {
@@ -90,13 +90,17 @@ export function bond(event: BondEvent, kind?: Kind) {
   if (next !== s) useVinculo.setState(next);
 }
 
-/** People who used the app before the bond existed start with what they already did. */
-export function seedBond(done: { kind?: Kind | null }[], closedDays: number) {
+/**
+ * People who used the app before the bond existed start with what they already did:
+ * every task done, and every day they used it counts like a closed day.
+ */
+export function seedBond(done: { kind?: Kind | null; doneOn?: string }[], closedDays: number) {
   const s = useVinculo.getState();
-  if (s.seeded) return;
-  let next: BondState = s;
+  if (s.seeded2) return;
+  let next: BondState = { ...EMPTY_BOND, chatDay: s.chatDay, chatToday: s.chatToday };
   for (const x of done.slice(-200)) next = addBond(next, 'done', x.kind ?? undefined);
-  next = { ...next, points: next.points + closedDays * BOND_POINTS.close };
+  const activeDays = new Set(done.map((x) => x.doneOn).filter(Boolean)).size;
+  next = { ...next, points: Math.max(s.points, next.points + Math.max(closedDays, activeDays) * BOND_POINTS.close) };
   if (next.family === null && next.points >= FAMILY_AT) next = { ...next, family: familyFor(next.byKind) };
-  useVinculo.setState({ ...next, seeded: true });
+  useVinculo.setState({ ...next, seeded: true, seeded2: true });
 }

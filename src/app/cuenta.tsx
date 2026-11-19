@@ -98,15 +98,6 @@ export default function Cuenta() {
           <Text style={styles.provider}>{t('account.via', { provider })}</Text>
         </View>
 
-        <View style={[styles.card, { alignItems: 'center' }]}>
-          <Mascota seed={mascot.seed} size={140} />
-          <Text style={[styles.name, { textAlign: 'center' }]}>{t(`bond.stage${bondStage(bondPoints)}`)}</Text>
-          <Text style={[type.muted, { textAlign: 'center' }]}>{t('bond.body')}</Text>
-          <View style={styles.bondBar} accessibilityLabel={t('bond.pct', { n: Math.round(bondLevel(bondPoints) * 100) })}>
-            <View style={[styles.bondFill, { width: `${Math.round(bondLevel(bondPoints) * 100)}%`, backgroundColor: voz.mic[1] }]} />
-          </View>
-        </View>
-
         <View style={[styles.card, { gap: 10 }]}>
           <Text style={styles.name}>{t('cal.title')}</Text>
           <Text style={type.muted}>{t('cal.body')}</Text>
@@ -209,10 +200,7 @@ export default function Cuenta() {
           <Text style={styles.rowText}>{t('pro.account')}</Text>
         </Pressable>
 
-        <Pressable accessibilityRole="button" onPress={() => router.push('/mentor')} style={styles.row}>
-          <Text style={styles.rowText}>{t('read.talk')}</Text>
-        </Pressable>
-
+        {/* Health, Strava, app blocking and routines wait for version 2 (product plan). */}
         <View style={[styles.card, { gap: 14 }]}>
           <Text style={styles.name}>{t('mode.title')}</Text>
           <View style={styles.switchRow}>
@@ -230,20 +218,6 @@ export default function Cuenta() {
             <Switch value={settings.proofTop} onValueChange={(v) => setSettings({ proofTop: v })} trackColor={{ true: colors.ink }} accessibilityLabel={t('mode.proof')} />
           </View>
         </View>
-
-        <Conexiones />
-
-        <Pressable accessibilityRole="button" onPress={() => router.push('/bloqueo')} style={styles.row}>
-          <Text style={styles.rowText}>{t('block.title')}</Text>
-        </Pressable>
-
-        <Pressable accessibilityRole="button" onPress={() => router.push('/semana')} style={styles.row}>
-          <Text style={styles.rowText}>{t('week.title')}</Text>
-        </Pressable>
-
-        <Pressable accessibilityRole="button" onPress={() => router.push('/rutinas')} style={styles.row}>
-          <Text style={styles.rowText}>{t('routine.title')}</Text>
-        </Pressable>
 
         {SITE_URL ? (
           <View style={styles.legalRow}>

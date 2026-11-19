@@ -20,6 +20,7 @@ import Svg, { Path, Rect } from 'react-native-svg';
 import { CloseIcon, IconCircle, PrimaryButton, Screen } from '@/components/ui';
 import { t } from '@/i18n';
 import { tasksFromImage } from '@/lib/ai';
+import { canUse } from '@/lib/limite';
 import { CameraIcon } from '@/components/Iconos';
 import { supabase } from '@/lib/supabase';
 import { useDay } from '@/store/day';
@@ -88,6 +89,11 @@ export default function Escribir() {
   /** Snap: a photo of a notebook, whiteboard, receipt, fridge list or letter, or a screenshot → tasks. */
   const fromScreenshot = async (source: 'library' | 'camera' = 'library') => {
     setNotice(null);
+    // A photo or screenshot turned into tasks is Pro (product plan).
+    if (!(await canUse('photo'))) {
+      router.push({ pathname: '/pro', params: { reason: 'photo' } });
+      return;
+    }
     Keyboard.dismiss();
     if (!supabase) {
       setNotice(t('write.needServer'));
