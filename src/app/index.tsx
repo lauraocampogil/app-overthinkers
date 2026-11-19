@@ -160,7 +160,7 @@ export default function Inicio() {
   const active = todayList(tasks);
   const pending = active.filter((x) => x.status === 'pendiente');
   const done = active.filter((x) => x.status === 'hecha');
-  const timeline = agenda === 'on' ? dayTimeline(today, pending, minutesOf, settings) : null;
+  const timeline = dayTimeline(today, pending, minutesOf, settings);
   const slot = (task: Task): Slot => {
     const b = timeline?.blocks.find((x) => x.type === 'task' && x.task.id === task.id);
     return b ? { start: b.start, end: b.end } : null;
@@ -190,6 +190,7 @@ export default function Inicio() {
     .filter((g) => !g.archived && g.due && g.due >= today)
     .sort((a, b) => (a.due ?? '').localeCompare(b.due ?? ''))[0];
   const daysLeft = nextGoal?.due ? daysBetween(today, nextGoal.due) : null;
+  const liveGoals = goals.filter((g) => !g.archived).length;
 
   const offer = retos.find((r) => r.status === 'offered');
   const checkinGoal = checkinDue(goals, today);
@@ -214,10 +215,17 @@ export default function Inicio() {
         </Pressable>
       )}
       <View style={styles.headerRight}>
-        {daysLeft !== null ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={`${nextGoal!.title}: ${t('goals.daysLeft', { n: daysLeft })}`} onPress={() => router.push({ pathname: '/meta', params: { id: nextGoal!.id } })} style={styles.pill} hitSlop={6}>
+        {/* Goals live here: one pill, "Metas · 42 d" (the closest one), opening the list. */}
+        {liveGoals ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={daysLeft !== null ? `${t('goals.yours')}. ${nextGoal!.title}: ${t('goals.daysLeft', { n: daysLeft })}` : t('goals.yours')}
+            onPress={() => router.push('/objetivos')}
+            style={styles.pill}
+            hitSlop={6}
+          >
             <TargetIcon size={14} />
-            <Text style={styles.pillText}>{t('goals.daysShort', { n: daysLeft })}</Text>
+            <Text style={styles.pillText}>{t('goals.pill')}{daysLeft !== null ? ` · ${t('goals.daysShort', { n: daysLeft })}` : ''}</Text>
           </Pressable>
         ) : null}
         <IconCircle label={t('account.title')} onPress={() => router.push('/cuenta')} size={34}>
@@ -261,7 +269,7 @@ export default function Inicio() {
           {task.title}
         </Text>
         <Text style={styles.rowMeta} numberOfLines={1}>
-          {[timeOf(task), durLabel(task), task.where ?? ''].filter(Boolean).join(' · ')}
+          {[timeOf(task) || (task.status === 'pendiente' && sel === today ? t('week.noRoom') : ''), durLabel(task), task.where ?? ''].filter(Boolean).join(' · ')}
         </Text>
       </View>
     </Pressable>
@@ -456,7 +464,7 @@ export default function Inicio() {
             {topRows.map((task, i) => (
               <Pressable key={task.id} onPress={() => setSheet(task)} style={styles.topRow} accessibilityHint={t('task.options')}>
                 <Text style={[styles.topNum, task.status === 'hecha' && { color: '#5E5E5E' }]}>{i + 1}</Text>
-                <View style={{ flex: 1, gap: 2 }}>
+                <View style={{ flex: 1, gap: 4 }}>
                   <Text style={[styles.topTitle, task.status === 'hecha' && styles.doneDark]} numberOfLines={2}>
                     {task.title}
                   </Text>
@@ -647,12 +655,12 @@ const styles = StyleSheet.create({
   dayRoutineText: { flex: 1, fontFamily: fonts.regular, fontSize: 12, color: colors.muted },
 
   topCard: { marginHorizontal: 20, backgroundColor: colors.ink, borderRadius: 28, paddingHorizontal: 18, paddingTop: 16, paddingBottom: 8 },
-  topHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  topHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   topCount: { fontFamily: fonts.semibold, fontSize: 13, color: colors.white },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 62, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#2A2A2A' },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 62, paddingVertical: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#2A2A2A' },
   topNum: { width: 22, fontFamily: fonts.bold, fontSize: 24, letterSpacing: -0.6, color: colors.white },
   topTitle: { fontFamily: fonts.semibold, fontSize: 17, lineHeight: 21, color: colors.white },
-  topWhy: { fontFamily: fonts.medium, fontSize: 12.5, color: '#9A9A9A', marginTop: 1 },
+  topWhy: { fontFamily: fonts.medium, fontSize: 12.5, color: '#9A9A9A', marginTop: 3 },
   topMeta: { fontFamily: fonts.regular, fontSize: 13, color: '#8A8A8A' },
   doneDark: { color: '#5E5E5E', textDecorationLine: 'line-through' },
 

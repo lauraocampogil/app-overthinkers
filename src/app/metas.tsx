@@ -19,8 +19,7 @@ import { colors, fonts, type } from '@/theme';
 /**
  * Semana: what there is to do this week, at a glance.
  * On top, the 7 days as columns whose bar shows how full each day is (tap one to jump to it);
- * below, each day with its things in order and their hours. Goals sit at the end, small:
- * they are born from what you tell Okio and their steps already live in the days.
+ * below, each day with its things in order and their hours. Goals open from the pill on Hoy.
  */
 const FULL_DAY = 6 * 60; // a bar is full at 6 hours of tasks
 
@@ -63,7 +62,7 @@ export default function Semana() {
   const plan = days.map((d) => {
     const list = tasks.filter((x) => x.day === d && (x.status === 'pendiente' || x.doneOn === d));
     const open = list.filter((x) => x.status === 'pendiente');
-    const timeline = agendaOn ? dayTimeline(d, open, minutesOf, settings) : null;
+    const timeline = dayTimeline(d, open, minutesOf, settings);
     const hour = (x: Task) => {
       if (x.at) return x.at;
       const b = timeline?.blocks.find((y) => y.type === 'task' && y.task.id === x.id);
@@ -148,7 +147,9 @@ export default function Semana() {
             </Pressable>
             {p.rows.map(({ task, at, fixed }) => (
               <Pressable key={task.id} onPress={() => router.push({ pathname: '/agenda', params: { d: p.d } })} style={styles.row}>
-                <Text style={[styles.at, !fixed && at ? styles.atSoft : null]}>{at || '—'}</Text>
+                <Text style={[styles.at, !fixed && at ? styles.atSoft : null, !at && styles.noRoom]} numberOfLines={2}>
+                  {task.status === 'hecha' ? '✓' : at || t('week.noRoom')}
+                </Text>
                 {task.top || task.importance === 3 ? <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={styles.mark} /> : <View style={styles.markQuiet} />}
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.rowText, task.status === 'hecha' && styles.done]} numberOfLines={1}>
@@ -170,26 +171,6 @@ export default function Semana() {
           </View>
         ))}
 
-        <Text style={styles.section}>{t('goals.yours')}</Text>
-        <Text style={[type.muted, { paddingHorizontal: 4, marginTop: -4 }]}>{t('goals.howTo')}</Text>
-        {live.map((goal) => {
-          const pr = goalProgress(goal, tasks);
-          return (
-            <Pressable
-              key={goal.id}
-              onPress={() => router.push({ pathname: '/meta', params: { id: goal.id } })}
-              onLongPress={() => confirmArchive(goal)}
-              style={styles.goal}
-              accessibilityHint={t('goals.longPress')}
-            >
-              <Anillo progress={pr.pct} size={40} stroke={4} label={`${Math.round(pr.pct * 100)}`} />
-              <Text style={styles.goalTitle} numberOfLines={1}>
-                {goal.title}
-              </Text>
-              <Text style={styles.goalDue}>{dueLabel(goal, pr.done, pr.total)}</Text>
-            </Pressable>
-          );
-        })}
       </ScrollView>
       <Barra active="metas" />
     </Screen>
@@ -219,6 +200,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 46, paddingHorizontal: 4 },
   at: { width: 48, fontFamily: fonts.semibold, fontSize: 14, color: colors.ink, fontVariant: ['tabular-nums'] },
   atSoft: { color: colors.muted, fontFamily: fonts.medium },
+  noRoom: { fontFamily: fonts.medium, fontSize: 11, lineHeight: 13, color: colors.faint },
   mark: { width: 4, alignSelf: 'stretch', marginVertical: 8, borderRadius: 2 },
   markQuiet: { width: 4, alignSelf: 'stretch', marginVertical: 8, borderRadius: 2, backgroundColor: colors.line },
   rowText: { fontFamily: fonts.medium, fontSize: 15.5, color: colors.ink },

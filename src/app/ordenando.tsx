@@ -20,7 +20,7 @@ const needsTime = (x: RawTask) => x.minutes === null && (x.askMinutes || x.kind 
  * Things that happen somewhere else (a class, the gym, an appointment) need their place, for the travel time.
  * If the AI did not ask and nobody said where, Okio asks: "¿Dónde es pilates?".
  */
-const PLACE_WORDS = /\b(farmacia|pharmacie|pharmacy|apotheek|apotheke|pilates|yoga|gym|gimnasio|basic.?fit|clase|curso|cours|classe|dentista|dentiste|m[ée]dico|m[ée]decin|doctor|cita|rendez-vous|rdv|entreno|entrenamiento|entra[iî]nement|partido|match|reuni[oó]n|r[ée]union|meeting|fisio|kin[ée]|kine|peluquer[ií]a|coiffeur|piscina|piscine|natation|nataci[oó]n|boxe|boxeo|danza|danse|dance|appointment|lesson)\b/i;
+const PLACE_WORDS = /\b(recoger|recojo|chercher|aller chercher|pick up|ophalen|abholen|gare|estaci[oó]n|station|farmacia|pharmacie|pharmacy|apotheek|apotheke|pilates|yoga|gym|gimnasio|basic.?fit|clase|curso|cours|classe|dentista|dentiste|m[ée]dico|m[ée]decin|doctor|cita|rendez-vous|rdv|entreno|entrenamiento|entra[iî]nement|partido|match|reuni[oó]n|r[ée]union|meeting|fisio|kin[ée]|kine|peluquer[ií]a|coiffeur|piscina|piscine|natation|nataci[oó]n|boxe|boxeo|danza|danse|dance|appointment|lesson)\b/i;
 const needsPlace = (x: RawTask) => !x.where && (PLACE_WORDS.test(x.title) || (!!x.repeat?.days.length && x.kind === 'deporte'));
 /** Every question to ask, in order: the AI's own ("¿Qué libro?") plus a duration and a place when missing. */
 function questionsFor(tasks: RawTask[]) {

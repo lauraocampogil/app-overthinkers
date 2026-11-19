@@ -112,7 +112,7 @@ export default function Agenda() {
   const dayTasks = tasks.filter((x) => x.status === 'pendiente' && x.day === day);
   const photos = tasks.filter((x) => x.status === 'hecha' && (x.doneOn ?? x.day) === day && x.proofPhoto);
   // Same hours as Hoy: tasks without a fixed hour get the slot Okio found for them in the free time.
-  const timeline = status === 'on' ? dayTimeline(day, dayTasks, (x) => estimate(x, learned).minutes, settings) : null;
+  const timeline = dayTimeline(day, dayTasks, (x) => estimate(x, learned).minutes, settings);
   const placedAt = (id: string) => {
     const b = timeline?.blocks.find((x) => x.type === 'task' && x.task.id === id);
     return b ? clock(b.start) : '';
@@ -166,7 +166,7 @@ export default function Agenda() {
                 onPress={() => (it.kind === 'routine' ? router.push({ pathname: '/rutina', params: { kind: it.routine, d: day } }) : undefined)}
                 style={styles.row}
               >
-                <Text style={styles.time}>{it.at || '—'}</Text>
+                <Text style={[styles.time, !it.at && styles.noRoom]} numberOfLines={2}>{it.at || t('week.noRoom')}</Text>
                 {it.kind === 'task' && it.top ? (
                   <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={styles.line} />
                 ) : (
@@ -250,6 +250,7 @@ export default function Agenda() {
 }
 
 const styles = StyleSheet.create({
+  noRoom: { fontFamily: fonts.medium, fontSize: 11, lineHeight: 13, color: colors.faint },
   header: { paddingHorizontal: 20, height: 52, justifyContent: 'center', marginTop: 4 },
   body: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40, gap: 6 },
   connect: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 56, paddingHorizontal: 16, borderRadius: 20, backgroundColor: colors.card, marginVertical: 8 },

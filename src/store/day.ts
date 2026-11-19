@@ -332,6 +332,14 @@ export const useDay = create<DayState>()(
             get().setFixed(fixed);
           }
           raw = raw.filter((r) => !r.repeat?.days.length);
+          // "Ya hice la compra": tick the matching pending task, never add a new one.
+          const said = raw.filter((r) => r.alreadyDone);
+          for (const r of said) {
+            const words = r.title.toLowerCase().replace(/^(ya|y'?a|déjà|deja|already)\s+/, '').split(/\s+/).filter((w) => w.length > 3);
+            const match = get().tasks.find((x) => x.status === 'pendiente' && words.some((w) => x.title.toLowerCase().includes(w.slice(0, 5))));
+            if (match) get().markDone(match.id);
+          }
+          raw = raw.filter((r) => !r.alreadyDone);
           for (const r of raw) {
             // In a week plan the same task can be on several days (gym Mon, Wed, Fri): one per day.
             const key = keyOf(r.title, addDays(day, r.dueInDays ?? 0));

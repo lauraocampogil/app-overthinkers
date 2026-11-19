@@ -16,6 +16,7 @@ import { connectCalendar, defaultCalendarId, refreshAgenda } from '@/lib/calenda
 import { AREA_ORDER, AREAS, COUNTRIES, EMPTY_PROFILE, ROLES, STORES, type Area, type AreaId, type Profile } from '@/lib/perfil';
 import { defaultRoutine } from '@/lib/rutinas';
 import type { RoutineKind, RoutineStep } from '@/lib/types';
+import { geocode, hereNow, MODES, placesAvailable } from '@/lib/trayecto';
 import { useDay, withDefaults } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
@@ -23,7 +24,8 @@ import { colors, fonts, type } from '@/theme';
  * Onboarding: GetGo gets to know the person so it can decide for them.
  * One question per screen, things to tap rather than to type. Everything can be changed later in Cuenta.
  */
-const STEPS = ['intro', 'role', 'areas', 'details', 'stores', 'day', 'energy', 'routines', 'week', 'permissions', 'goal'] as const;
+// 'routines' waits for version 2 (product plan); 'places' tells Okio where you live, work and how you move.
+const STEPS = ['intro', 'role', 'areas', 'details', 'stores', 'day', 'places', 'energy', 'week', 'permissions', 'goal'] as const;
 type Step = (typeof STEPS)[number];
 
 const WAKE = ['06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '10:00'];
@@ -101,10 +103,25 @@ export default function Bienvenida() {
   };
 
   const set = (patch: Partial<Profile>) => setP((cur) => ({ ...cur, ...patch }));
+  const [homeText, setHomeText] = useState(p.home?.address ?? '');
+  const [workText, setWorkText] = useState(p.workPlace?.address ?? '');
+  const [placeNote, setPlaceNote] = useState<string | null>(null);
+  const [placeBusy, setPlaceBusy] = useState(false);
+  // Addresses are looked up when leaving the step (the phone's own geocoder, free).
+  const savePlaces = async () => {
+    setPlaceBusy(true);
+    const home = homeText.trim() && homeText.trim() !== p.home?.address ? await geocode(homeText.trim()) : null;
+    const work = workText.trim() && workText.trim() !== p.workPlace?.address ? await geocode(workText.trim()) : null;
+    setPlaceBusy(false);
+    if (home) set({ home: { address: homeText.trim(), ...home } });
+    if (work) set({ workPlace: { address: workText.trim(), ...work } });
+    return { home, work };
+  };
   const index = STEPS.indexOf(step);
   const areasWithQuestions = p.areas.filter((a) => AREAS[a.id].questions.length || a.id === 'otra');
   const order = STEPS.filter((s) => s !== 'details' || areasWithQuestions.length);
-  const go = (dir: 1 | -1) => {
+  const go = async (dir: 1 | -1) => {
+    if (step === 'places' && dir === 1 && (homeText.trim() || workText.trim())) await savePlaces();
     const i = order.indexOf(step) + dir;
     if (i < 0) return router.back();
     if (i >= order.length) return finish();
@@ -373,6 +390,47 @@ export default function Bienvenida() {
             </View>
           </>
         );
+      case 'places':
+        return (
+          <>
+            <Text style={type.title} accessibilityRole="header">{t('ob.placesTitle')}</Text>
+            <Text style={[type.muted, styles.sub]}>{t('ob.placesBody')}</Text>
+            <Text style={styles.q}>{t('ob.homeQ')}</Text>
+            <TextInput value={homeText} onChangeText={setHomeText} placeholder={t('casa.placeholder')} placeholderTextColor={colors.faint} style={styles.input} accessibilityLabel={t('ob.homeQ')} />
+            {placesAvailable() ? (
+              <View style={styles.row}>
+                <Chip
+                  label={t('casa.useHere')}
+                  on={false}
+                  onPress={async () => {
+                    setPlaceBusy(true);
+                    const r = await hereNow();
+                    setPlaceBusy(false);
+                    if (!r) return setPlaceNote(t('casa.noLocation'));
+                    const label = r.label || t('casa.here');
+                    setHomeText(label);
+                    set({ home: { address: label, ...r.point } });
+                    setPlaceNote(t('casa.saved'));
+                  }}
+                />
+              </View>
+            ) : null}
+            <Text style={[styles.q, { marginTop: 8 }]}>{t('casa.mode')}</Text>
+            <View style={styles.row}>
+              {MODES.map((m) => (
+                <Chip key={m} label={t(`casa.mode.${m}`)} on={(p.transport ?? 'transporte') === m} onPress={() => set({ transport: m })} />
+              ))}
+            </View>
+            {p.workFrom || p.role ? (
+              <>
+                <Text style={[styles.q, { marginTop: 8 }]}>{t('ob.workQ')}</Text>
+                <TextInput value={workText} onChangeText={setWorkText} placeholder={t('ob.workPlaceholder')} placeholderTextColor={colors.faint} style={styles.input} accessibilityLabel={t('ob.workQ')} />
+              </>
+            ) : null}
+            {placeBusy ? <Text style={type.muted}>{t('ob.placesLooking')}</Text> : placeNote ? <Text style={type.muted}>{placeNote}</Text> : null}
+            <Text style={[type.muted, { marginTop: 4 }]}>{t('ob.placesPrivacy')}</Text>
+          </>
+        );
       case 'role':
         return (
           <>
@@ -404,7 +462,7 @@ export default function Bienvenida() {
             </View>
           </>
         );
-      case 'routines':
+      case ('routines' as Step):
         return (
           <>
             <Text style={type.title} accessibilityRole="header">{t('ob.routinesTitle')}</Text>

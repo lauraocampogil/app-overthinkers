@@ -4,6 +4,19 @@
  * Plurals: keys ending in `_one` / `_other` are picked automatically from `{n}`.
  */
 const es = {
+  "week.noRoom": "No cabe",
+  "busy.work": "Trabajo o clases (con el trayecto)",
+  "goals.pill": "Metas",
+  "goals.steps": "{done} de {total} pasos",
+  "goals.nextStep": "Siguiente: {step}",
+  "goals.none": "Aún no tienes metas. Dile a Okio algo que quieras lograr y lo convertirá en pasos.",
+  "ob.placesTitle": "¿Dónde vives y cómo te mueves?",
+  "ob.placesBody": "Así Okio cuenta los trayectos: deja el tiempo libre en tu día y te avisa de cuándo salir.",
+  "ob.homeQ": "Tu casa",
+  "ob.workQ": "¿Dónde trabajas o estudias?",
+  "ob.workPlaceholder": "Dirección de tu trabajo, escuela o universidad",
+  "ob.placesLooking": "Buscando la dirección…",
+  "ob.placesPrivacy": "Solo se usa para calcular tus trayectos. Puedes cambiarlo en Cuenta.",
   "topwhy.starred": "La marcaste tú",
   "topwhy.late": "Se te ha pasado la fecha",
   "topwhy.dueToday": "Es para hoy",
@@ -854,6 +867,19 @@ export type Key = keyof typeof es;
 type Dict = Record<Key, string>;
 
 const en: Dict = {
+  "week.noRoom": "No room",
+  "busy.work": "Work or classes (with the trip)",
+  "goals.pill": "Goals",
+  "goals.steps": "{done} of {total} steps",
+  "goals.nextStep": "Next: {step}",
+  "goals.none": "No goals yet. Tell Okio something you want to achieve and it will turn it into steps.",
+  "ob.placesTitle": "Where do you live and how do you get around?",
+  "ob.placesBody": "So Okio counts the trips: it keeps the time free in your day and tells you when to leave.",
+  "ob.homeQ": "Your home",
+  "ob.workQ": "Where do you work or study?",
+  "ob.workPlaceholder": "Address of your work, school or university",
+  "ob.placesLooking": "Looking up the address…",
+  "ob.placesPrivacy": "Only used to work out your trips. You can change it in Account.",
   "topwhy.starred": "You starred it",
   "topwhy.late": "It's past its date",
   "topwhy.dueToday": "It's due today",
@@ -1691,6 +1717,19 @@ const en: Dict = {
 };
 
 const fr: Dict = {
+  "week.noRoom": "Pas de place",
+  "busy.work": "Travail ou cours (avec le trajet)",
+  "goals.pill": "Objectifs",
+  "goals.steps": "{done} étapes sur {total}",
+  "goals.nextStep": "Ensuite : {step}",
+  "goals.none": "Pas encore d'objectifs. Dis à Okio ce que tu veux accomplir et il en fera des étapes.",
+  "ob.placesTitle": "Où habites-tu et comment te déplaces-tu ?",
+  "ob.placesBody": "Comme ça Okio compte les trajets : il garde le temps libre dans ta journée et te dit quand partir.",
+  "ob.homeQ": "Ton domicile",
+  "ob.workQ": "Où travailles-tu ou étudies-tu ?",
+  "ob.workPlaceholder": "Adresse de ton travail, école ou université",
+  "ob.placesLooking": "Je cherche l'adresse…",
+  "ob.placesPrivacy": "Utilisé seulement pour calculer tes trajets. Tu peux le changer dans Compte.",
   "topwhy.starred": "Tu l'as marquée",
   "topwhy.late": "La date est passée",
   "topwhy.dueToday": "C'est pour aujourd'hui",
@@ -2528,6 +2567,19 @@ const fr: Dict = {
 };
 
 const nl: Dict = {
+  "week.noRoom": "Geen plek",
+  "busy.work": "Werk of les (met de reis)",
+  "goals.pill": "Doelen",
+  "goals.steps": "{done} van {total} stappen",
+  "goals.nextStep": "Volgende: {step}",
+  "goals.none": "Nog geen doelen. Vertel Okio wat je wilt bereiken en hij maakt er stappen van.",
+  "ob.placesTitle": "Waar woon je en hoe verplaats je je?",
+  "ob.placesBody": "Zo telt Okio de reistijd: hij houdt de tijd vrij in je dag en zegt wanneer je moet vertrekken.",
+  "ob.homeQ": "Je huis",
+  "ob.workQ": "Waar werk of studeer je?",
+  "ob.workPlaceholder": "Adres van je werk, school of universiteit",
+  "ob.placesLooking": "Adres zoeken…",
+  "ob.placesPrivacy": "Alleen gebruikt om je reistijd te berekenen. Je kunt het aanpassen in Account.",
   "topwhy.starred": "Jij hebt hem gemarkeerd",
   "topwhy.late": "De datum is voorbij",
   "topwhy.dueToday": "Moet vandaag",
@@ -3365,6 +3417,19 @@ const nl: Dict = {
 };
 
 const de: Dict = {
+  "week.noRoom": "Kein Platz",
+  "busy.work": "Arbeit oder Unterricht (mit Weg)",
+  "goals.pill": "Ziele",
+  "goals.steps": "{done} von {total} Schritten",
+  "goals.nextStep": "Als Nächstes: {step}",
+  "goals.none": "Noch keine Ziele. Sag Okio, was du erreichen willst, und er macht Schritte daraus.",
+  "ob.placesTitle": "Wo wohnst du und wie bist du unterwegs?",
+  "ob.placesBody": "So rechnet Okio die Wege mit: Er hält die Zeit frei und sagt dir, wann du losmusst.",
+  "ob.homeQ": "Dein Zuhause",
+  "ob.workQ": "Wo arbeitest oder studierst du?",
+  "ob.workPlaceholder": "Adresse deiner Arbeit, Schule oder Uni",
+  "ob.placesLooking": "Adresse wird gesucht…",
+  "ob.placesPrivacy": "Nur für deine Wege genutzt. Du kannst es im Konto ändern.",
   "topwhy.starred": "Du hast sie markiert",
   "topwhy.late": "Das Datum ist vorbei",
   "topwhy.dueToday": "Ist heute fällig",
@@ -4202,6 +4267,19 @@ const de: Dict = {
 };
 
 const pt: Dict = {
+  "week.noRoom": "Não cabe",
+  "busy.work": "Trabalho ou aulas (com o trajeto)",
+  "goals.pill": "Metas",
+  "goals.steps": "{done} de {total} passos",
+  "goals.nextStep": "A seguir: {step}",
+  "goals.none": "Ainda não tens metas. Diz ao Okio algo que queiras alcançar e ele transforma em passos.",
+  "ob.placesTitle": "Onde vives e como te deslocas?",
+  "ob.placesBody": "Assim o Okio conta os trajetos: deixa o tempo livre no teu dia e avisa-te quando sair.",
+  "ob.homeQ": "A tua casa",
+  "ob.workQ": "Onde trabalhas ou estudas?",
+  "ob.workPlaceholder": "Morada do teu trabalho, escola ou universidade",
+  "ob.placesLooking": "A procurar a morada…",
+  "ob.placesPrivacy": "Só serve para calcular os teus trajetos. Podes mudar em Conta.",
   "topwhy.starred": "Foste tu que a marcaste",
   "topwhy.late": "A data já passou",
   "topwhy.dueToday": "É para hoje",
@@ -5039,6 +5117,19 @@ const pt: Dict = {
 };
 
 const it: Dict = {
+  "week.noRoom": "Non ci sta",
+  "busy.work": "Lavoro o lezioni (con il tragitto)",
+  "goals.pill": "Obiettivi",
+  "goals.steps": "{done} di {total} passi",
+  "goals.nextStep": "Prossimo: {step}",
+  "goals.none": "Ancora nessun obiettivo. Di' a Okio cosa vuoi raggiungere e lo trasformerà in passi.",
+  "ob.placesTitle": "Dove vivi e come ti sposti?",
+  "ob.placesBody": "Così Okio conta i tragitti: lascia il tempo libero nella tua giornata e ti dice quando uscire.",
+  "ob.homeQ": "Casa tua",
+  "ob.workQ": "Dove lavori o studi?",
+  "ob.workPlaceholder": "Indirizzo del lavoro, della scuola o dell'università",
+  "ob.placesLooking": "Cerco l'indirizzo…",
+  "ob.placesPrivacy": "Serve solo a calcolare i tuoi tragitti. Puoi cambiarlo in Account.",
   "topwhy.starred": "L'hai segnata tu",
   "topwhy.late": "La data è passata",
   "topwhy.dueToday": "È per oggi",

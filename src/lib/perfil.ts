@@ -58,6 +58,8 @@ export type Profile = {
   fixed: FixedItem[];
   /** Where the person lives, to count travel time to tasks with a place (see lib/trayecto). */
   home?: { address: string; lat: number; lng: number } | null;
+  /** Where they work or study, for the trip on work days. */
+  workPlace?: { address: string; lat: number; lng: number } | null;
   /** How they usually move. */
   transport?: 'pie' | 'bici' | 'transporte' | 'coche';
 };

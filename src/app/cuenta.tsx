@@ -260,6 +260,7 @@ function Casa() {
   const profile = useDay((s) => s.profile);
   const setProfile = useDay((s) => s.setProfile);
   const [address, setAddress] = useState(profile.home?.address ?? '');
+  const [work, setWork] = useState(profile.workPlace?.address ?? '');
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   if (!placesAvailable()) return null;
@@ -271,6 +272,16 @@ function Casa() {
     setBusy(false);
     if (!p) return setNote(t('casa.notFound'));
     setProfile({ home: { address: v, ...p } });
+    setNote(t('casa.saved'));
+  };
+  const saveWork = async () => {
+    const v = work.trim();
+    if (!v) return setProfile({ workPlace: null });
+    setBusy(true);
+    const p = await geocode(v);
+    setBusy(false);
+    if (!p) return setNote(t('casa.notFound'));
+    setProfile({ workPlace: { address: v, ...p } });
     setNote(t('casa.saved'));
   };
   const here = async () => {
@@ -306,6 +317,18 @@ function Casa() {
         </Pressable>
         {busy ? <ActivityIndicator color={colors.ink} /> : null}
       </View>
+      <Text style={[styles.rowText, { marginTop: 4 }]}>{t('ob.workQ')}</Text>
+      <TextInput
+        value={work}
+        onChangeText={setWork}
+        onSubmitEditing={() => void saveWork()}
+        onBlur={() => work.trim() !== (profile.workPlace?.address ?? '') && void saveWork()}
+        placeholder={t('ob.workPlaceholder')}
+        placeholderTextColor={colors.faint}
+        style={styles.input}
+        returnKeyType="done"
+        accessibilityLabel={t('ob.workQ')}
+      />
       {note ? <Text style={type.muted}>{note}</Text> : null}
       <Text style={[styles.rowText, { marginTop: 4 }]}>{t('casa.mode')}</Text>
       <View style={styles.chips}>

@@ -28,8 +28,9 @@ import { syncWidget, widgetChanges } from '@/lib/widget';
 import { pullDay } from '@/lib/sync';
 import { todayIso, todayList, useDay, withDefaults } from '@/store/day';
 import { seedBond } from '@/lib/vinculo';
-import { setTravelOf } from '@/lib/calendario';
-import { travelTo, warmPlaces } from '@/lib/trayecto';
+import { t } from '@/i18n';
+import { setExtraBusy, setTravelOf } from '@/lib/calendario';
+import { travelMinutes, travelTo, warmPlaces } from '@/lib/trayecto';
 
 export default function RootLayout() {
   const [loaded] = useFonts({ Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold });
@@ -83,7 +84,7 @@ export default function RootLayout() {
       const today = todayList(tasks);
       const pending = today.filter((x) => x.status === 'pendiente');
       const minutesOf = (x: (typeof tasks)[number]) => estimate(x, learned).minutes;
-      const timeline = useAgenda.getState().status === 'on' ? dayTimeline(day, pending, minutesOf, settings) : null;
+      const timeline = dayTimeline(day, pending, minutesOf, settings);
       const top = topThree(today, day, useDay.getState().profile.areas).map((x) => x.id);
       const at = (hhmm: string) => {
         const [h, m] = hhmm.split(':').map(Number);
@@ -118,10 +119,20 @@ export default function RootLayout() {
   const profile = useDay((s) => s.profile);
   useEffect(() => {
     setTravelOf((task) => travelTo(task.where, profile.home, profile.transport) ?? 0);
+    // Work or classes on their days, with the trip there and back: never planned over.
+    const commute = profile.home && profile.workPlace ? travelMinutes(profile.home, profile.workPlace, profile.transport ?? 'transporte') : 0;
+    setExtraBusy((day) => {
+      if (!profile.workFrom || !profile.workTo) return [];
+      const d = new Date(`${day}T12:00:00`);
+      if (!profile.workDays.includes(d.getDay())) return [];
+      const start = new Date(`${day}T${profile.workFrom}:00`);
+      const end = new Date(`${day}T${profile.workTo}:00`);
+      return [{ title: t('busy.work'), start: new Date(start.getTime() - commute * 60_000), end: new Date(end.getTime() + commute * 60_000) }];
+    });
     if (!profile.home) return;
     const soon = useDay.getState().tasks.filter((x) => x.status === 'pendiente' && x.where).map((x) => x.where);
     void warmPlaces(soon);
-  }, [profile.home, profile.transport, tasks]);
+  }, [profile.home, profile.transport, profile.workPlace, profile.workFrom, profile.workTo, profile.workDays, tasks]);
 
   // People who used Okio before the bond existed start with what they already did.
   useEffect(() => {
@@ -230,6 +241,7 @@ export default function RootLayout() {
           <Stack.Screen name="foco" options={{ gestureEnabled: false, animation: 'fade' }} />
           <Stack.Screen name="prueba" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
           <Stack.Screen name="cerrar" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="objetivos" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="rutina" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="rutinas" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="bienvenida" options={{ animation: 'fade', gestureEnabled: false }} />

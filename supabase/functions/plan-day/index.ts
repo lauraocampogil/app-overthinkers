@@ -18,7 +18,9 @@ TAREAS (cosas concretas que hacer):
 - "title": corto, en infinitivo, EN EL IDIOMA de la persona, empezando en mayúscula. Máximo 6 palabras. Sin la lista de cosas ni la hora dentro del título.
 - "checklist": lista de cosas concretas dentro de la tarea si las dice: productos de la compra ("huevos", "manzanas"), ejercicios, pasos, puntos de un mail. [] si no dice ninguna.
 - "where": el lugar si lo dice ("Basic-Fit Ixelles", "casa de mamá"), si no null.
-- "at": la hora si la dice, en formato "HH:MM" 24 h ("a las 6 de la tarde" → "18:00"), si no null.
+- "at": la hora si la dice, en formato "HH:MM" 24 h ("a las 6 de la tarde" → "18:00"), si no null. SIEMPRE que diga una hora ("a las 6", "a las 18h", "à 18h") va en "at", NUNCA en el título. Si dice "a las 6" sin "de la mañana" y lo normal es por la tarde (recoger a alguien, entreno, quedar), es "18:00".
+- El título copia los nombres y parentescos EXACTAMENTE como los dice ("mi hermana" no es "mi hermano"), sin la hora.
+- "alreadyDone": true si dice que YA lo hizo ("ya hice la compra", "ya recogí el aciclovir"): no es una tarea nueva, la app marcará como hecha la que ya tenía. Si no, false.
 - "minutes": SOLO lo que dice ("1 hora de gym" → 60, "media hora corriendo" → 30). Si no lo dice, null: NUNCA inventes una duración. La app le preguntará cuánto tiempo.
 - "askMinutes": true si "minutes" es null y es una actividad que necesita una duración para ser concreta (correr, gym, entrenar, estudiar, leer, meditar, caminar, practicar, trabajar en algo, ordenar, limpiar). false para el resto (llamar, mandar un mail, comprar, recoger algo).
 - "ask": lista (0 a 2) de preguntas cortas para lo que FALTA y cambia la tarea, en el idioma del móvil. Solo si no lo dijo. Cada una: {"q": pregunta, "kind": "minutes" | "text" | "deadline" | "place", "template": título con {} donde va la respuesta (solo para "text")}.

@@ -120,10 +120,19 @@ export async function refreshAgenda(settings: Settings): Promise<void> {
 const dateOf = (iso: string) => new Date(`${iso}T12:00:00`);
 
 /** Free minutes per day, used by the planner. undefined when the calendar is not connected. */
+/**
+ * Busy time from the person's own week, even with no calendar connected: work or classes on their days,
+ * with the trip there and back (set by the app from the profile, see _layout).
+ */
+let extraBusy: (day: string) => Busy[] = () => [];
+export function setExtraBusy(fn: (day: string) => Busy[]) {
+  extraBusy = fn;
+}
+const busyOf = (day: string) => [...(useAgenda.getState().status === 'on' ? (useAgenda.getState().busy[day] ?? []) : []), ...extraBusy(day)];
+
+/** Free minutes per day, to spread tasks over the week. Works with or without a connected calendar. */
 export function capacityFor(settings: Settings) {
-  const { status, busy } = useAgenda.getState();
-  if (status !== 'on') return undefined;
-  return (day: string) => freeMinutes(dayWindow(dateOf(day), settings.dayStart, settings.dayEnd), busy[day] ?? []);
+  return (day: string) => freeMinutes(dayWindow(dateOf(day), settings.dayStart, settings.dayEnd), busyOf(day));
 }
 
 const fixedStart = (day: string) => (t: Task) => (t.at ? new Date(`${day}T${t.at}:00`) : null);
@@ -137,7 +146,7 @@ export function setTravelOf(fn: (t: Task) => number) {
 /** One day as a timeline with hours (events + task blocks) and what does not fit. */
 export function dayTimeline(day: string, tasks: Task[], minutesOf: (t: Task) => number, settings: Settings) {
   const win = dayWindow(dateOf(day), settings.dayStart, settings.dayEnd);
-  return placeTasks(tasks, minutesOf, win, useAgenda.getState().busy[day] ?? [], fixedStart(day), travelOf);
+  return placeTasks(tasks, minutesOf, win, busyOf(day), fixedStart(day), travelOf);
 }
 
 /** Today as a timeline with hours. */

@@ -23,6 +23,8 @@ export type RawTask = {
   at?: string | null;
   /** Title of the goal this task belongs to, if any (matched to a Goal when added). */
   goal?: string | null;
+  /** Said as already done ("ya hice la compra"): ticks the matching pending task instead of adding one. */
+  alreadyDone?: boolean;
   /** Happens every week on these days (0 = Sunday … 6 = Saturday): it joins the fixed week. */
   repeat?: { days: number[] } | null;
   /** What photo proves it is done ("Foto de la compra"). null = nothing visible to photograph. */

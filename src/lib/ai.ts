@@ -1,6 +1,7 @@
 import { File } from 'expo-file-system';
 
 import { useDay } from '../store/day';
+import { timeInTitle } from './hora';
 import { parseLocal } from './parse-local';
 import { profileContext } from './perfil';
 import { lang } from '../i18n';
@@ -15,8 +16,11 @@ const PRIVATE_Q = /medic|médic|pastill|pilul|pill|tratamiento|traitement|treatm
 function sanitize(raw: unknown): RawTask | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
-  const title = typeof r.title === 'string' ? r.title.trim() : '';
+  let title = typeof r.title === 'string' ? r.title.trim() : '';
   if (!title) return null;
+  // A time left in the title ("Recoger a mi hermana a las 18h") becomes the hour, out of the title.
+  const said = timeInTitle(title);
+  if (said) title = said.title;
   // Only a duration the person actually gave; anything else stays unknown.
   const n = Math.round(Number(r.minutes));
   const minutes = r.minutes === null || r.minutes === undefined || !Number.isFinite(n) || n <= 0 ? null : Math.min(480, Math.max(1, n));
@@ -30,7 +34,7 @@ function sanitize(raw: unknown): RawTask | null {
     ? r.checklist.filter((x): x is string => typeof x === 'string' && x.trim().length > 0).slice(0, 30)
     : [];
   const where = typeof r.where === 'string' && r.where.trim() ? r.where.trim().slice(0, 120) : null;
-  const at = typeof r.at === 'string' && /^([01]?\d|2[0-3]):[0-5]\d$/.test(r.at.trim()) ? r.at.trim().padStart(5, '0') : null;
+  const at = typeof r.at === 'string' && /^([01]?\d|2[0-3]):[0-5]\d$/.test(r.at.trim()) ? r.at.trim().padStart(5, '0') : (said?.at ?? null);
   const goal = typeof r.goal === 'string' && r.goal.trim() ? r.goal.trim() : null;
   const proof = typeof r.proof === 'string' && r.proof.trim() ? r.proof.trim().slice(0, 60) : null;
   const ask: TaskQuestion[] = Array.isArray(r.ask)
@@ -48,7 +52,8 @@ function sanitize(raw: unknown): RawTask | null {
   const days = Array.isArray(rep?.days) ? [...new Set((rep!.days as unknown[]).map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))] : [];
   const repeat = days.length ? { days } : null;
   const askMinutes = minutes === null && !ask.some((a) => a.kind === 'minutes') && (r.askMinutes === true || kind === 'deporte' || kind === 'estudio');
-  return { title, minutes, dueInDays: Number.isNaN(due) ? null : due, energy, kind, sport, importance, checklist, where, at, goal, proof, askMinutes, ask, repeat };
+  const alreadyDone = r.alreadyDone === true || /^(ya|y'?a|déjà|deja|already)\b/i.test(title);
+  return { title, minutes, dueInDays: Number.isNaN(due) ? null : due, energy, kind, sport, importance, checklist, where, at, goal, proof, askMinutes, ask, repeat, alreadyDone };
 }
 
 function sanitizeGoal(raw: unknown): RawGoal | null {
