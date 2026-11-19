@@ -6,7 +6,7 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CalendarIcon, HomeIcon } from '@/components/Iconos';
+import { CalendarIcon, HomeIcon, PencilIcon } from '@/components/Iconos';
 import { MicIcon, PlusIcon } from '@/components/ui';
 import { useState } from 'react';
 import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
@@ -17,8 +17,8 @@ import { useVoz } from '@/lib/paleta';
 import { colors, fonts } from '@/theme';
 
 /**
- * Floating bottom navigation: Hoy and Semana (named, so nobody has to guess) in one pill,
- * and "+": a task (say it, write it, snap it) or a talk with Okio. Nothing behind it.
+ * Floating bottom navigation: Hoy and Semana (named, so nobody has to guess) in one pill;
+ * on the right, "+" (write a task, or talk to Okio) and the mic to say it out loud. Nothing behind it.
  */
 export type Tab = 'hoy' | 'metas' | 'progreso';
 const ROUTES: Record<Tab, '/' | '/metas' | '/progreso'> = { hoy: '/', metas: '/metas', progreso: '/progreso' };
@@ -87,7 +87,7 @@ export function Barra({ active }: { active: Tab; onWrite?: () => void }) {
       </Pressable>
     );
   };
-  const go = (path: '/escuchando' | '/mentor') => {
+  const go = (path: '/escribir' | '/mentor') => {
     setMenu(false);
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     router.push(path);
@@ -104,10 +104,10 @@ export function Barra({ active }: { active: Tab; onWrite?: () => void }) {
       {menu ? (
         // A plain white card (not glass): always readable, whatever is behind it.
         <Animated.View entering={FadeInDown.duration(220)} exiting={FadeOut.duration(140)} style={[styles.menu, { bottom: bottom + 74 }]}>
-          <Pressable onPress={() => go('/escuchando')} accessibilityRole="button" style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: colors.card }]}>
-            <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.menuIcon}>
-              <MicIcon size={18} />
-            </LinearGradient>
+          <Pressable onPress={() => go('/escribir')} accessibilityRole="button" style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: colors.card }]}>
+            <View style={styles.menuIcon}>
+              <PencilIcon size={18} color={colors.ink} />
+            </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.menuText}>{t('plus.task')}</Text>
               <Text style={styles.menuSub}>{t('plus.taskSub')}</Text>
@@ -131,29 +131,39 @@ export function Barra({ active }: { active: Tab; onWrite?: () => void }) {
             {tab('metas', t('tab.week'), (on) => <CalendarIcon color={on ? colors.white : colors.ink} size={20} strokeWidth={on ? 2.1 : 1.8} />)}
           </View>
         </Glass>
-        {/* One button for everything you tell Okio: a task (say it, write it, snap it) or a talk with Okio. */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('plus.open')}
-          accessibilityState={{ expanded: menu }}
-          accessibilityHint={t('bar.micHint')}
-          onPress={() => {
-            void Haptics.selectionAsync().catch(() => {});
-            setMenu((v) => !v);
-          }}
-          onLongPress={() => {
-            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-            setMenu(false);
-            router.push('/escribir');
-          }}
-          style={({ pressed }) => [styles.micWrap, pressed && { transform: [{ scale: 0.95 }] }]}
-        >
-          <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.round}>
-            <Animated.View style={{ transform: [{ rotate: menu ? '45deg' : '0deg' }] }}>
-              <PlusIcon color={colors.white} />
-            </Animated.View>
-          </LinearGradient>
-        </Pressable>
+        {/* "+" (glass) to write a task or talk to Okio; the mic beside it to say it out loud. */}
+        <View style={styles.actions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('plus.open')}
+            accessibilityState={{ expanded: menu }}
+            onPress={() => {
+              void Haptics.selectionAsync().catch(() => {});
+              setMenu((v) => !v);
+            }}
+            style={({ pressed }) => pressed && { transform: [{ scale: 0.95 }] }}
+          >
+            <Glass style={styles.round}>
+              <Animated.View style={{ transform: [{ rotate: menu ? '45deg' : '0deg' }] }}>
+                <PlusIcon />
+              </Animated.View>
+            </Glass>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('home.speak')}
+            onPress={() => {
+              setMenu(false);
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+              router.push('/escuchando');
+            }}
+            style={({ pressed }) => [styles.micWrap, pressed && { transform: [{ scale: 0.95 }] }]}
+          >
+            <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.round}>
+              <MicIcon />
+            </LinearGradient>
+          </Pressable>
+        </View>
       </View>
     </>
   );

@@ -20,9 +20,7 @@ initMonitoring();
 initPurchases();
 import { clearTaskReminders, refreshReminders, snoozeTask, type TaskAlarm } from '@/lib/avisos';
 import { dayTimeline, refreshAgenda, useAgenda } from '@/lib/calendario';
-import { syncHealth } from '@/lib/salud';
 import { track } from '@/lib/eventos';
-import { syncStrava } from '@/lib/strava';
 import { estimate } from '@/lib/duraciones';
 import { requiresProof, topThree } from '@/lib/prioridad';
 import { routineOf } from '@/lib/rutinas';
@@ -48,12 +46,10 @@ export default function RootLayout() {
     return () => sub.remove();
   }, [rollOver]);
 
-  // Apple Health and Strava: today's workouts and steps tick sport tasks by themselves (on launch and on return).
+  // On launch and on return: count the open. (Apple Health and Strava wait for version 2.)
   useEffect(() => {
     const sync = () => {
       track('open');
-      void syncHealth();
-      void syncStrava();
     };
     sync();
     const sub = AppState.addEventListener('change', (s) => s === 'active' && sync());

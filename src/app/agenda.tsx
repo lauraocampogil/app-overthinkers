@@ -11,9 +11,9 @@ import { Deslizar } from '@/components/Deslizar';
 import { ArrowRightIcon, CalendarIcon, MoonIcon, SunIcon } from '@/components/Iconos';
 import { CloseIcon, IconCircle, Screen } from '@/components/ui';
 import { locale, minutesLabel, t } from '@/i18n';
-import { connectCalendar, refreshAgenda, useAgenda } from '@/lib/calendario';
+import { connectCalendar, dayTimeline, refreshAgenda, useAgenda } from '@/lib/calendario';
+import { estimate } from '@/lib/duraciones';
 import { useVoz } from '@/lib/paleta';
-import { routineOf } from '@/lib/rutinas';
 import { todayIso, useDay, withDefaults } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
@@ -67,7 +67,7 @@ export default function Agenda() {
   const status = useAgenda((s) => s.status);
   const busy = useAgenda((s) => s.busy);
   const tasks = useDay((s) => s.tasks);
-  const routines = useDay((s) => s.routines);
+  const learned = useDay((s) => s.learned);
   const settings = withDefaults(useDay((s) => s.settings));
   const voz = useVoz();
   const { height } = useWindowDimensions();
@@ -107,14 +107,17 @@ export default function Agenda() {
   }, []);
 
   const items: Item[] = [];
-  for (const rk of ['manana', 'noche'] as const) {
-    const r = routineOf(routines, rk);
-    if (r.enabled && r.steps.length) items.push({ kind: 'routine', at: r.at, routine: rk, steps: r.steps.length });
-  }
+  // Routines wait for version 2 (product plan): not shown in the day either.
   for (const e of busy[day] ?? []) items.push({ kind: 'event', at: clock(e.start), end: clock(e.end), title: e.title });
   const dayTasks = tasks.filter((x) => x.status === 'pendiente' && x.day === day);
   const photos = tasks.filter((x) => x.status === 'hecha' && (x.doneOn ?? x.day) === day && x.proofPhoto);
-  for (const x of dayTasks) items.push({ kind: 'task', at: x.at ?? '', title: x.title, minutes: x.minutes, id: x.id, top: x.importance === 3 || !!x.top });
+  // Same hours as Hoy: tasks without a fixed hour get the slot Okio found for them in the free time.
+  const timeline = status === 'on' ? dayTimeline(day, dayTasks, (x) => estimate(x, learned).minutes, settings) : null;
+  const placedAt = (id: string) => {
+    const b = timeline?.blocks.find((x) => x.type === 'task' && x.task.id === id);
+    return b ? clock(b.start) : '';
+  };
+  for (const x of dayTasks) items.push({ kind: 'task', at: x.at ?? placedAt(x.id), title: x.title, minutes: x.minutes, id: x.id, top: x.importance === 3 || !!x.top });
   const mins = (at: string) => (at ? Number(at.slice(0, 2)) * 60 + Number(at.slice(3, 5)) : 9999);
   items.sort((a, b) => mins(a.at) - mins(b.at));
 

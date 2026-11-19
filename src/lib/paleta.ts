@@ -1,6 +1,6 @@
 import { mascotTraits } from '../components/Mascota';
 import { useMascot } from './auth';
-import { bondLevel, useVinculo } from './vinculo';
+import { useOkioColor } from './okio-color';
 
 /** The voice colours follow the mascot: grey on day one, its gradient once the bond has grown. */
 const NEUTRAL_MIC = ['#B5B5B5', '#5C5C5C', '#111111'];
@@ -27,6 +27,5 @@ export function voicePalette(seed: string, progress: number) {
 
 export function useVoz() {
   const m = useMascot();
-  const points = useVinculo((s) => s.points);
-  return voicePalette(m.seed, bondLevel(points));
+  return voicePalette(m.seed, useOkioColor());
 }

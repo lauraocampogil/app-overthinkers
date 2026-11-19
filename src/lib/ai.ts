@@ -10,6 +10,8 @@ import type { RawGoal, Energy, Kind, ParseResult, RawTask, TaskQuestion } from '
 
 const KINDS: Kind[] = ['trabajo', 'estudio', 'deporte', 'casa', 'otro'];
 
+const PRIVATE_Q = /medic|médic|pastill|pilul|pill|tratamiento|traitement|treatment|receta|ordonnance|prescri|síntoma|symptôme|symptom|análisis|analyse|diagn|enfermedad|maladie|illness|dosis|dose/i;
+
 function sanitize(raw: unknown): RawTask | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
@@ -36,6 +38,8 @@ function sanitize(raw: unknown): RawTask | null {
         .map((a) => a as Partial<TaskQuestion>)
         .filter((a) => typeof a?.q === 'string' && a.q.trim() && (a.kind === 'minutes' || a.kind === 'text' || a.kind === 'deadline' || a.kind === 'place'))
         .filter((a) => !(a.kind === 'place' && where))
+        // Medicines and health are private: Okio never asks which one (only where, for the pharmacy).
+        .filter((a) => !(a.kind === 'text' && PRIVATE_Q.test(a.q ?? '')))
         .filter((a) => !(a.kind === 'minutes' && minutes !== null) && !(a.kind === 'deadline' && !Number.isNaN(due) && due !== null))
         .slice(0, 3)
         .map((a) => ({ q: String(a.q).slice(0, 120), kind: a.kind as TaskQuestion['kind'], template: typeof a.template === 'string' && a.template.includes('{}') ? a.template.slice(0, 120) : undefined }))

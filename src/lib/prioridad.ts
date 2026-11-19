@@ -1,5 +1,5 @@
 import { daysBetween } from './planner';
-import { areaWeight, type Area } from './perfil';
+import { areaIndex, areaWeight, type Area } from './perfil';
 import type { Task } from './types';
 
 /**
@@ -21,6 +21,28 @@ export function priorityScore(task: Task, today: string, areas: Area[] = []) {
   s += Math.min(task.postponed, 3) * 3; // pushed back before: time to face it
   if (task.at) s += 2; // fixed time: it will happen anyway
   return s;
+}
+
+/**
+ * Why a task is in the top 3, in a few words, so the person trusts the choice ("vence hoy",
+ * "la has aplazado 3 veces"). The strongest reason wins. Returns an i18n key and its values.
+ */
+export function whyTop(task: Task, today: string, areas: Area[] = []): { key: string; n?: number; area?: number } {
+  if (task.top) return { key: 'topwhy.starred' };
+  if (task.due) {
+    const d = daysBetween(today, task.due);
+    if (d < 0) return { key: 'topwhy.late' };
+    if (d === 0) return { key: 'topwhy.dueToday' };
+    if (d === 1) return { key: 'topwhy.dueTomorrow' };
+  }
+  if (task.postponed >= 2) return { key: 'topwhy.postponed', n: task.postponed };
+  if (task.goalId) return { key: 'topwhy.goal' };
+  const a = areaIndex(task, areas);
+  if (a === 0) return { key: 'topwhy.area', area: a };
+  if (task.importance === 3) return { key: 'topwhy.important' };
+  if (task.at) return { key: 'topwhy.fixed' };
+  if (a > 0) return { key: 'topwhy.area', area: a };
+  return { key: 'topwhy.quick' };
 }
 
 export function topThree(today: Task[], day: string, areas: Area[] = []): Task[] {

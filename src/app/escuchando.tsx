@@ -249,7 +249,7 @@ export default function Escuchando() {
               </Svg>
             </BlurView>
           </Pressable>
-          <Text style={styles.hint}>{t(phase === 'recording' ? 'listen.tapToFinish' : phase === 'review' ? 'listen.reviewHint' : 'listen.transcribing')}</Text>
+          <Text style={styles.hint} numberOfLines={2}>{t(phase === 'recording' ? 'listen.tapToFinish' : phase === 'review' ? 'listen.reviewHint' : 'listen.transcribing')}</Text>
           {phase === 'review' ? (
             <Pressable accessibilityRole="button" accessibilityLabel={t('listen.finish')} onPress={confirm} style={styles.done} hitSlop={8}>
               <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 32,
   },
-  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 12 },
+  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingHorizontal: 24, paddingBottom: 12 },
   cancel: {
     width: 72,
     height: 72,
@@ -303,7 +303,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.18)',
   },
   done: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
-  hint: { fontFamily: fonts.medium, fontSize: 14, color: 'rgba(255,255,255,0.8)' },
+  // Between the two round buttons: it wraps instead of pushing the arrow off the screen.
+  hint: { flex: 1, flexShrink: 1, textAlign: 'center', fontFamily: fonts.medium, fontSize: 14, lineHeight: 19, color: 'rgba(255,255,255,0.8)' },
   code: { fontFamily: fonts.regular, fontSize: 12, color: colors.faint, marginTop: 8 },
   secondary: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   secondaryText: { fontFamily: fonts.regular, fontSize: 15, color: colors.muted },

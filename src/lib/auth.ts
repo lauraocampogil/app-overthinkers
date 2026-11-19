@@ -145,5 +145,6 @@ export function useMascot() {
     preview,
     daysLeft: Math.max(0, MASCOT_AFTER_DAYS - days),
     days,
+    createdAt: created,
   };
 }

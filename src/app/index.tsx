@@ -21,7 +21,7 @@ import { dayTimeline, useAgenda } from '@/lib/calendario';
 import { estimate } from '@/lib/duraciones';
 import { useVoz } from '@/lib/paleta';
 import { addDays, daysBetween } from '@/lib/planner';
-import { requiresProof, topThree } from '@/lib/prioridad';
+import { requiresProof, topThree, whyTop } from '@/lib/prioridad';
 import { routineDue, routineOf } from '@/lib/rutinas';
 import { checkinDue, isWeightGoal, nextReto, RETOS } from '@/lib/retos';
 import { keepPhoto } from '@/lib/fotos';
@@ -168,6 +168,16 @@ export default function Inicio() {
   const timeOf = (task: Task) => (slot(task) ? clock(slot(task)!.start) : task.at ?? '');
 
   const top = topThree(active, today, areas);
+  // Why each of the 3 is there, in a few words (the strongest reason).
+  const whyLabel = (task: Task) => {
+    const w = whyTop(task, today, areas);
+    if (w.key === 'topwhy.area') {
+      const a = areas[w.area ?? 0];
+      return t('topwhy.area', { area: a ? (a.id === 'otra' ? a.label || t('area.otra') : t(`area.${a.id}`)) : '' });
+    }
+    if (w.key === 'topwhy.goal') return t('topwhy.goal', { goal: goals.find((g) => g.id === task.goalId)?.title ?? '' });
+    return t(w.key, w.n ? { n: w.n } : undefined);
+  };
   const topDone = done.filter((x) => x.top);
   const topRows = [...topDone, ...top].slice(0, 3);
   const current = top[0];
@@ -455,6 +465,7 @@ export default function Inicio() {
                       {[timeOf(task), task.where ?? ''].filter(Boolean).join(' · ')}
                     </Text>
                   ) : null}
+                  {task.status === 'pendiente' ? <Text style={styles.topWhy} numberOfLines={1}>{whyLabel(task)}</Text> : null}
                 </View>
                 <Check task={task} onToggle={() => toggle(task)} size={28} onDark />
               </Pressable>
@@ -641,6 +652,7 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 62, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#2A2A2A' },
   topNum: { width: 22, fontFamily: fonts.bold, fontSize: 24, letterSpacing: -0.6, color: colors.white },
   topTitle: { fontFamily: fonts.semibold, fontSize: 17, lineHeight: 21, color: colors.white },
+  topWhy: { fontFamily: fonts.medium, fontSize: 12.5, color: '#9A9A9A', marginTop: 1 },
   topMeta: { fontFamily: fonts.regular, fontSize: 13, color: '#8A8A8A' },
   doneDark: { color: '#5E5E5E', textDecorationLine: 'line-through' },
 

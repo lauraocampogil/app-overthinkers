@@ -131,3 +131,9 @@ export const ChartIcon = ({ color = colors.ink, size = 22, strokeWidth = 1.8 }: 
     <Path d="M5 20V12M10 20V6M15 20v-9M20 20V9" {...line(color, strokeWidth)} />
   </Svg>
 );
+
+export const PencilIcon = ({ color = colors.ink, size = 18, strokeWidth = 1.8 }: P) => (
+  <Svg {...base(size)}>
+    <Path d="M14.5 5.5l4 4M4 20l1-4.5L15.5 5a1.4 1.4 0 0 1 2 0l1.5 1.5a1.4 1.4 0 0 1 0 2L8.5 19 4 20z" {...line(color, strokeWidth)} />
+  </Svg>
+);

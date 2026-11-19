@@ -1,16 +1,12 @@
 import { Linking } from 'react-native';
 
 /**
- * Apps that fit a task's topic: running → Strava, reading → Books/Kindle, music → GarageBand/Spotify.
+ * Apps that fit a task's topic: reading → Books/Kindle, music → GarageBand/Spotify (Strava waits for version 2).
  * Light integration for now: a shortcut that opens the app (or its website when it isn't installed).
  */
 export type TopicApp = { id: string; name: string; url: string; web: string };
 
 const TOPICS: { words: RegExp; apps: TopicApp[] }[] = [
-  {
-    words: /\b(corr(er|o)|running|run|jog|trot|courir|course à pied|lopen|hardlopen|laufen|joggen|correre|corsa|correr)\b|\bkm\b/i,
-    apps: [{ id: 'strava', name: 'Strava', url: 'strava://', web: 'https://www.strava.com' }],
-  },
   {
     words: /\b(le(er|o)|libro|lectura|read(ing)?|book|lire|livre|lezen|boek|lesen|buch|leggere|libro|ler|livro)\b|pág/i,
     apps: [

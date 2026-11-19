@@ -13,6 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Defs, LinearGradient as SvgLinear, Path, RadialGradient, Stop } from 'react-native-svg';
 
+import { useOkioColor } from '../lib/okio-color';
 import { bondLevel, useVinculo } from '../lib/vinculo';
 
 /**
@@ -165,9 +166,10 @@ function Particle({ x, y, s, d, size, color }: { x: number; y: number; s: number
 export function Mascota({ seed, size = 260, mood = 'calma', level = 0, bond, color }: Props) {
   const points = useVinculo((s) => s.points);
   const grown = bondLevel(points);
+  const own = useOkioColor();
   // Colour and sparkles both come with the bond: grey and plain on day one, its own colours later.
   const b = bond ?? grown;
-  const c = color ?? grown;
+  const c = color ?? own;
   const tr = useMemo(() => {
     const base = mascotTraits(seed);
     const palette = Object.fromEntries(Object.entries(base.palette).map(([k, v]) => [k, greyed(v, 1 - c)])) as typeof base.palette;
