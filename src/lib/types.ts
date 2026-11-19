@@ -23,6 +23,8 @@ export type RawTask = {
   at?: string | null;
   /** Title of the goal this task belongs to, if any (matched to a Goal when added). */
   goal?: string | null;
+  /** Happens every week on these days (0 = Sunday … 6 = Saturday): it joins the fixed week. */
+  repeat?: { days: number[] } | null;
   /** What photo proves it is done ("Foto de la compra"). null = nothing visible to photograph. */
   proof?: string | null;
   /** The AI could not hear a duration for an activity that needs one: GetGo asks the person instead of guessing. */

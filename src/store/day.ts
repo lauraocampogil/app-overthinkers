@@ -198,16 +198,19 @@ function weeklyTasks(goal: Goal, tasks: Task[], day: string): Task[] {
 }
 
 /** Tasks of the fixed week for the 7 days from `from` that do not exist yet (each item once per matching day). */
+const FIXED_DAYS = 28;
+
 function fixedTasks(items: FixedItem[], tasks: Task[], from: string): Task[] {
   const out: Task[] = [];
-  for (let i = 0; i < 7; i++) {
+  // Four weeks ahead, so the month view shows the fixed week too ("pilates every Tuesday").
+  for (let i = 0; i < FIXED_DAYS; i++) {
     const day = addDays(from, i);
     const dow = new Date(`${day}T12:00:00`).getDay();
     for (const f of items) {
       if (!f.days.includes(dow)) continue;
       if (tasks.some((t) => t.fixedId === f.id && (t.status === 'pendiente' ? t.day : (t.doneOn ?? t.day)) === day)) continue;
       out.push({
-        ...fromRaw({ title: f.text, minutes: f.minutes, dueInDays: null, energy: 'alta', kind: 'otro', importance: 2, where: null, at: f.at }, day),
+        ...fromRaw({ title: f.text, minutes: f.minutes, dueInDays: null, energy: 'alta', kind: f.kind ?? 'otro', importance: 2, where: f.where ?? null, at: f.at }, day),
         fixedId: f.id,
         day,
         due: null,
@@ -280,7 +283,8 @@ export const useDay = create<DayState>()(
           return { added: placed.length, today: forToday, later: placed.length - forToday };
         },
 
-        addParsed: ({ tasks: raw, goals: rawGoals }, opts) => {
+        addParsed: ({ tasks: rawIn, goals: rawGoals }, opts) => {
+          let raw = rawIn;
           const day = today();
           const goals = [...get().goals];
           const fresh: Task[] = [];
@@ -315,6 +319,19 @@ export const useDay = create<DayState>()(
           // In a week plan the same task can be on several days (gym Mon, Wed, Fri): one per day.
           const keyOf = (title: string, dayIso: string) => (opts?.pinDays ? `${title.toLowerCase()}|${dayIso}` : title.toLowerCase());
           const existing = new Set(get().tasks.filter((t) => t.status === 'pendiente').map((t) => keyOf(t.title, t.day)));
+          // "Pilates every Tuesday at 8": it joins the fixed week and fills the next four weeks.
+          const repeating = raw.filter((r) => r.repeat?.days.length);
+          if (repeating.length) {
+            const fixed = [...(get().profile.fixed ?? [])];
+            for (const r of repeating) {
+              const same = fixed.find((f) => f.text.toLowerCase() === r.title.toLowerCase());
+              const item = { id: same?.id ?? newId(), text: r.title, days: r.repeat!.days, at: r.at ?? null, minutes: r.minutes, where: r.where ?? null, kind: r.kind };
+              if (same) fixed[fixed.indexOf(same)] = item;
+              else fixed.push(item);
+            }
+            get().setFixed(fixed);
+          }
+          raw = raw.filter((r) => !r.repeat?.days.length);
           for (const r of raw) {
             // In a week plan the same task can be on several days (gym Mon, Wed, Fri): one per day.
             const key = keyOf(r.title, addDays(day, r.dueInDays ?? 0));
@@ -331,7 +348,7 @@ export const useDay = create<DayState>()(
           const ids = new Set([...fresh, ...weekly].map((t) => t.id));
           const placed = get().tasks.filter((t) => ids.has(t.id));
           const forToday = placed.filter((t) => t.day === day).length;
-          return { added: placed.length, today: forToday, later: placed.length - forToday, goals: (rawGoals ?? []).length };
+          return { added: placed.length + repeating.length, today: forToday, later: placed.length - forToday + repeating.length, goals: (rawGoals ?? []).length };
         },
 
         toggleItem: (taskId, itemId) =>

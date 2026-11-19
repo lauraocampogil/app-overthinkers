@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { BackIcon, CheckIcon, IconCircle, Screen } from '@/components/ui';
 import { t } from '@/i18n';
@@ -12,6 +12,7 @@ import { connectCalendar, defaultCalendarId, readableCalendars, refreshAgenda, w
 import { connectHealth, disconnectHealth, healthAvailable, useSalud } from '@/lib/salud';
 import { connectStrava, disconnectStrava, stravaAvailable, useStrava } from '@/lib/strava';
 import { bondLevel, bondStage, useVinculo } from '@/lib/vinculo';
+import { geocode, hereNow, MODES, placesAvailable } from '@/lib/trayecto';
 import { useVoz } from '@/lib/paleta';
 import { useDay, withDefaults } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
@@ -200,7 +201,13 @@ export default function Cuenta() {
           <Text style={styles.rowText}>{t('pro.account')}</Text>
         </Pressable>
 
-        {/* Health, Strava, app blocking and routines wait for version 2 (product plan). */}
+        <Casa />
+
+        <Pressable accessibilityRole="button" onPress={() => router.push('/bloqueo')} style={styles.row}>
+          <Text style={styles.rowText}>{t('block.title')}</Text>
+        </Pressable>
+
+        {/* Health, Strava and routines wait for version 2 (product plan). */}
         <View style={[styles.card, { gap: 14 }]}>
           <Text style={styles.name}>{t('mode.title')}</Text>
           <View style={styles.switchRow}>
@@ -248,6 +255,73 @@ export default function Cuenta() {
 }
 
 /** Apple Health and Strava: connect once, sport tasks tick themselves afterwards. */
+/** Home and how the person moves: Okio counts the trip before each task with a place. */
+function Casa() {
+  const profile = useDay((s) => s.profile);
+  const setProfile = useDay((s) => s.setProfile);
+  const [address, setAddress] = useState(profile.home?.address ?? '');
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  if (!placesAvailable()) return null;
+  const save = async () => {
+    const v = address.trim();
+    if (!v) return;
+    setBusy(true);
+    const p = await geocode(v);
+    setBusy(false);
+    if (!p) return setNote(t('casa.notFound'));
+    setProfile({ home: { address: v, ...p } });
+    setNote(t('casa.saved'));
+  };
+  const here = async () => {
+    setBusy(true);
+    const r = await hereNow();
+    setBusy(false);
+    if (!r) return setNote(t('casa.noLocation'));
+    const label = r.label || t('casa.here');
+    setAddress(label);
+    setProfile({ home: { address: label, ...r.point } });
+    setNote(t('casa.saved'));
+  };
+  return (
+    <View style={[styles.card, { gap: 12 }]}>
+      <Text style={styles.name}>{t('casa.title')}</Text>
+      <Text style={type.muted}>{t('casa.body')}</Text>
+      <TextInput
+        value={address}
+        onChangeText={setAddress}
+        onSubmitEditing={() => void save()}
+        placeholder={t('casa.placeholder')}
+        placeholderTextColor={colors.faint}
+        style={styles.input}
+        returnKeyType="done"
+        accessibilityLabel={t('casa.title')}
+      />
+      <View style={styles.chips}>
+        <Pressable onPress={() => void save()} style={[styles.chip, styles.chipOn]} accessibilityRole="button" disabled={busy}>
+          <Text style={[styles.chipText, { color: colors.white }]}>{t('casa.save')}</Text>
+        </Pressable>
+        <Pressable onPress={() => void here()} style={styles.chip} accessibilityRole="button" disabled={busy}>
+          <Text style={styles.chipText}>{t('casa.useHere')}</Text>
+        </Pressable>
+        {busy ? <ActivityIndicator color={colors.ink} /> : null}
+      </View>
+      {note ? <Text style={type.muted}>{note}</Text> : null}
+      <Text style={[styles.rowText, { marginTop: 4 }]}>{t('casa.mode')}</Text>
+      <View style={styles.chips}>
+        {MODES.map((m) => {
+          const on = (profile.transport ?? 'transporte') === m;
+          return (
+            <Pressable key={m} onPress={() => setProfile({ transport: m })} style={[styles.chip, on && styles.chipOn]} accessibilityRole="radio" accessibilityState={{ selected: on }}>
+              <Text style={[styles.chipText, on && { color: colors.white }]}>{t(`casa.mode.${m}`)}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 function Conexiones() {
   const health = useSalud();
   const strava = useStrava();
@@ -312,6 +386,7 @@ const styles = StyleSheet.create({
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   bondBar: { alignSelf: 'stretch', height: 6, borderRadius: 3, backgroundColor: colors.line, overflow: 'hidden', marginTop: 8 },
   bondFill: { height: 6, borderRadius: 3 },
+  input: { minHeight: 46, borderRadius: 16, backgroundColor: colors.white, paddingHorizontal: 14, fontFamily: fonts.regular, fontSize: 15.5, color: colors.ink },
   chip: { minHeight: 38, paddingHorizontal: 14, borderRadius: 19, backgroundColor: colors.white, justifyContent: 'center' },
   chipOn: { backgroundColor: colors.accentDark },
   calChip: { flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: '100%' },

@@ -30,6 +30,8 @@ import { syncWidget, widgetChanges } from '@/lib/widget';
 import { pullDay } from '@/lib/sync';
 import { todayIso, todayList, useDay, withDefaults } from '@/store/day';
 import { seedBond } from '@/lib/vinculo';
+import { setTravelOf } from '@/lib/calendario';
+import { travelTo, warmPlaces } from '@/lib/trayecto';
 
 export default function RootLayout() {
   const [loaded] = useFonts({ Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold });
@@ -94,10 +96,12 @@ export default function RootLayout() {
         return d;
       };
       // When each task should start nagging: its calendar slot, its fixed time, or (top 3 without time) late morning.
+      const { home, transport } = useDay.getState().profile;
+      const way = (task: (typeof tasks)[number]) => travelTo(task.where, home, transport);
       const alarms: TaskAlarm[] = pending.flatMap((task) => {
         const b = timeline?.blocks.find((x) => x.type === 'task' && x.task.id === task.id);
-        if (b) return [{ task, start: b.start }];
-        if (task.at) return [{ task, start: at(task.at) }];
+        if (b) return [{ task, start: b.start, travel: way(task) }];
+        if (task.at) return [{ task, start: at(task.at), travel: way(task) }];
         const i = top.indexOf(task.id);
         if (i >= 0) return [{ task, start: at(['10:00', '12:00', '15:00'][i]) }];
         return [];
@@ -113,6 +117,15 @@ export default function RootLayout() {
     }, 1200);
     return () => clearTimeout(id);
   }, [signedIn, tasks, rawSettings, routines, agendaLoaded, closedOn]);
+
+  // Travel time: the planner keeps the trip free before each task with a place, from home.
+  const profile = useDay((s) => s.profile);
+  useEffect(() => {
+    setTravelOf((task) => travelTo(task.where, profile.home, profile.transport) ?? 0);
+    if (!profile.home) return;
+    const soon = useDay.getState().tasks.filter((x) => x.status === 'pendiente' && x.where).map((x) => x.where);
+    void warmPlaces(soon);
+  }, [profile.home, profile.transport, tasks]);
 
   // People who used Okio before the bond existed start with what they already did.
   useEffect(() => {

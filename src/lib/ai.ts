@@ -27,7 +27,7 @@ function sanitize(raw: unknown): RawTask | null {
   const checklist = Array.isArray(r.checklist)
     ? r.checklist.filter((x): x is string => typeof x === 'string' && x.trim().length > 0).slice(0, 30)
     : [];
-  const where = typeof r.where === 'string' && r.where.trim() ? r.where.trim().slice(0, 80) : null;
+  const where = typeof r.where === 'string' && r.where.trim() ? r.where.trim().slice(0, 120) : null;
   const at = typeof r.at === 'string' && /^([01]?\d|2[0-3]):[0-5]\d$/.test(r.at.trim()) ? r.at.trim().padStart(5, '0') : null;
   const goal = typeof r.goal === 'string' && r.goal.trim() ? r.goal.trim() : null;
   const proof = typeof r.proof === 'string' && r.proof.trim() ? r.proof.trim().slice(0, 60) : null;
@@ -39,8 +39,11 @@ function sanitize(raw: unknown): RawTask | null {
         .slice(0, 2)
         .map((a) => ({ q: String(a.q).slice(0, 120), kind: a.kind as TaskQuestion['kind'], template: typeof a.template === 'string' && a.template.includes('{}') ? a.template.slice(0, 120) : undefined }))
     : [];
+  const rep = r.repeat as { days?: unknown } | null | undefined;
+  const days = Array.isArray(rep?.days) ? [...new Set((rep!.days as unknown[]).map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))] : [];
+  const repeat = days.length ? { days } : null;
   const askMinutes = minutes === null && !ask.some((a) => a.kind === 'minutes') && (r.askMinutes === true || kind === 'deporte' || kind === 'estudio');
-  return { title, minutes, dueInDays: Number.isNaN(due) ? null : due, energy, kind, sport, importance, checklist, where, at, goal, proof, askMinutes, ask };
+  return { title, minutes, dueInDays: Number.isNaN(due) ? null : due, energy, kind, sport, importance, checklist, where, at, goal, proof, askMinutes, ask, repeat };
 }
 
 function sanitizeGoal(raw: unknown): RawGoal | null {

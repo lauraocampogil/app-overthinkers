@@ -14,6 +14,7 @@ import { useVoz } from '@/lib/paleta';
 import { addDays } from '@/lib/planner';
 import { requiresProof } from '@/lib/prioridad';
 import { isShopping } from '@/lib/compra';
+import { leaveAt, travelTo } from '@/lib/trayecto';
 import type { Task } from '@/lib/types';
 import { todayIso, useDay, withDefaults } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
@@ -51,6 +52,8 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
     setTimeout(fn, 50);
   };
   const shopping = isShopping(cur);
+  const { home, transport } = useDay.getState().profile;
+  const travel = travelTo(cur.where, home, transport);
   const proof = requiresProof(cur);
   // One of the top 3: a photo is offered (never required) when it is ticked. Commitment, not control.
   const offerProof = !proof && cur.top && withDefaults(useDay.getState().settings).proofTop;
@@ -90,6 +93,12 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
                 <View style={styles.meta}>
                   <PinIcon color={colors.muted} size={14} />
                   <Text style={styles.metaText}>{cur.where}</Text>
+                </View>
+              ) : null}
+              {travel ? (
+                <View style={styles.meta}>
+                  <ClockIcon color={colors.muted} size={14} />
+                  <Text style={styles.metaText}>{cur.at ? t('travel.leave', { n: travel, at: leaveAt(cur.at, travel) }) : t('travel.only', { n: travel })}</Text>
                 </View>
               ) : null}
               {goal ? (

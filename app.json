@@ -2,7 +2,10 @@
   "expo": {
     "name": "Okio",
     "slug": "getgo",
-    "scheme": ["getgo", "okio"],
+    "scheme": [
+      "getgo",
+      "okio"
+    ],
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -95,6 +98,12 @@
           "imageWidth": 220,
           "resizeMode": "contain",
           "backgroundColor": "#FFFFFF"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Okio usa tu ubicación solo cuando tú lo pides, para guardar tu casa y calcular el tiempo de trayecto hasta tus tareas."
         }
       ]
     ],

@@ -128,10 +128,16 @@ export function capacityFor(settings: Settings) {
 
 const fixedStart = (day: string) => (t: Task) => (t.at ? new Date(`${day}T${t.at}:00`) : null);
 
+/** Travel minutes before a task (set by the app from the person's home, see lib/trayecto). */
+let travelOf: (t: Task) => number = () => 0;
+export function setTravelOf(fn: (t: Task) => number) {
+  travelOf = fn;
+}
+
 /** One day as a timeline with hours (events + task blocks) and what does not fit. */
 export function dayTimeline(day: string, tasks: Task[], minutesOf: (t: Task) => number, settings: Settings) {
   const win = dayWindow(dateOf(day), settings.dayStart, settings.dayEnd);
-  return placeTasks(tasks, minutesOf, win, useAgenda.getState().busy[day] ?? [], fixedStart(day));
+  return placeTasks(tasks, minutesOf, win, useAgenda.getState().busy[day] ?? [], fixedStart(day), travelOf);
 }
 
 /** Today as a timeline with hours. */

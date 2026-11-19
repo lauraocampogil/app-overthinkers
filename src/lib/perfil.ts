@@ -56,10 +56,14 @@ export type Profile = {
   role?: Role | null;
   /** The fixed week: things that repeat every week and almost never change (training, classes, gym). */
   fixed: FixedItem[];
+  /** Where the person lives, to count travel time to tasks with a place (see lib/trayecto). */
+  home?: { address: string; lat: number; lng: number } | null;
+  /** How they usually move. */
+  transport?: 'pie' | 'bici' | 'transporte' | 'coche';
 };
 
 /** One thing of the fixed week. days: 0 = Sunday … 6 = Saturday. */
-export type FixedItem = { id: string; text: string; days: number[]; at: string | null; minutes: number | null };
+export type FixedItem = { id: string; text: string; days: number[]; at: string | null; minutes: number | null; where?: string | null; kind?: Kind };
 
 export const EMPTY_PROFILE: Profile = {
   onboarded: false,
@@ -187,9 +191,10 @@ export function profileContext(p: Profile): string {
     p.workFrom && p.workTo ? `Trabaja o estudia de ${p.workFrom} a ${p.workTo} (días ${p.workDays.join(',')}, 0 = domingo).` : '',
     p.energy ? `Tiene más energía por la ${p.energy === 'manana' ? 'mañana' : p.energy}.` : '',
     p.country ? `País: ${p.country}.` : '',
+    p.transport ? `Se mueve sobre todo ${p.transport === 'pie' ? 'a pie' : p.transport === 'bici' ? 'en bici' : p.transport === 'coche' ? 'en coche' : 'en transporte público'}; Okio cuenta el trayecto antes de cada cosa con lugar.` : '',
     p.fixed?.length
       ? `Su semana fija (ya está en su horario, no la vuelvas a crear, planifica alrededor): ${p.fixed
-          .map((f) => `${f.text} (días ${f.days.join(',')}${f.at ? `, ${f.at}` : ''}${f.minutes ? `, ${f.minutes} min` : ''})`)
+          .map((f) => `${f.text} (días ${f.days.join(',')}${f.at ? `, ${f.at}` : ''}${f.minutes ? `, ${f.minutes} min` : ''}${f.where ? `, en ${f.where}` : ''})`)
           .join('; ')}.`
       : '',
   ];

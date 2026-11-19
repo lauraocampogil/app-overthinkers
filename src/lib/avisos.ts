@@ -76,7 +76,7 @@ async function ensureCategory() {
   ]).catch(() => {});
 }
 
-export type TaskAlarm = { task: Task; start: Date };
+export type TaskAlarm = { task: Task; start: Date; /** Minutes of travel to its place, when known. */ travel?: number | null };
 
 async function cancelPrefix(prefix: string) {
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
@@ -117,6 +117,8 @@ function taskContent(task: { id: string; title: string; proof?: string | null; n
     data: { url: `getgo://prueba?id=${task.id}`, taskId: task.id },
   };
 }
+
+const alarmTravel = (alarms: TaskAlarm[], id: string) => alarms.find((a) => a.task.id === id)?.travel ?? 0;
 
 export async function refreshReminders(opts: {
   today: Task[];
@@ -166,13 +168,14 @@ export async function refreshReminders(opts: {
     const now = Date.now();
     for (const { task, start } of opts.alarms) {
       if (task.status !== 'pendiente') continue;
-      // 30 minutes before it starts: time to get ready.
-      const before = new Date(start.getTime() - 30 * 60_000);
+      // Before it starts: 30 minutes to get ready, or, with a trip, when to leave (travel + 10 minutes).
+      const way = alarmTravel(opts.alarms, task.id);
+      const before = new Date(start.getTime() - (way ? way + 10 : 30) * 60_000);
       if (before.getTime() > now + 5_000 && budget > 0) {
         budget--;
         await Notifications.scheduleNotificationAsync({
           identifier: `${TASK_PREFIX}${task.id}-pre`,
-          content: { ...taskContent(task), subtitle: t('notif.in30') },
+          content: { ...taskContent(task), subtitle: way ? t('notif.leaveNow', { n: way }) : t('notif.in30') },
           trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: before },
         });
       }

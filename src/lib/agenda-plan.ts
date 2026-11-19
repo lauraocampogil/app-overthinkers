@@ -57,7 +57,10 @@ export function placeTasks<T>(
   busy: Busy[],
   /** A fixed start time for tasks the person gave an hour to ("a las 18:00"). */
   fixedStart?: (t: T) => Date | null,
+  /** Minutes of travel needed before the task (its place, from home): kept free, never planned over. */
+  travelOf?: (t: T) => number,
 ) {
+  const travel = (t: T) => (travelOf?.(t) ?? 0) * MIN;
   // Tasks with a fixed hour go first, exactly at that hour, and then count as busy time.
   const fixed: Block<T>[] = [];
   const flexible: T[] = [];
@@ -66,7 +69,7 @@ export function placeTasks<T>(
     if (at) fixed.push({ type: 'task', task, start: at, end: new Date(at.getTime() + minutesOf(task) * MIN) });
     else flexible.push(task);
   }
-  const taken = [...busy, ...fixed.map((b) => ({ title: '', start: b.start, end: new Date(b.end.getTime() + BUFFER * MIN) }))];
+  const taken = [...busy, ...fixed.map((b) => ({ title: '', start: new Date(b.start.getTime() - (b.type === 'task' ? travel(b.task) : 0)), end: new Date(b.end.getTime() + BUFFER * MIN) }))];
   const slots = freeSlots(win, taken).map((s) => ({ ...s }));
   const blocks: Block<T>[] = [...fixed];
   blocks.push(...busy
@@ -75,13 +78,15 @@ export function placeTasks<T>(
   const overflow: T[] = [];
 
   for (const task of flexible) {
+    const way = travel(task);
     const need = minutesOf(task) * MIN;
-    const slot = slots.find((s) => s.end.getTime() - s.start.getTime() >= need);
+    const slot = slots.find((s) => s.end.getTime() - s.start.getTime() >= need + way);
     if (!slot) {
       overflow.push(task);
       continue;
     }
-    const start = slot.start;
+    // The trip comes first: the task starts once you are there.
+    const start = new Date(slot.start.getTime() + way);
     const end = new Date(start.getTime() + need);
     blocks.push({ type: 'task', task, start, end });
     slot.start = new Date(end.getTime() + BUFFER * MIN);
