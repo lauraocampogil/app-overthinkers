@@ -10,6 +10,7 @@ import { Mascota } from '@/components/Mascota';
 import { CheckIcon, CloseIcon, IconCircle, MicIcon, PrimaryButton, Screen, TextButton } from '@/components/ui';
 import { lang, locale, t } from '@/i18n';
 import { parseBrainDump } from '@/lib/ai';
+import { addEntry } from '@/lib/diario';
 import { track } from '@/lib/eventos';
 import { useMascot } from '@/lib/auth';
 import { useVoz } from '@/lib/paleta';
@@ -46,6 +47,7 @@ export default function Cerrar() {
   const [text, setText] = useState('');
   const [adding, setAdding] = useState(false);
   const [addedN, setAddedN] = useState(0);
+  const [saved, setSaved] = useState(false);
   const [listening, setListening] = useState(false);
   const session = useRef<LiveSession | null>(null);
   const canSpeak = liveSpeechAvailable();
@@ -74,11 +76,15 @@ export default function Cerrar() {
   const addForTomorrow = async () => {
     const value = text.trim();
     if (!value || adding) return;
+    // Okio as a journal: the whole text is kept (on the phone); what is to do becomes tomorrow's plan.
+    addEntry(day, value);
     stopListening();
     setAdding(true);
     const res = await parseBrainDump(value);
     setAdding(false);
     const forTomorrow = res.tasks.map((x) => ({ ...x, dueInDays: Math.max(1, x.dueInDays ?? 1) }));
+    setText('');
+    setSaved(true);
     if (!forTomorrow.length && !res.goals?.length) return;
     track('dump', { source: 'close', n: forTomorrow.length });
     const out = useDay.getState().addParsed({ tasks: forTomorrow, goals: res.goals ?? [] }, { pinDays: true });
@@ -217,7 +223,7 @@ export default function Cerrar() {
               ) : null}
             </View>
           </View>
-          {addedN ? <Text style={type.muted}>{t('close.added', { n: addedN })}</Text> : null}
+          {saved ? <Text style={type.muted}>{[t('close.saved'), addedN ? t('close.added', { n: addedN }) : ''].filter(Boolean).join(' ')}</Text> : null}
         </ScrollView>
         <View style={styles.footer}>
           <PrimaryButton label={t('close.cta')} onPress={close} dark />

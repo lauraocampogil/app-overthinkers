@@ -91,7 +91,7 @@ export function PreguntaTiempo({ questions, onDone }: { questions: (TaskQuestion
 
   useEffect(() => () => session.current?.cancel(), []);
   if (!cur) return null;
-  const speakable = canSpeak && cur.kind !== 'deadline';
+  const speakable = canSpeak && cur.kind !== 'deadline' && cur.kind !== 'choice';
 
   return (
     <Screen>
@@ -119,6 +119,14 @@ export function PreguntaTiempo({ questions, onDone }: { questions: (TaskQuestion
               {MINUTES.map((m) => (
                 <Pressable key={m} onPress={() => answer({ minutes: m })} style={({ pressed }) => [styles.chip, pressed && styles.chipOn]} accessibilityRole="button">
                   <Text style={styles.chipText}>{minutesLabel(m)}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : cur.kind === 'choice' ? (
+            <View style={[styles.chips, { flexDirection: 'column', alignItems: 'stretch' }]}>
+              {(cur.options ?? []).map((o) => (
+                <Pressable key={o} onPress={() => answer({ text: o })} style={({ pressed }) => [styles.chip, pressed && styles.chipOn]} accessibilityRole="button">
+                  <Text style={[styles.chipText, { textAlign: 'center' }]}>{o}</Text>
                 </Pressable>
               ))}
             </View>

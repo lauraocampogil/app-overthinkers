@@ -10,6 +10,7 @@ import { topThree } from './prioridad';
 import { focusScore } from './puntuacion';
 import { useFoco } from './foco';
 import { bond } from './vinculo';
+import { recentEntries } from './diario';
 import { track } from './eventos';
 import { ensureSession, supabase } from './supabase';
 import { goalProgress, todayIso, todayList, useDay, weekStart } from '../store/day';
@@ -46,6 +47,7 @@ export function mentorContext(): string {
     done.length ? `Ya hecho hoy: ${done.map((x) => x.title).join(', ')}.` : '',
     goals.length ? `Metas: ${goals.join('; ')}.` : '',
     `Racha: ${st.streak.current} días. Focus Score de la semana: ${score.score}/100.`,
+    recentEntries() ? `Su diario de los últimos días (lo que te contó al cerrar el día): ${recentEntries()}` : '',
     profileContext(st.profile),
   ]
     .filter(Boolean)

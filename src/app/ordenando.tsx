@@ -25,6 +25,21 @@ const PLACE_WORDS = /\b(sesi[oó]n|s[ée]ance|session|coach|entrenador|recoger|r
 const VAGUE_PLACE = /^(el |la |los |las |le |les |the |l'|al |à la |au )?(tren|train|estaci[oó]n|gare|station|metro|bus|gym|gimnasio|salle|farmacia|pharmacie|pharmacy|m[ée]dico|m[ée]decin|doctor|dentista|dentiste|clase|cours|class|trabajo|travail|work|oficina|bureau|office|universidad|universit[ée]|uni|escuela|[ée]cole|school|centro|ciudad|ville|city|casa|centre)$/i;
 const needsPlace = (x: RawTask) =>
   (!x.where || VAGUE_PLACE.test(x.where.trim())) && (PLACE_WORDS.test(x.title) || (!!x.where && VAGUE_PLACE.test(x.where.trim())) || (!!x.repeat?.days.length && x.kind === 'deporte'));
+/**
+ * A health or sport goal needs to know the person before it becomes a plan: someone who barely moves,
+ * or carries a lot of weight, starts by walking, not running. Okio asks first, then plans.
+ */
+const BODY_GOAL = /(kilo|kg\b|peso|adelgaz|bajar|perder|maigrir|poids|perdre|lose|weight|afvallen|abnehmen|dimagr|emagrec|forma|fitness|correr|running|marat|courir|m[uú]scul|muscle|deporte|sport)/i;
+function goalQuestions(goals: ParseResult['goals']): (TaskQuestion & { task: string; index: number })[] {
+  const g = (goals ?? []).find((x) => x.type !== 'semanal' && BODY_GOAL.test(x.title));
+  if (!g) return [];
+  return [
+    { q: t('goalq.level'), kind: 'choice', options: [t('goalq.level1'), t('goalq.level2'), t('goalq.level3'), t('goalq.level4')], task: g.title, index: -1 },
+    { q: t('goalq.days'), kind: 'choice', options: ['2', '3', '4', '5'].map((n) => t('goalq.daysN', { n })), task: g.title, index: -1 },
+    { q: t('goalq.care'), kind: 'text', task: g.title, index: -1 },
+  ];
+}
+
 /** Every question to ask, in order: the AI's own ("¿Qué libro?") plus a duration and a place when missing. */
 function questionsFor(tasks: RawTask[]) {
   const out: (TaskQuestion & { task: string; index: number })[] = [];
@@ -42,7 +57,7 @@ export default function Ordenando() {
   const draftRef = useRef(useDay.getState().draft);
   const addParsed = useDay((s) => s.addParsed);
   const [empty, setEmpty] = useState(false);
-  const [ask, setAsk] = useState<{ result: ParseResult; started: number } | null>(null);
+  const [ask, setAsk] = useState<{ result: ParseResult; started: number; text: string } | null>(null);
 
   const save = (result: ParseResult, started: number) => {
     const added = addParsed(result);
@@ -70,8 +85,8 @@ export default function Ordenando() {
         setEmpty(true);
         return;
       }
-      if (questionsFor(result.tasks).length) {
-        setAsk({ result, started });
+      if (goalQuestions(result.goals).length || questionsFor(result.tasks).length) {
+        setAsk({ result, started, text });
         return;
       }
       save(result, started);
@@ -82,14 +97,31 @@ export default function Ordenando() {
   }, [addParsed]);
 
   if (ask) {
-    const qs = questionsFor(ask.result.tasks);
+    const gq = goalQuestions(ask.result.goals);
+    const qs = [...gq, ...questionsFor(ask.result.tasks)];
     return (
       <PreguntaTiempo
         questions={qs}
-        onDone={(answers) => {
+        onDone={async (answers) => {
+          // Goal answers: plan again, now knowing the person (level, days, what to be careful with).
+          const about = gq
+            .map((q, k) => (answers[k]?.text ? `${q.q} ${answers[k]!.text}` : ''))
+            .filter(Boolean)
+            .join(' ');
+          if (about) {
+            setAsk(null);
+            const again = await parseBrainDump(`${ask.text}\n${t('goalq.context', { goal: gq[0].task })} ${about}`);
+            const result = again.goals?.length || again.tasks.length ? again : ask.result;
+            if (questionsFor(result.tasks).length) {
+              setAsk({ result, started: Date.now(), text: '' });
+              return;
+            }
+            save(result, Date.now() - MIN_MS);
+            return;
+          }
           const tasks = ask.result.tasks.map((x) => ({ ...x }));
           answers.forEach((a, k) => {
-            if (!a) return;
+            if (!a || k < gq.length) return;
             const q = qs[k];
             const task = tasks[q.index];
             if (a.minutes) Object.assign(task, { minutes: a.minutes, askMinutes: false });

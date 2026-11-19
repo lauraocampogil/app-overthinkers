@@ -136,6 +136,6 @@ export type Streak = {
 
 /** A follow-up question about a task: its answer fills the duration, the title (template with {}) or the deadline. */
 /** 'place' = where it happens (the answer becomes its address, for the travel time). */
-export type TaskQuestion = { q: string; kind: 'minutes' | 'text' | 'deadline' | 'place'; template?: string };
+export type TaskQuestion = { q: string; kind: 'minutes' | 'text' | 'deadline' | 'place' | 'choice'; template?: string; /** For 'choice': the options shown as chips. */ options?: string[] };
 
 export type ParseResult = { tasks: RawTask[]; tired: boolean; goals?: RawGoal[] };

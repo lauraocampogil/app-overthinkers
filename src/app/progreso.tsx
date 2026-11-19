@@ -6,6 +6,7 @@ import { ClockIcon, TargetIcon } from '@/components/Iconos';
 import { CloseIcon, IconCircle, Screen } from '@/components/ui';
 import { locale, minutesLabel, t } from '@/i18n';
 import { useMascot } from '@/lib/auth';
+import { useDiario } from '@/lib/diario';
 import { bondLevel, bondStage, useVinculo } from '@/lib/vinculo';
 import { Mascota } from '@/components/Mascota';
 import { useVoz } from '@/lib/paleta';
@@ -26,6 +27,8 @@ export default function Progreso() {
   const routineLog = useDay((s) => s.routineLog);
   const voz = useVoz();
   const mascot = useMascot();
+  const entries = useDiario((x) => x.entries);
+  const [openEntry, setOpenEntry] = useState<string | null>(null);
   const bondPoints = useVinculo((s) => s.points);
 
   const today = todayIso();
@@ -147,6 +150,25 @@ export default function Progreso() {
         </View>
 
         {!weekDone ? <Text style={type.muted}>{t('progress.empty')}</Text> : null}
+        {/* Okio as a journal: what you told it when closing the day, newest first. */}
+        {entries.length ? (
+          <View style={{ gap: 10, marginTop: 8 }}>
+            <Text style={styles.journalTitle}>{t('journal.title')}</Text>
+            {entries
+              .slice(-7)
+              .reverse()
+              .map((e) => (
+                <Pressable key={e.day} onPress={() => setOpenEntry(openEntry === e.day ? null : e.day)} style={styles.entry} accessibilityRole="button">
+                  <Text style={styles.entryDay}>{new Date(`${e.day}T12:00:00`).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' })}</Text>
+                  <Text style={styles.entryText} numberOfLines={openEntry === e.day ? undefined : 3}>
+                    {e.text}
+                  </Text>
+                </Pressable>
+              ))}
+          </View>
+        ) : (
+          <Text style={[type.muted, { marginTop: 8 }]}>{t('journal.empty')}</Text>
+        )}
       </ScrollView>
     </Screen>
   );
@@ -156,6 +178,10 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, minHeight: 52, marginTop: 6 },
   title: { fontFamily: fonts.bold, fontSize: 30, letterSpacing: -1.1, color: colors.ink },
   body: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 48, gap: 12 },
+  journalTitle: { fontFamily: fonts.bold, fontSize: 19, letterSpacing: -0.4, color: colors.ink },
+  entry: { backgroundColor: colors.card, borderRadius: 20, padding: 16, gap: 6 },
+  entryDay: { fontFamily: fonts.semibold, fontSize: 13, color: colors.muted, textTransform: 'capitalize' },
+  entryText: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 21, color: colors.ink },
   hero: { alignItems: 'center', gap: 8, paddingBottom: 6 },
   together: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink },
   heroTitle: { fontFamily: fonts.bold, fontSize: 22, letterSpacing: -0.6, color: colors.ink, textAlign: 'center' },
