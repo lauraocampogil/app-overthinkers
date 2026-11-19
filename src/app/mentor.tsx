@@ -10,6 +10,8 @@ import { CheckIcon, CloseIcon, IconCircle, Screen } from '@/components/ui';
 import { locale, t } from '@/i18n';
 import { useMascot } from '@/lib/auth';
 import { canUse, countUse } from '@/lib/limite';
+import { useDay } from '@/store/day';
+import { bondStage, useVinculo } from '@/lib/vinculo';
 import { askOkio, clearChat, KEEP_DAYS, pruneChat, useMentor } from '@/lib/mentor';
 import { useVoz } from '@/lib/paleta';
 import { colors, fonts } from '@/theme';
@@ -23,6 +25,8 @@ const STARTERS = ['mentor.s1', 'mentor.s2', 'mentor.s3', 'mentor.s4'];
 export default function Mentor() {
   const chat = useMentor((s) => s.chat);
   const mascot = useMascot();
+  const bondPoints = useVinculo((s) => s.points);
+  const streakNow = useDay((s) => s.streak.current);
   const voz = useVoz();
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -67,7 +71,13 @@ export default function Mentor() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={8}>
         <ScrollView ref={scroll} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.hero}>
-            <Mascota seed={mascot.seed} size={chat.length ? 84 : 150} mood={busy ? 'escucha' : 'calma'} />
+            {/* Your Okio lives here now: tap it to see how it is growing (bond, days together, your week). */}
+            <Pressable onPress={() => router.push('/progreso')} accessibilityRole="button" accessibilityLabel={t('mentor.yourOkio')}>
+              <Mascota seed={mascot.seed} size={chat.length ? 84 : 150} mood={busy ? 'escucha' : 'calma'} />
+            </Pressable>
+            <Pressable onPress={() => router.push('/progreso')} hitSlop={6} accessibilityRole="button">
+              <Text style={styles.together}>{t(`bond.stage${bondStage(bondPoints)}`)} · {t('bond.days', { n: streakNow })}</Text>
+            </Pressable>
             {!chat.length ? (
               <>
                 <Text style={styles.heroTitle}>{t('mentor.title')}</Text>
@@ -146,6 +156,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontFamily: fonts.semibold, fontSize: 17, color: colors.ink },
   clear: { fontFamily: fonts.medium, fontSize: 14, color: colors.muted, minWidth: 44, textAlign: 'right' },
   body: { paddingHorizontal: 20, paddingBottom: 20, gap: 10 },
+  together: { fontFamily: fonts.medium, fontSize: 13, color: colors.muted, textAlign: 'center' },
   hero: { alignItems: 'center', gap: 10, paddingVertical: 12 },
   heroTitle: { fontFamily: fonts.bold, fontSize: 26, letterSpacing: -0.9, color: colors.ink, textAlign: 'center' },
   heroBody: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 21, color: colors.muted, textAlign: 'center', paddingHorizontal: 12 },

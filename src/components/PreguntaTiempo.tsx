@@ -41,6 +41,8 @@ export function PreguntaTiempo({ questions, onDone }: { questions: (TaskQuestion
   const session = useRef<LiveSession | null>(null);
   const canSpeak = liveSpeechAvailable();
   const cur = questions[i];
+  // A place ("¿Dónde es pilates?") is answered like any text.
+  const isText = cur?.kind === 'text' || cur?.kind === 'place';
 
   const answer = (a: Answer) => {
     session.current?.cancel();
@@ -61,7 +63,7 @@ export function PreguntaTiempo({ questions, onDone }: { questions: (TaskQuestion
       session.current = null;
       setListening(false);
       // A spoken text answer is taken when the person taps again.
-      if (cur.kind === 'text' && heard.trim()) answer({ text: cleanFillers(heard).trim() });
+      if (isText && heard.trim()) answer({ text: cleanFillers(heard).trim() });
       return;
     }
     if (!(await requestLivePermission())) return;
@@ -132,7 +134,7 @@ export function PreguntaTiempo({ questions, onDone }: { questions: (TaskQuestion
             <TextInput
               value={typed}
               onChangeText={setTyped}
-              placeholder={t('ask.typeHere')}
+              placeholder={cur.kind === 'place' ? t('ask.placeHere') : t('ask.typeHere')}
               placeholderTextColor={colors.faint}
               style={styles.input}
               returnKeyType="done"
@@ -148,8 +150,8 @@ export function PreguntaTiempo({ questions, onDone }: { questions: (TaskQuestion
               </LinearGradient>
             </Pressable>
           ) : null}
-          <Text style={styles.hint}>{listening ? (cur.kind === 'text' ? t('ask.tapWhenDone') : t('order.listening')) : speakable ? t('ask.orSay') : ' '}</Text>
-          {cur.kind === 'text' && typed.trim() ? (
+          <Text style={styles.hint}>{listening ? (isText ? t('ask.tapWhenDone') : t('order.listening')) : speakable ? t('ask.orSay') : ' '}</Text>
+          {isText && typed.trim() ? (
             <Pressable onPress={() => answer({ text: typed.trim() })} style={styles.skip} accessibilityRole="button">
               <Text style={[styles.skipText, { color: colors.ink }]}>{t('order.howLongDone')}</Text>
             </Pressable>

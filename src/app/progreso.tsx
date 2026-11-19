@@ -2,9 +2,8 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Barra } from '@/components/Barra';
 import { ClockIcon, TargetIcon } from '@/components/Iconos';
-import { IconCircle, PersonIcon, Screen } from '@/components/ui';
+import { CloseIcon, IconCircle, Screen } from '@/components/ui';
 import { locale, minutesLabel, t } from '@/i18n';
 import { useMascot } from '@/lib/auth';
 import { bondLevel, bondStage, useVinculo } from '@/lib/vinculo';
@@ -54,14 +53,15 @@ export default function Progreso() {
     null;
 
   return (
-    <Screen tabs>
+    <Screen>
       <View style={styles.header}>
+        <IconCircle label={t('common.close')} onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} size={34}>
+          <CloseIcon />
+        </IconCircle>
         <Text style={styles.title} accessibilityRole="header">
           {t('tab.okio')}
         </Text>
-        <IconCircle label={t('account.title')} onPress={() => router.push('/cuenta')} size={34}>
-          <PersonIcon />
-        </IconCircle>
+        <View style={{ width: 34 }} />
       </View>
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
@@ -148,7 +148,6 @@ export default function Progreso() {
 
         {!weekDone ? <Text style={type.muted}>{t('progress.empty')}</Text> : null}
       </ScrollView>
-      <Barra active="progreso" />
     </Screen>
   );
 }
@@ -156,7 +155,7 @@ export default function Progreso() {
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, minHeight: 52, marginTop: 6 },
   title: { fontFamily: fonts.bold, fontSize: 30, letterSpacing: -1.1, color: colors.ink },
-  body: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 150, gap: 12 },
+  body: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 48, gap: 12 },
   hero: { alignItems: 'center', gap: 8, paddingBottom: 6 },
   together: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink },
   heroTitle: { fontFamily: fonts.bold, fontSize: 22, letterSpacing: -0.6, color: colors.ink, textAlign: 'center' },

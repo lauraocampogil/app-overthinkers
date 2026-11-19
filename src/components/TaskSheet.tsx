@@ -34,6 +34,8 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
   const voz = useVoz();
   const [settings, setSettings] = useState(false);
   const [title, setTitle] = useState('');
+  const [place, setPlace] = useState('');
+  const [editPlace, setEditPlace] = useState(false);
   const [where, setWhere] = useState('');
 
   useEffect(() => {
@@ -89,11 +91,35 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
                   {est.source === 'guess' ? '' : ` · ${minutesLabel(est.minutes)}`}
                 </Text>
               </View>
-              {cur.where ? (
-                <View style={styles.meta}>
+              {cur.where && !editPlace ? (
+                <Pressable style={styles.meta} onPress={() => { setPlace(cur.where ?? ''); setEditPlace(true); }} accessibilityRole="button" accessibilityHint={t('task.placeEdit')}>
                   <PinIcon color={colors.muted} size={14} />
                   <Text style={styles.metaText}>{cur.where}</Text>
-                </View>
+                </Pressable>
+              ) : null}
+              {editPlace || (!cur.where && cur.status === 'pendiente') ? (
+                editPlace ? (
+                  <TextInput
+                    value={place}
+                    onChangeText={setPlace}
+                    autoFocus
+                    placeholder={t('ask.placeHere')}
+                    placeholderTextColor={colors.faint}
+                    style={styles.placeInput}
+                    returnKeyType="done"
+                    onSubmitEditing={() => {
+                      useDay.getState().setDetails(cur.id, { where: place.trim() || null });
+                      setEditPlace(false);
+                    }}
+                    onBlur={() => setEditPlace(false)}
+                    accessibilityLabel={t('task.placeAdd')}
+                  />
+                ) : (
+                  <Pressable style={styles.meta} onPress={() => { setPlace(''); setEditPlace(true); }} accessibilityRole="button">
+                    <PinIcon color={colors.faint} size={14} />
+                    <Text style={[styles.metaText, { color: colors.faint }]}>{t('task.placeAdd')}</Text>
+                  </Pressable>
+                )
               ) : null}
               {travel ? (
                 <View style={styles.meta}>
@@ -250,6 +276,7 @@ export function TaskSheet({ task, onClose }: { task: Task | null; onClose: () =>
 }
 
 const styles = StyleSheet.create({
+  placeInput: { minHeight: 40, borderRadius: 14, backgroundColor: colors.card, paddingHorizontal: 12, fontFamily: fonts.regular, fontSize: 15, color: colors.ink, alignSelf: 'stretch' },
   appsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 18 },
   appLink: { fontFamily: fonts.medium, fontSize: 15, color: colors.ink, textDecorationLine: 'underline' },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(10,10,10,0.4)' },

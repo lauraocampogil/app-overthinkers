@@ -225,7 +225,7 @@ export default function RootLayout() {
         <Stack.Protected guard={signedIn}>
           <Stack.Screen name="index" options={{ animation: 'none' }} />
           <Stack.Screen name="metas" options={{ animation: 'none' }} />
-          <Stack.Screen name="progreso" options={{ animation: 'none' }} />
+          <Stack.Screen name="progreso" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="dia" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="escuchando" options={{ gestureEnabled: false }} />
           <Stack.Screen name="escribir" options={{ animation: 'slide_from_bottom' }} />

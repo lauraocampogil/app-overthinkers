@@ -16,12 +16,19 @@ import { colors, fonts, type } from '@/theme';
 const MIN_MS = 900;
 /** An activity with no duration said ("correr", "estudiar"): ask instead of guessing. */
 const needsTime = (x: RawTask) => x.minutes === null && (x.askMinutes || x.kind === 'deporte' || x.kind === 'estudio');
-/** Every question to ask, in order: the AI's own ("¿Qué libro?") plus a duration when one is missing. */
+/**
+ * Things that happen somewhere else (a class, the gym, an appointment) need their place, for the travel time.
+ * If the AI did not ask and nobody said where, Okio asks: "¿Dónde es pilates?".
+ */
+const PLACE_WORDS = /\b(pilates|yoga|gym|gimnasio|basic.?fit|clase|curso|cours|classe|dentista|dentiste|m[ée]dico|m[ée]decin|doctor|cita|rendez-vous|rdv|entreno|entrenamiento|entra[iî]nement|partido|match|reuni[oó]n|r[ée]union|meeting|fisio|kin[ée]|kine|peluquer[ií]a|coiffeur|piscina|piscine|natation|nataci[oó]n|boxe|boxeo|danza|danse|dance|appointment|lesson)\b/i;
+const needsPlace = (x: RawTask) => !x.where && (PLACE_WORDS.test(x.title) || (!!x.repeat?.days.length && x.kind === 'deporte'));
+/** Every question to ask, in order: the AI's own ("¿Qué libro?") plus a duration and a place when missing. */
 function questionsFor(tasks: RawTask[]) {
   const out: (TaskQuestion & { task: string; index: number })[] = [];
   tasks.forEach((x, index) => {
     for (const a of x.ask ?? []) out.push({ ...a, task: x.title, index });
     if (needsTime(x) && !(x.ask ?? []).some((a) => a.kind === 'minutes')) out.push({ q: t('order.howLongFor', { task: x.title.charAt(0).toLowerCase() + x.title.slice(1) }), kind: 'minutes', task: x.title, index });
+    if (needsPlace(x) && !(x.ask ?? []).some((a) => a.kind === 'place')) out.push({ q: t('order.whereFor', { task: x.title.charAt(0).toLowerCase() + x.title.slice(1) }), kind: 'place', task: x.title, index });
   });
   return out.slice(0, 6);
 } // a short beat so it feels sorted, without making anyone wait
@@ -82,7 +89,8 @@ export default function Ordenando() {
             const q = qs[k];
             const task = tasks[q.index];
             if (a.minutes) Object.assign(task, { minutes: a.minutes, askMinutes: false });
-            if (a.text) task.title = q.template ? q.template.replace('{}', a.text) : `${task.title}: ${a.text}`;
+            if (a.text && q.kind === 'place') task.where = a.text.slice(0, 120);
+            else if (a.text) task.title = q.template ? q.template.replace('{}', a.text) : `${task.title}: ${a.text}`;
             if (a.dueInDays !== undefined) task.dueInDays = a.dueInDays;
           });
           save({ ...ask.result, tasks: tasks.map((x) => ({ ...x, ask: [] })) }, Date.now() - MIN_MS);

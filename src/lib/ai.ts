@@ -34,9 +34,10 @@ function sanitize(raw: unknown): RawTask | null {
   const ask: TaskQuestion[] = Array.isArray(r.ask)
     ? (r.ask as unknown[])
         .map((a) => a as Partial<TaskQuestion>)
-        .filter((a) => typeof a?.q === 'string' && a.q.trim() && (a.kind === 'minutes' || a.kind === 'text' || a.kind === 'deadline'))
+        .filter((a) => typeof a?.q === 'string' && a.q.trim() && (a.kind === 'minutes' || a.kind === 'text' || a.kind === 'deadline' || a.kind === 'place'))
+        .filter((a) => !(a.kind === 'place' && where))
         .filter((a) => !(a.kind === 'minutes' && minutes !== null) && !(a.kind === 'deadline' && !Number.isNaN(due) && due !== null))
-        .slice(0, 2)
+        .slice(0, 3)
         .map((a) => ({ q: String(a.q).slice(0, 120), kind: a.kind as TaskQuestion['kind'], template: typeof a.template === 'string' && a.template.includes('{}') ? a.template.slice(0, 120) : undefined }))
     : [];
   const rep = r.repeat as { days?: unknown } | null | undefined;

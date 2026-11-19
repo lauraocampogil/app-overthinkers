@@ -7,7 +7,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CalendarIcon, HomeIcon } from '@/components/Iconos';
-import { MicIcon } from '@/components/ui';
+import { MicIcon, PlusIcon } from '@/components/ui';
+import { useState } from 'react';
+import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
 import { Mascota } from '@/components/Mascota';
 import { t } from '@/i18n';
 import { useMascot } from '@/lib/auth';
@@ -15,8 +17,8 @@ import { useVoz } from '@/lib/paleta';
 import { colors, fonts } from '@/theme';
 
 /**
- * Floating bottom navigation: Hoy, Semana and Okio (named, so nobody has to guess) in one pill,
- * and one button to empty your head. Nothing behind it: the content scrolls underneath.
+ * Floating bottom navigation: Hoy and Semana (named, so nobody has to guess) in one pill,
+ * and "+": a task (say it, write it, snap it) or a talk with Okio. Nothing behind it.
  */
 export type Tab = 'hoy' | 'metas' | 'progreso';
 const ROUTES: Record<Tab, '/' | '/metas' | '/progreso'> = { hoy: '/', metas: '/metas', progreso: '/progreso' };
@@ -61,6 +63,7 @@ export function Barra({ active }: { active: Tab; onWrite?: () => void }) {
   const voz = useVoz();
   const mascot = useMascot();
   const insets = useSafeAreaInsets();
+  const [menu, setMenu] = useState(false);
   const tab = (key: Tab, label: string, icon: (on: boolean) => React.ReactNode) => {
     const on = active === key;
     return (
@@ -84,37 +87,75 @@ export function Barra({ active }: { active: Tab; onWrite?: () => void }) {
       </Pressable>
     );
   };
+  const go = (path: '/escuchando' | '/mentor') => {
+    setMenu(false);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    router.push(path);
+  };
 
   const bottom = Math.max(insets.bottom - 6, 14);
   return (
-    <View style={[styles.wrap, { bottom }]} pointerEvents="box-none">
-      <Glass style={styles.pill}>
-        <View style={styles.tabs} accessibilityRole="tablist">
-          {tab('hoy', t('tab.today'), (on) => <HomeIcon color={on ? colors.white : colors.ink} size={20} strokeWidth={on ? 2.1 : 1.8} />)}
-          {tab('metas', t('tab.week'), (on) => <CalendarIcon color={on ? colors.white : colors.ink} size={20} strokeWidth={on ? 2.1 : 1.8} />)}
-          {tab('progreso', t('tab.okio'), () => <Mascota seed={mascot.seed} size={24} mood="calma" bond={0} />)}
-        </View>
-      </Glass>
-      {/* One way in: empty your head. Writing and photos are one tap away inside. */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('home.speak')}
-        accessibilityHint={t('bar.micHint')}
-        onPress={() => {
-          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-          router.push('/escuchando');
-        }}
-        onLongPress={() => {
-          void Haptics.selectionAsync().catch(() => {});
-          router.push('/escribir');
-        }}
-        style={({ pressed }) => [styles.micWrap, pressed && { transform: [{ scale: 0.95 }] }]}
-      >
-        <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.round}>
-          <MicIcon />
-        </LinearGradient>
-      </Pressable>
-    </View>
+    <>
+      {menu ? (
+        <Animated.View entering={FadeIn.duration(160)} exiting={FadeOut.duration(140)} style={[StyleSheet.absoluteFill, styles.scrim]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setMenu(false)} accessibilityLabel={t('common.close')} />
+        </Animated.View>
+      ) : null}
+      {menu ? (
+        // A plain white card (not glass): always readable, whatever is behind it.
+        <Animated.View entering={FadeInDown.duration(220)} exiting={FadeOut.duration(140)} style={[styles.menu, { bottom: bottom + 74 }]}>
+          <Pressable onPress={() => go('/escuchando')} accessibilityRole="button" style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: colors.card }]}>
+            <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.menuIcon}>
+              <MicIcon size={18} />
+            </LinearGradient>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.menuText}>{t('plus.task')}</Text>
+              <Text style={styles.menuSub}>{t('plus.taskSub')}</Text>
+            </View>
+          </Pressable>
+          <Pressable onPress={() => go('/mentor')} accessibilityRole="button" style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: colors.card }]}>
+            <View style={[styles.menuIcon, { backgroundColor: colors.card }]}>
+              <Mascota seed={mascot.seed} size={30} mood="calma" bond={0} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.menuText}>{t('plus.okio')}</Text>
+              <Text style={styles.menuSub}>{t('plus.okioSub')}</Text>
+            </View>
+          </Pressable>
+        </Animated.View>
+      ) : null}
+      <View style={[styles.wrap, { bottom }]} pointerEvents="box-none">
+        <Glass style={styles.pill}>
+          <View style={styles.tabs} accessibilityRole="tablist">
+            {tab('hoy', t('tab.today'), (on) => <HomeIcon color={on ? colors.white : colors.ink} size={20} strokeWidth={on ? 2.1 : 1.8} />)}
+            {tab('metas', t('tab.week'), (on) => <CalendarIcon color={on ? colors.white : colors.ink} size={20} strokeWidth={on ? 2.1 : 1.8} />)}
+          </View>
+        </Glass>
+        {/* One button for everything you tell Okio: a task (say it, write it, snap it) or a talk with Okio. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('plus.open')}
+          accessibilityState={{ expanded: menu }}
+          accessibilityHint={t('bar.micHint')}
+          onPress={() => {
+            void Haptics.selectionAsync().catch(() => {});
+            setMenu((v) => !v);
+          }}
+          onLongPress={() => {
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+            setMenu(false);
+            router.push('/escribir');
+          }}
+          style={({ pressed }) => [styles.micWrap, pressed && { transform: [{ scale: 0.95 }] }]}
+        >
+          <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.round}>
+            <Animated.View style={{ transform: [{ rotate: menu ? '45deg' : '0deg' }] }}>
+              <PlusIcon color={colors.white} />
+            </Animated.View>
+          </LinearGradient>
+        </Pressable>
+      </View>
+    </>
   );
 }
 
@@ -147,7 +188,7 @@ const styles = StyleSheet.create({
   },
   menuRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: 16, borderRadius: 18, marginHorizontal: 6 },
   menuDivider: {},
-  menuIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' },
+  menuIcon: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden', backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' },
   menuText: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
   menuSub: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.muted, marginTop: 1 },
   round: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
