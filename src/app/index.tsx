@@ -22,7 +22,7 @@ import { estimate } from '@/lib/duraciones';
 import { useVoz } from '@/lib/paleta';
 import { addDays, daysBetween } from '@/lib/planner';
 import { requiresProof, topThree } from '@/lib/prioridad';
-import { routineNow, routineOf } from '@/lib/rutinas';
+import { routineDue, routineOf } from '@/lib/rutinas';
 import { checkinDue, isWeightGoal, nextReto, RETOS } from '@/lib/retos';
 import { keepPhoto } from '@/lib/fotos';
 import type { Goal, Task } from '@/lib/types';
@@ -174,7 +174,8 @@ export default function Inicio() {
   const offer = retos.find((r) => r.status === 'offered');
   const checkinGoal = checkinDue(goals, today);
   const checkin = checkinGoal && !(checkinGoal.checkins ?? []).some((c) => c.date === today) ? checkinGoal : null;
-  const kind = routineNow();
+  // Only around its own time (e.g. 21:30–00:15 for a 22:15 night routine).
+  const kind = routineDue(routines);
   const routine = kind ? routineOf(routines, kind) : null;
   const routineDone = kind ? (routineLog[today]?.[kind] ?? []).length : 0;
 
@@ -199,7 +200,7 @@ export default function Inicio() {
           <FlameIcon />
           <Text style={styles.pillText}>{streak.current}</Text>
         </Pressable>
-        <IconCircle label={t('cal.open')} onPress={() => router.push({ pathname: '/agenda', params: { d: sel } })} size={34}>
+        <IconCircle label={t('cal.open')} onPress={() => router.push({ pathname: '/mes', params: { d: sel } })} size={34}>
           <CalendarIcon size={17} />
         </IconCircle>
         <IconCircle label={t('account.title')} onPress={() => router.push('/cuenta')} size={34}>
@@ -427,40 +428,6 @@ export default function Inicio() {
           </Pressable>
         ) : null}
 
-        {routine && routine.enabled && routine.steps.length && kind ? (
-          routineDone >= routine.steps.length ? (
-            <Pressable onPress={() => router.push({ pathname: '/rutina', params: { kind } })} style={styles.routineDone} accessibilityRole="button">
-              {kind === 'manana' ? <SunIcon size={18} /> : <MoonIcon size={18} />}
-              <Text style={[styles.rowMeta, { flex: 1 }]}>{t('routine.doneLine', { name: t(`routine.${kind}`) })}</Text>
-              <CheckIcon color={colors.ink} size={16} />
-            </Pressable>
-          ) : (
-            <View style={styles.routine}>
-              <Pressable onPress={() => router.push({ pathname: '/rutina', params: { kind } })} style={styles.routineHead} accessibilityRole="button">
-                {kind === 'manana' ? <SunIcon /> : <MoonIcon />}
-                <Text style={[styles.routineTitle, { flex: 1 }]}>{t(`routine.${kind}`)}</Text>
-                <Text style={styles.routineCount}>
-                  {routineDone}/{routine.steps.length}
-                </Text>
-                <ArrowRightIcon size={14} color={colors.faint} />
-              </Pressable>
-              <View style={styles.routineBar}>
-                <View style={[styles.routineFill, { width: `${(routineDone / routine.steps.length) * 100}%`, backgroundColor: voz.mic[1] }]} />
-              </View>
-              {routine.steps.map((step) => {
-                const on = (routineLog[today]?.[kind] ?? []).includes(step.id);
-                return (
-                  <Pressable key={step.id} onPress={() => toggleRoutineStep(kind, step.id)} style={styles.routineStep} accessibilityRole="checkbox" accessibilityState={{ checked: on }}>
-                    <View style={[styles.center, styles.routineBox, on && styles.routineBoxOn]}>{on ? <CheckIcon color={colors.white} size={12} /> : null}</View>
-                    <Text style={[styles.routineStepText, on && styles.done]}>{step.text}</Text>
-                    <Text style={styles.rowMeta}>{minutesLabel(step.minutes)}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          )
-        ) : null}
-
         {topRows.length ? (
           <View style={styles.topCard}>
             <View style={styles.topHead}>
@@ -523,6 +490,42 @@ export default function Inicio() {
             {showDone ? done.filter((x) => !x.top).map(row) : null}
           </View>
         ) : null}
+
+        {/* Tasks first; the routine comes after them, only at its time. */}
+        {routine && routine.enabled && routine.steps.length && kind ? (
+          routineDone >= routine.steps.length ? (
+            <Pressable onPress={() => router.push({ pathname: '/rutina', params: { kind } })} style={styles.routineDone} accessibilityRole="button">
+              {kind === 'manana' ? <SunIcon size={18} /> : <MoonIcon size={18} />}
+              <Text style={[styles.rowMeta, { flex: 1 }]}>{t('routine.doneLine', { name: t(`routine.${kind}`) })}</Text>
+              <CheckIcon color={colors.ink} size={16} />
+            </Pressable>
+          ) : (
+            <View style={styles.routine}>
+              <Pressable onPress={() => router.push({ pathname: '/rutina', params: { kind } })} style={styles.routineHead} accessibilityRole="button">
+                {kind === 'manana' ? <SunIcon /> : <MoonIcon />}
+                <Text style={[styles.routineTitle, { flex: 1 }]}>{t(`routine.${kind}`)}</Text>
+                <Text style={styles.routineCount}>
+                  {routineDone}/{routine.steps.length}
+                </Text>
+                <ArrowRightIcon size={14} color={colors.faint} />
+              </Pressable>
+              <View style={styles.routineBar}>
+                <View style={[styles.routineFill, { width: `${(routineDone / routine.steps.length) * 100}%`, backgroundColor: voz.mic[1] }]} />
+              </View>
+              {routine.steps.map((step) => {
+                const on = (routineLog[today]?.[kind] ?? []).includes(step.id);
+                return (
+                  <Pressable key={step.id} onPress={() => toggleRoutineStep(kind, step.id)} style={styles.routineStep} accessibilityRole="checkbox" accessibilityState={{ checked: on }}>
+                    <View style={[styles.center, styles.routineBox, on && styles.routineBoxOn]}>{on ? <CheckIcon color={colors.white} size={12} /> : null}</View>
+                    <Text style={[styles.routineStepText, on && styles.done]}>{step.text}</Text>
+                    <Text style={styles.rowMeta}>{minutesLabel(step.minutes)}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )
+        ) : null}
+
 
         </>)}
       </ScrollView>

@@ -211,6 +211,7 @@ export default function RootLayout() {
           <Stack.Screen name="meta" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="semana" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="mentor" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="mes" />
           <Stack.Screen name="agenda" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="bloqueo" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="pro" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />

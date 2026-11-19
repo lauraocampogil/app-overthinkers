@@ -7,9 +7,9 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { ArrowRightIcon } from '@/components/Iconos';
 import { Mascota } from '@/components/Mascota';
 import { CloseIcon, IconCircle, Screen } from '@/components/ui';
-import { t } from '@/i18n';
+import { locale, t } from '@/i18n';
 import { useMascot } from '@/lib/auth';
-import { askOkio, clearChat, useMentor } from '@/lib/mentor';
+import { askOkio, clearChat, KEEP_DAYS, pruneChat, useMentor } from '@/lib/mentor';
 import { useVoz } from '@/lib/paleta';
 import { colors, fonts } from '@/theme';
 
@@ -26,6 +26,8 @@ export default function Mentor() {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const scroll = useRef<ScrollViewInstance>(null);
+
+  useEffect(pruneChat, []);
 
   useEffect(() => {
     const id = setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 80);
@@ -76,11 +78,23 @@ export default function Mentor() {
               ))}
             </View>
           ) : null}
-          {chat.map((m) => (
-            <Animated.View key={m.at + m.role} entering={FadeInDown.duration(220)} style={[styles.bubble, m.role === 'user' ? styles.me : styles.okio]}>
-              <Text style={[styles.bubbleText, m.role === 'user' && { color: colors.white }]}>{m.content}</Text>
-            </Animated.View>
-          ))}
+          {chat.length ? <Text style={styles.keep}>{t('mentor.keep', { n: KEEP_DAYS })}</Text> : null}
+          {chat.map((m, i) => {
+            const day = new Date(m.at).toDateString();
+            const newDay = i === 0 || new Date(chat[i - 1].at).toDateString() !== day;
+            return (
+              <View key={m.at + m.role} style={{ gap: 10 }}>
+                {newDay ? (
+                  <Text style={styles.dayLabel}>
+                    {day === new Date().toDateString() ? t('due.today') : new Date(m.at).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
+                  </Text>
+                ) : null}
+                <Animated.View entering={FadeInDown.duration(220)} style={[styles.bubble, m.role === 'user' ? styles.me : styles.okio]}>
+                  <Text style={[styles.bubbleText, m.role === 'user' && { color: colors.white }]}>{m.content}</Text>
+                </Animated.View>
+              </View>
+            );
+          })}
           {busy ? (
             <View style={[styles.bubble, styles.okio]}>
               <Text style={[styles.bubbleText, { color: colors.muted }]}>{t('mentor.thinking')}</Text>
@@ -124,6 +138,8 @@ const styles = StyleSheet.create({
   me: { alignSelf: 'flex-end', backgroundColor: colors.ink, borderBottomRightRadius: 6 },
   okio: { alignSelf: 'flex-start', backgroundColor: colors.card, borderBottomLeftRadius: 6 },
   bubbleText: { fontFamily: fonts.regular, fontSize: 15.5, lineHeight: 22, color: colors.ink },
+  dayLabel: { alignSelf: 'center', fontFamily: fonts.medium, fontSize: 12, color: colors.muted, textTransform: 'capitalize', marginTop: 6 },
+  keep: { alignSelf: 'center', fontFamily: fonts.regular, fontSize: 12, color: colors.faint, marginTop: 4 },
   inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 10 },
   input: {
     flex: 1,

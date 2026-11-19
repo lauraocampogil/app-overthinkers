@@ -183,3 +183,27 @@ export function writePlanToCalendar(allTasks: Task[], minutesOf: (t: Task) => nu
     }
   }, 1500);
 }
+
+/** Events per day for a whole month (for the month view). Empty without permission. */
+export async function monthEvents(settings: Settings, year: number, month: number): Promise<Record<string, number>> {
+  if (settings.calendar === 'off') return {};
+  try {
+    const perm = await Calendar.getCalendarPermissionsAsync();
+    if (!perm.granted) return {};
+    const cals = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+    const off = new Set(settings.calendarsOff ?? []);
+    const ids = cals.filter((c) => !off.has(c.id)).map((c) => c.id);
+    if (!ids.length) return {};
+    const events = await Calendar.getEventsAsync(ids, new Date(year, month, 1), new Date(year, month + 1, 1));
+    const out: Record<string, number> = {};
+    for (const e of events) {
+      if ((e.notes ?? '').startsWith(MARK)) continue;
+      const day = isoDay(new Date(e.startDate));
+      out[day] = (out[day] ?? 0) + 1;
+    }
+    return out;
+  } catch (e) {
+    console.warn('[calendario] month failed', e);
+    return {};
+  }
+}

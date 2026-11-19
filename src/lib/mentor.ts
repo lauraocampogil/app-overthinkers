@@ -87,13 +87,23 @@ export function hideTodaysRead() {
   useMentor.setState({ readHidden: todayIso() });
 }
 
+/** Conversations are kept on the phone for 30 days (at most 400 messages); older ones are deleted. */
+export const KEEP_DAYS = 30;
+const prune = (chat: ChatMsg[]) => chat.filter((m) => Date.now() - m.at < KEEP_DAYS * 86_400_000).slice(-400);
+
+export function pruneChat() {
+  const s = useMentor.getState();
+  const next = prune(s.chat);
+  if (next.length !== s.chat.length) useMentor.setState({ chat: next });
+}
+
 /** Send a message to Okio; returns the answer (or a gentle offline line). */
 export async function askOkio(text: string): Promise<void> {
   const msg: ChatMsg = { role: 'user', content: text.trim(), at: Date.now() };
-  const chat = [...useMentor.getState().chat, msg].slice(-40);
+  const chat = prune([...useMentor.getState().chat, msg]);
   useMentor.setState({ chat });
   const answer = (await call({ mode: 'chat', messages: chat.map(({ role, content }) => ({ role, content })) })) ?? t('mentor.offline');
-  useMentor.setState({ chat: [...useMentor.getState().chat, { role: 'assistant' as const, content: answer, at: Date.now() }].slice(-40) });
+  useMentor.setState({ chat: prune([...useMentor.getState().chat, { role: 'assistant' as const, content: answer, at: Date.now() }]) });
 }
 
 export function clearChat() {

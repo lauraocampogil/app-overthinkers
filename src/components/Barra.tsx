@@ -10,7 +10,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChartIcon, HomeIcon, TargetIcon } from '@/components/Iconos';
 import { CheckIcon as CheckLine } from '@/components/ui';
 import { MicIcon, PlusIcon } from '@/components/ui';
+import { Mascota } from '@/components/Mascota';
 import { t } from '@/i18n';
+import { useMascot } from '@/lib/auth';
 import { useVoz } from '@/lib/paleta';
 import { colors, fonts } from '@/theme';
 
@@ -38,6 +40,7 @@ export function Barra({ active }: { active: Tab; onWrite?: () => void }) {
   const voz = useVoz();
   // "+" asks first: a task or a goal.
   const [menu, setMenu] = useState(false);
+  const mascot = useMascot();
   const pick = (meta: boolean) => {
     setMenu(false);
     router.push(meta ? { pathname: '/escribir', params: { meta: '1' } } : '/escribir');
@@ -79,6 +82,18 @@ export function Barra({ active }: { active: Tab; onWrite?: () => void }) {
           <Glass style={styles.menuItem}>
             <TargetIcon size={18} color={colors.ink} />
             <Text style={styles.menuText}>{t('plus.goal')}</Text>
+          </Glass>
+        </Pressable>
+        <Pressable
+          onPress={() => {
+            setMenu(false);
+            router.push('/mentor');
+          }}
+          accessibilityRole="button"
+        >
+          <Glass style={styles.menuItem}>
+            <Mascota seed={mascot.seed} size={22} mood="calma" />
+            <Text style={styles.menuText}>Okio</Text>
           </Glass>
         </Pressable>
       </Animated.View>

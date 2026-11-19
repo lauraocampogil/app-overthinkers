@@ -580,7 +580,7 @@ export const useDay = create<DayState>()(
     },
     {
       name: 'getgo-day',
-      version: 6,
+      version: 7,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ settings, streak, tasks, lastDay, history, owner, learned, focus, goals, routines, routineLog, profile, focusLog, retos, weekPlannedOn, nudges }) => ({
         goals,
@@ -609,7 +609,8 @@ export const useDay = create<DayState>()(
             settings: withDefaults(s.settings as Partial<Settings>),
             learned: s.learned ?? {},
             goals: s.goals ?? [],
-            routines: s.routines ?? {},
+            // v7: the app is now Okio; fix the name inside routine steps written before.
+            routines: JSON.parse(JSON.stringify(s.routines ?? {}).replace(/GetGo/g, 'Okio')),
             routineLog: s.routineLog ?? {},
             retos: s.retos ?? [],
             focusLog: s.focusLog ?? {},

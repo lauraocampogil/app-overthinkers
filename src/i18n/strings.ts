@@ -4,6 +4,19 @@
  * Plurals: keys ending in `_one` / `_other` are picked automatically from `{n}`.
  */
 const es = {
+  "common.delete": "Borrar",
+  "agenda.dragHint": "Mantén el dedo sobre una tarea y arrástrala a una hora. Desliza a la derecha para pasarla a mañana o borrarla.",
+  "month.prev": "Mes anterior",
+  "month.next": "Mes siguiente",
+  "month.legendTop": "Prioridad",
+  "month.legendTasks": "Tareas",
+  "month.legendEvents": "Calendario",
+  "month.today": "Volver a este mes",
+  "mentor.keep": "Las conversaciones se guardan {n} días en tu móvil",
+  "week.editDayHint": "Añade lo que quieres hacer ese día",
+  "week.emptyTap": "Libre · toca para añadir algo",
+  "week.dayPlaceholder": "¿Qué quieres hacer este día? Ej: gym a las 18:00, llamar a mamá",
+  "week.addToDay": "Añadir",
   "score.title": "Focus Score",
   "score.a11y": "Focus Score: {n} de 100",
   "score.body": "{focus} de foco · {stay}% sin salir · {done}% hecho",
@@ -725,6 +738,19 @@ export type Key = keyof typeof es;
 type Dict = Record<Key, string>;
 
 const en: Dict = {
+  "common.delete": "Delete",
+  "agenda.dragHint": "Hold a task and drag it to an hour. Swipe right to move it to tomorrow or delete it.",
+  "month.prev": "Previous month",
+  "month.next": "Next month",
+  "month.legendTop": "Priority",
+  "month.legendTasks": "Tasks",
+  "month.legendEvents": "Calendar",
+  "month.today": "Back to this month",
+  "mentor.keep": "Conversations are kept for {n} days on your phone",
+  "week.editDayHint": "Add what you want to do that day",
+  "week.emptyTap": "Free · tap to add something",
+  "week.dayPlaceholder": "What do you want to do this day? E.g. gym at 6pm, call mum",
+  "week.addToDay": "Add",
   "score.title": "Focus Score",
   "score.a11y": "Focus Score: {n} out of 100",
   "score.body": "{focus} focused · {stay}% stayed · {done}% done",
@@ -1433,6 +1459,19 @@ const en: Dict = {
 };
 
 const fr: Dict = {
+  "common.delete": "Supprimer",
+  "agenda.dragHint": "Maintiens une tâche et glisse-la vers une heure. Balaie à droite pour la passer à demain ou la supprimer.",
+  "month.prev": "Mois précédent",
+  "month.next": "Mois suivant",
+  "month.legendTop": "Priorité",
+  "month.legendTasks": "Tâches",
+  "month.legendEvents": "Calendrier",
+  "month.today": "Revenir à ce mois",
+  "mentor.keep": "Les conversations restent {n} jours sur ton téléphone",
+  "week.editDayHint": "Ajoute ce que tu veux faire ce jour-là",
+  "week.emptyTap": "Libre · touche pour ajouter",
+  "week.dayPlaceholder": "Que veux-tu faire ce jour-là ? Ex : salle à 18h, appeler maman",
+  "week.addToDay": "Ajouter",
   "score.title": "Focus Score",
   "score.a11y": "Focus Score : {n} sur 100",
   "score.body": "{focus} de focus · {stay}% sans sortir · {done}% fait",
@@ -2141,6 +2180,19 @@ const fr: Dict = {
 };
 
 const nl: Dict = {
+  "common.delete": "Verwijderen",
+  "agenda.dragHint": "Houd een taak vast en sleep hem naar een uur. Veeg naar rechts om hem naar morgen te zetten of te verwijderen.",
+  "month.prev": "Vorige maand",
+  "month.next": "Volgende maand",
+  "month.legendTop": "Prioriteit",
+  "month.legendTasks": "Taken",
+  "month.legendEvents": "Agenda",
+  "month.today": "Terug naar deze maand",
+  "mentor.keep": "Gesprekken blijven {n} dagen op je telefoon",
+  "week.editDayHint": "Voeg toe wat je die dag wilt doen",
+  "week.emptyTap": "Vrij · tik om iets toe te voegen",
+  "week.dayPlaceholder": "Wat wil je deze dag doen? Bv. gym om 18:00, mama bellen",
+  "week.addToDay": "Toevoegen",
   "score.title": "Focus Score",
   "score.a11y": "Focus Score: {n} van 100",
   "score.body": "{focus} focus · {stay}% gebleven · {done}% gedaan",
@@ -2849,6 +2901,19 @@ const nl: Dict = {
 };
 
 const de: Dict = {
+  "common.delete": "Löschen",
+  "agenda.dragHint": "Halte eine Aufgabe gedrückt und zieh sie auf eine Uhrzeit. Wisch nach rechts, um sie auf morgen zu legen oder zu löschen.",
+  "month.prev": "Voriger Monat",
+  "month.next": "Nächster Monat",
+  "month.legendTop": "Priorität",
+  "month.legendTasks": "Aufgaben",
+  "month.legendEvents": "Kalender",
+  "month.today": "Zurück zu diesem Monat",
+  "mentor.keep": "Unterhaltungen bleiben {n} Tage auf deinem Handy",
+  "week.editDayHint": "Füge hinzu, was du an dem Tag machen willst",
+  "week.emptyTap": "Frei · tippe, um etwas hinzuzufügen",
+  "week.dayPlaceholder": "Was willst du an diesem Tag machen? Z. B. Gym um 18 Uhr, Mama anrufen",
+  "week.addToDay": "Hinzufügen",
   "score.title": "Focus Score",
   "score.a11y": "Focus Score: {n} von 100",
   "score.body": "{focus} Fokus · {stay}% geblieben · {done}% erledigt",
@@ -3557,6 +3622,19 @@ const de: Dict = {
 };
 
 const pt: Dict = {
+  "common.delete": "Apagar",
+  "agenda.dragHint": "Mantém o dedo numa tarefa e arrasta-a para uma hora. Desliza para a direita para a passar para amanhã ou apagar.",
+  "month.prev": "Mês anterior",
+  "month.next": "Mês seguinte",
+  "month.legendTop": "Prioridade",
+  "month.legendTasks": "Tarefas",
+  "month.legendEvents": "Calendário",
+  "month.today": "Voltar a este mês",
+  "mentor.keep": "As conversas ficam {n} dias no teu telemóvel",
+  "week.editDayHint": "Adiciona o que queres fazer nesse dia",
+  "week.emptyTap": "Livre · toca para adicionar",
+  "week.dayPlaceholder": "O que queres fazer neste dia? Ex: ginásio às 18:00, ligar à mãe",
+  "week.addToDay": "Adicionar",
   "score.title": "Focus Score",
   "score.a11y": "Focus Score: {n} em 100",
   "score.body": "{focus} de foco · {stay}% sem sair · {done}% feito",
@@ -4265,6 +4343,19 @@ const pt: Dict = {
 };
 
 const it: Dict = {
+  "common.delete": "Elimina",
+  "agenda.dragHint": "Tieni premuto un compito e trascinalo su un orario. Scorri a destra per spostarlo a domani o eliminarlo.",
+  "month.prev": "Mese precedente",
+  "month.next": "Mese successivo",
+  "month.legendTop": "Priorità",
+  "month.legendTasks": "Attività",
+  "month.legendEvents": "Calendario",
+  "month.today": "Torna a questo mese",
+  "mentor.keep": "Le conversazioni restano {n} giorni sul telefono",
+  "week.editDayHint": "Aggiungi cosa vuoi fare quel giorno",
+  "week.emptyTap": "Libero · tocca per aggiungere",
+  "week.dayPlaceholder": "Cosa vuoi fare questo giorno? Es: palestra alle 18, chiamare la mamma",
+  "week.addToDay": "Aggiungi",
   "score.title": "Focus Score",
   "score.a11y": "Focus Score: {n} su 100",
   "score.body": "{focus} di focus · {stay}% senza uscire · {done}% fatto",

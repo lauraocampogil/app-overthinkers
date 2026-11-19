@@ -1,9 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
+import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Deslizar } from '@/components/Deslizar';
 import { ArrowRightIcon, CalendarIcon, MoonIcon, SunIcon } from '@/components/Iconos';
 import { CloseIcon, IconCircle, Screen } from '@/components/ui';
 import { locale, minutesLabel, t } from '@/i18n';
@@ -15,6 +19,37 @@ import { colors, fonts, type } from '@/theme';
 
 /** Always HH:MM (24 h) so the list sorts and lines up: "06:00", not "6:00". */
 const clock = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+/** The hour ruler shown while dragging a task: 6:00 → 23:45. */
+const FIRST = 6 * 60;
+const LAST = 23 * 60 + 45;
+const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
+type Drag = { id: string; title: string; minutes: number | null; y: number; at: number };
+
+/**
+ * A task without an hour: hold it and drag it up or down, the ruler on the left shows the hour it lands on.
+ */
+function Arrastrable({ id, title, minutes, onDrag, onDrop, children }: {
+  id: string;
+  title: string;
+  minutes: number | null;
+  onDrag: (d: Drag | null, y: number) => void;
+  onDrop: (id: string, y: number) => void;
+  children: React.ReactNode;
+}) {
+  const pan = usePanGesture({
+    activateAfterLongPress: 320,
+    runOnJS: true,
+    onActivate: (e) => {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      onDrag({ id, title, minutes, y: e.absoluteY, at: 0 }, e.absoluteY);
+    },
+    onUpdate: (e) => onDrag(null, e.absoluteY),
+    onDeactivate: (e) => onDrop(id, e.absoluteY),
+  });
+  return <GestureDetector gesture={pan}>{children}</GestureDetector>;
+}
 
 type Item =
   | { kind: 'routine'; at: string; routine: 'manana' | 'noche'; steps: number }
@@ -35,6 +70,36 @@ export default function Agenda() {
   const routines = useDay((s) => s.routines);
   const settings = withDefaults(useDay((s) => s.settings));
   const voz = useVoz();
+  const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const store = useDay.getState;
+  const [drag, setDrag] = useState<Drag | null>(null);
+  const lastSlot = useRef(-1);
+
+  // Ruler geometry: from below the header to above the home bar.
+  const top = insets.top + 70;
+  const bottom = height - insets.bottom - 30;
+  const minuteAt = (y: number) => {
+    const f = Math.min(1, Math.max(0, (y - top) / (bottom - top)));
+    return Math.round((FIRST + f * (LAST - FIRST)) / 15) * 15;
+  };
+  const yOf = (m: number) => top + ((m - FIRST) / (LAST - FIRST)) * (bottom - top);
+
+  const onDrag = (start: Drag | null, y: number) => {
+    const at = minuteAt(y);
+    if (at !== lastSlot.current) {
+      lastSlot.current = at;
+      void Haptics.selectionAsync().catch(() => {});
+    }
+    setDrag((cur) => (start ? { ...start, at } : cur ? { ...cur, y, at } : cur));
+  };
+  const onDrop = (id: string, y: number) => {
+    const at = minuteAt(y);
+    store().setDetails(id, { at: hhmm(at) });
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    setDrag(null);
+    lastSlot.current = -1;
+  };
 
   useEffect(() => {
     void refreshAgenda(settings);
@@ -78,8 +143,8 @@ export default function Agenda() {
           </Pressable>
         ) : null}
         {items.length ? (
-          items.map((it, i) => (
-            <Animated.View key={`${it.kind}${i}`} entering={FadeInDown.delay(i * 40).duration(280)}>
+          items.map((it, i) => {
+            const row = (
               <Pressable
                 disabled={it.kind === 'event'}
                 onPress={() => (it.kind === 'routine' ? router.push({ pathname: '/rutina', params: { kind: it.routine, d: day } }) : undefined)}
@@ -110,12 +175,44 @@ export default function Agenda() {
                 </View>
                 {it.kind === 'routine' ? <ArrowRightIcon size={14} color={colors.faint} /> : null}
               </Pressable>
-            </Animated.View>
-          ))
+            );
+            return (
+              <Animated.View key={it.kind === 'task' ? it.id : `${it.kind}${i}`} entering={FadeInDown.delay(i * 40).duration(280)} style={drag?.id === (it.kind === 'task' ? it.id : '') && { opacity: 0.25 }}>
+                {it.kind === 'task' ? (
+                  <Deslizar fromLeft today={day} onMove={(d2) => store().moveTo(it.id, d2)} onDelete={() => store().remove(it.id)}>
+                    <Arrastrable id={it.id} title={it.title} minutes={it.minutes} onDrag={onDrag} onDrop={onDrop}>
+                      <View>{row}</View>
+                    </Arrastrable>
+                  </Deslizar>
+                ) : (
+                  row
+                )}
+              </Animated.View>
+            );
+          })
         ) : (
           <Text style={type.muted}>{t('day.nothing')}</Text>
         )}
+        {items.some((it) => it.kind === 'task') ? <Text style={styles.hint}>{t('agenda.dragHint')}</Text> : null}
       </ScrollView>
+      {drag ? (
+        <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(150)} style={[StyleSheet.absoluteFill, styles.overlay]} pointerEvents="none">
+          {Array.from({ length: 18 }, (_, k) => FIRST + k * 60).map((m) => (
+            <View key={m} style={[styles.tick, { top: yOf(m) - 8 }]}>
+              <Text style={styles.tickText}>{hhmm(m)}</Text>
+              <View style={styles.tickLine} />
+            </View>
+          ))}
+          {/* The slot the task would take, as tall as its duration. */}
+          <View style={[styles.slot, { top: yOf(drag.at), height: Math.max(20, ((drag.minutes ?? 30) / (LAST - FIRST)) * (bottom - top)) }]}>
+            <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFill} />
+          </View>
+          <View style={[styles.ghost, { top: drag.y - 30 }]}>
+            <Text style={styles.ghostTime}>{hhmm(drag.at)}{drag.minutes ? `–${hhmm(Math.min(1439, drag.at + drag.minutes))}` : ''}</Text>
+            <Text style={styles.title} numberOfLines={1}>{drag.title}</Text>
+          </View>
+        </Animated.View>
+      ) : null}
     </Screen>
   );
 }
@@ -131,4 +228,25 @@ const styles = StyleSheet.create({
   lineRoutine: { backgroundColor: colors.line },
   title: { fontFamily: fonts.medium, fontSize: 16, color: colors.ink, flexShrink: 1 },
   meta: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted },
+  hint: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.muted, marginTop: 12 },
+  overlay: { backgroundColor: 'rgba(255,255,255,0.94)' },
+  tick: { position: 'absolute', left: 20, right: 20, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  tickText: { width: 50, fontFamily: fonts.medium, fontSize: 12, color: colors.muted, fontVariant: ['tabular-nums'] },
+  tickLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.line },
+  slot: { position: 'absolute', left: 80, width: 4, borderRadius: 2, overflow: 'hidden' },
+  ghost: {
+    position: 'absolute',
+    left: 92,
+    right: 20,
+    minHeight: 60,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    backgroundColor: colors.white,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+  },
+  ghostTime: { fontFamily: fonts.semibold, fontSize: 13, color: colors.ink, fontVariant: ['tabular-nums'] },
 });

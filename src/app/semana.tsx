@@ -1,13 +1,16 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Cargador } from '@/components/Cargador';
 import { SunIcon } from '@/components/Iconos';
 import { CloseIcon, IconCircle, MicIcon, PrimaryButton, Screen } from '@/components/ui';
-import { locale, minutesLabel, t } from '@/i18n';
-import { lastWeekError, planWeek, type WeekPlan } from '@/lib/ai';
+import { lang, locale, minutesLabel, t } from '@/i18n';
+import { lastWeekError, parseBrainDump, planWeek, type WeekPlan } from '@/lib/ai';
+import { cleanFillers, liveSpeechAvailable, pickLocale, requestLivePermission, startLive, type LiveSession } from '@/lib/voz';
 import { useVoz } from '@/lib/paleta';
 import { addDays } from '@/lib/planner';
 import type { RawTask } from '@/lib/types';
@@ -15,7 +18,7 @@ import { todayIso, useDay } from '@/store/day';
 import { colors, fonts, type } from '@/theme';
 
 /**
- * "Planificar mi semana": tell GetGo what the week should hold (gym, dishes, cooking, football at 19:00…),
+ * "Planificar mi semana": tell Okio what the week should hold (gym, dishes, cooking, football at 19:00…),
  * it spreads everything over the 7 days with hours, marks the priorities and gives advice (when to get up).
  * Nothing is saved until the person accepts the plan.
  */
@@ -28,6 +31,53 @@ export default function Semana() {
   const [useWake, setUseWake] = useState(true);
   const started = useRef(false);
   const today = todayIso();
+  const insets = useSafeAreaInsets();
+  // Tap a day in the plan to tell Okio (voice or text) what else goes on that day.
+  const [editing, setEditing] = useState<number | null>(null);
+  const [dayText, setDayText] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [listening, setListening] = useState(false);
+  const session = useRef<LiveSession | null>(null);
+  const canSpeak = liveSpeechAvailable();
+
+  const stopListening = () => {
+    session.current?.cancel();
+    session.current = null;
+    setListening(false);
+  };
+  const listen = async () => {
+    if (listening) return stopListening();
+    if (!(await requestLivePermission())) return;
+    const speechLocale = await pickLocale(locale, lang);
+    const before = dayText ? `${dayText} ` : '';
+    setListening(true);
+    const mine = startLive(speechLocale, {
+      onText: (heard) => session.current === mine && setDayText(before + cleanFillers(heard)),
+      onLevel: () => {},
+      onError: () => setListening(false),
+    });
+    session.current = mine;
+  };
+  useEffect(() => () => session.current?.cancel(), []);
+
+  const openDay = (i: number) => {
+    stopListening();
+    setDayText('');
+    setEditing((cur) => (cur === i ? null : i));
+  };
+  const addToDay = async (i: number) => {
+    const value = dayText.trim();
+    if (!value || adding) return;
+    stopListening();
+    setAdding(true);
+    const res = await parseBrainDump(value);
+    setAdding(false);
+    const extra = res.tasks.map((x) => ({ ...x, dueInDays: i }));
+    if (!extra.length) return;
+    setPlan((p) => (p ? { ...p, tasks: [...p.tasks, ...extra] } : p));
+    setDayText('');
+    setEditing(null);
+  };
 
   const run = async (value: string) => {
     if (!value.trim()) return;
@@ -78,13 +128,15 @@ export default function Semana() {
   if (phase === 'review' && plan) {
     const days = Array.from({ length: 7 }, (_, i) => i);
     return (
-      <Screen>
+      // Top edge only: the list runs to the bottom of the screen, nothing (no band, no box) behind the buttons.
+      <Screen tabs>
         <View style={styles.header}>
           <IconCircle label={t('common.close')} onPress={() => router.back()}>
             <CloseIcon />
           </IconCircle>
         </View>
-        <ScrollView contentContainerStyle={styles.body}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={[styles.body, { paddingBottom: 170 + insets.bottom }]} keyboardShouldPersistTaps="handled">
           <Text style={type.title} accessibilityRole="header">
             {t('week.reviewTitle')}
           </Text>
@@ -107,11 +159,14 @@ export default function Semana() {
             const list = plan.tasks.filter((x) => (x.dueInDays ?? 0) === i).sort((a, b) => (a.at ?? '99').localeCompare(b.at ?? '99'));
             const day = addDays(today, i);
             return (
-              <View key={i} style={styles.day}>
-                <View style={styles.dayHead}>
+              <Animated.View key={i} layout={LinearTransition.duration(220)} style={styles.day}>
+                <Pressable onPress={() => openDay(i)} style={styles.dayHead} accessibilityRole="button" accessibilityHint={t('week.editDayHint')}>
                   <Text style={styles.dayName}>{i === 0 ? t('due.today') : new Date(`${day}T12:00:00`).toLocaleDateString(locale, { weekday: 'long', day: 'numeric' })}</Text>
-                  <Text style={styles.count}>{list.length}</Text>
-                </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <Text style={styles.count}>{list.length}</Text>
+                    <Text style={styles.plus}>{editing === i ? '–' : '+'}</Text>
+                  </View>
+                </Pressable>
                 {list.length ? (
                   list.map((task, k) => (
                     <View key={`${task.title}${k}`} style={styles.row}>
@@ -136,19 +191,51 @@ export default function Semana() {
                       </Pressable>
                     </View>
                   ))
-                ) : (
-                  <Text style={styles.meta}>{t('hoy.colEmpty')}</Text>
+                ) : editing === i ? null : (
+                  <Pressable onPress={() => openDay(i)} hitSlop={6}>
+                    <Text style={styles.meta}>{t('week.emptyTap')}</Text>
+                  </Pressable>
                 )}
-              </View>
+                {editing === i ? (
+                  <Animated.View entering={FadeInDown.duration(200)} style={styles.editor}>
+                    <TextInput
+                      value={dayText}
+                      onChangeText={setDayText}
+                      multiline
+                      autoFocus={!canSpeak}
+                      placeholder={t('week.dayPlaceholder')}
+                      placeholderTextColor={colors.faint}
+                      style={styles.dayInput}
+                      textAlignVertical="top"
+                    />
+                    <View style={styles.editorRow}>
+                      {canSpeak ? (
+                        <Pressable onPress={() => void listen()} accessibilityRole="button" accessibilityLabel={t('week.speak')}>
+                          <LinearGradient colors={voz.mic} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.smallMic, listening && { transform: [{ scale: 1.08 }] }]}>
+                            <MicIcon size={18} />
+                          </LinearGradient>
+                        </Pressable>
+                      ) : null}
+                      <Text style={[styles.meta, { flex: 1 }]}>{listening ? t('listen.listening') : ''}</Text>
+                      <Pressable onPress={() => void addToDay(i)} disabled={!dayText.trim() || adding} style={[styles.addBtn, (!dayText.trim() || adding) && { opacity: 0.35 }]} accessibilityRole="button">
+                        {adding ? <ActivityIndicator color={colors.white} /> : <Text style={styles.addText}>{t('week.addToDay')}</Text>}
+                      </Pressable>
+                    </View>
+                  </Animated.View>
+                ) : null}
+              </Animated.View>
             );
           })}
         </ScrollView>
-        <View style={styles.footer}>
-          <PrimaryButton label={t('week.save')} onPress={save} />
-          <Pressable onPress={() => setPhase('input')} style={styles.again} accessibilityRole="button">
-            <Text style={styles.againText}>{t('week.change')}</Text>
-          </Pressable>
-        </View>
+        </KeyboardAvoidingView>
+        {editing === null ? (
+          <View style={[styles.footer, { bottom: insets.bottom + 4 }]} pointerEvents="box-none">
+            <PrimaryButton label={t('week.save')} onPress={save} />
+            <Pressable onPress={() => setPhase('input')} style={styles.again} accessibilityRole="button">
+              <Text style={styles.againText}>{t('week.change')}</Text>
+            </Pressable>
+          </View>
+        ) : null}
       </Screen>
     );
   }
@@ -221,6 +308,13 @@ const styles = StyleSheet.create({
   timeChips: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 6 },
   timeChip: { minHeight: 28, paddingHorizontal: 10, borderRadius: 14, backgroundColor: colors.white, justifyContent: 'center' },
   timeChipText: { fontFamily: fonts.medium, fontSize: 12, color: colors.ink },
+  plus: { fontFamily: fonts.medium, fontSize: 20, color: colors.muted, width: 16, textAlign: 'center' },
+  editor: { gap: 10, marginTop: 8 },
+  dayInput: { minHeight: 70, padding: 12, borderRadius: 16, backgroundColor: colors.white, fontFamily: fonts.regular, fontSize: 15, lineHeight: 21, color: colors.ink },
+  editorRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  smallMic: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  addBtn: { minHeight: 40, paddingHorizontal: 16, borderRadius: 20, backgroundColor: colors.ink, alignItems: 'center', justifyContent: 'center' },
+  addText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.white },
   remove: { fontFamily: fonts.regular, fontSize: 22, color: colors.faint, paddingHorizontal: 4 },
   // Floats over the list with nothing behind it, so the days stay visible under the button.
   footer: { position: 'absolute', left: 0, right: 0, bottom: 6, paddingHorizontal: 20, gap: 4 },

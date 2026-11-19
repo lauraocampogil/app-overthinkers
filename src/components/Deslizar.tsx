@@ -8,9 +8,23 @@ import { addDays } from '@/lib/planner';
 import { colors, fonts } from '@/theme';
 
 /**
- * Swipe a task to the left to move it: "Mañana" in one tap, or "Otro día" to pick a day of the week.
+ * Swipe a task to move it: "Mañana" in one tap, or "Otro día" to pick a day of the week.
+ * By default the actions sit on the right (swipe left); `fromLeft` puts them on the left (swipe right).
+ * With `onDelete`, a "Borrar" action is added.
  */
-export function Deslizar({ children, today, onMove }: { children: ReactNode; today: string; onMove: (day: string) => void }) {
+export function Deslizar({
+  children,
+  today,
+  onMove,
+  onDelete,
+  fromLeft,
+}: {
+  children: ReactNode;
+  today: string;
+  onMove: (day: string) => void;
+  onDelete?: () => void;
+  fromLeft?: boolean;
+}) {
   const ref = useRef<SwipeableMethods>(null);
   const [picking, setPicking] = useState(false);
   const move = (day: string) => {
@@ -19,6 +33,28 @@ export function Deslizar({ children, today, onMove }: { children: ReactNode; tod
     onMove(day);
   };
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, i + 1));
+  const actions = (
+    <View style={[styles.actions, fromLeft && { paddingLeft: 0, paddingRight: 8 }]}>
+      <Pressable onPress={() => move(addDays(today, 1))} style={[styles.action, styles.dark]} accessibilityRole="button">
+        <Text style={[styles.actionText, { color: colors.white }]}>{t('hoy.tomorrow')}</Text>
+      </Pressable>
+      <Pressable onPress={() => setPicking(true)} style={styles.action} accessibilityRole="button" accessibilityLabel={t('swipe.otherDay')}>
+        <CalendarIcon size={20} />
+      </Pressable>
+      {onDelete ? (
+        <Pressable
+          onPress={() => {
+            ref.current?.close();
+            onDelete();
+          }}
+          style={styles.action}
+          accessibilityRole="button"
+        >
+          <Text style={[styles.actionText, { color: colors.danger }]}>{t('common.delete')}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
 
   return (
     <>
@@ -26,17 +62,10 @@ export function Deslizar({ children, today, onMove }: { children: ReactNode; tod
         ref={ref}
         friction={1.6}
         rightThreshold={40}
+        leftThreshold={40}
         overshootRight={false}
-        renderRightActions={() => (
-          <View style={styles.actions}>
-            <Pressable onPress={() => move(addDays(today, 1))} style={[styles.action, styles.dark]} accessibilityRole="button">
-              <Text style={[styles.actionText, { color: colors.white }]}>{t('hoy.tomorrow')}</Text>
-            </Pressable>
-            <Pressable onPress={() => setPicking(true)} style={styles.action} accessibilityRole="button" accessibilityLabel={t('swipe.otherDay')}>
-              <CalendarIcon size={20} />
-            </Pressable>
-          </View>
-        )}
+        overshootLeft={false}
+        {...(fromLeft ? { renderLeftActions: () => actions } : { renderRightActions: () => actions })}
       >
         <View style={{ backgroundColor: colors.bg }}>{children}</View>
       </ReanimatedSwipeable>
